@@ -1,0 +1,16 @@
+{
+  "name": "@plazafyi/plazaql",
+  "version": "0.1.0",
+  "description": "PlazaQL language specification, TextMate grammar, and examples",
+  "main": "plazaql.tmLanguage.json",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/plazafyi/plazaql"
+  },
+  "license": "MIT",
+  "files": [
+    "plazaql.tmLanguage.json",
+    "language-configuration.json",
+    "examples/"
+  ]
+}

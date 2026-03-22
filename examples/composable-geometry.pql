@@ -1,0 +1,92 @@
+// Composable geometry — variables, constructors, set operations, multi-output
+
+// Settings block
+[timeout: 30, format: "geojson"]
+
+// Variable assignment — store geometry for reuse
+$downtown = polygon(
+  point(40.710, -74.015),
+  point(40.710, -73.995),
+  point(40.725, -73.995),
+  point(40.725, -74.015)
+);
+
+// Use geometry variable in spatial filter
+out = search(node, amenity: "cafe")
+  .within($downtown)
+  .limit(20);
+
+// Build a linestring from individual points
+$start = point(40.7128, -74.0060);
+$mid = point(40.7300, -73.9950);
+$end = point(40.7580, -73.9855);
+$path = linestring($start, $mid, $end);
+
+// Search along the constructed linestring
+out = search(node, amenity: "restaurant")
+  .around(200, $path)
+  .fields("name", "cuisine")
+  .limit(15);
+
+// Area variables for complex spatial queries
+$brooklyn = area("Brooklyn, New York");
+$prospect_park = area("Prospect Park, Brooklyn");
+
+// Search within Brooklyn but outside Prospect Park
+out = search(node, amenity: "bar")
+  .within($brooklyn)
+  .not_within($prospect_park)
+  .sort("name")
+  .limit(25);
+
+// Set operations — union (+) and difference (-)
+$cafes = search(node, amenity: "cafe")
+  .within($downtown);
+$restaurants = search(node, amenity: "restaurant")
+  .within($downtown);
+
+// Union — combine two result sets
+out = $cafes + $restaurants;
+
+// Difference — subtract one set from another
+$all_food = search(node, amenity: ~"cafe|restaurant|fast_food")
+  .within($downtown);
+$fast_food = search(node, amenity: "fast_food")
+  .within($downtown);
+out = $all_food - $fast_food;
+
+// Post-union tag filtering with .filter()
+$eating = search(node, amenity: "cafe").within($downtown)
+        + search(node, amenity: "restaurant").within($downtown);
+out = $eating.filter(wheelchair: "yes").limit(10);
+
+// Route as geometry source
+$commute = route(
+  from: $start,
+  to: $end,
+  mode: "bike"
+);
+
+// Use route result as spatial filter
+out.route = $commute;
+out.bike_parking = search(node, amenity: "bicycle_parking")
+  .around(50, $commute)
+  .limit(10);
+
+// Isochrone as geometry source
+$walkable = isochrone(
+  center: $start,
+  time: 10,
+  mode: "walk"
+);
+
+// Multiple named outputs for a complete analysis
+out.walkable_area = $walkable;
+out.parks = search(way, leisure: "park").within($walkable);
+out.transit = search(node, railway: "station").within($walkable);
+out.groceries = search(node, shop: "supermarket").within($walkable);
+
+// Expand — recurse into relation members or way nodes
+out = search(relation, name: "Central Park")
+  .expand(:down)
+  .limit(100);

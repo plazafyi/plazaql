@@ -1,0 +1,55 @@
+// Basic PlazaQL queries — simple searches, tag filters, and output options
+
+// Find all cafes
+out = search(node, amenity: "cafe");
+
+// Find restaurants with cuisine tag
+out = search(node, amenity: "restaurant", cuisine: *);
+
+// Find vegan restaurants using regex
+out = search(node, amenity: "restaurant", cuisine: ~"vegan");
+
+// Case-insensitive regex search
+out = search(node, name: ~i"starbucks");
+
+// Find nodes that do NOT have a name
+out = search(node, amenity: "bench", name: !*);
+
+// Exclude a specific value
+out = search(node, amenity: "restaurant", cuisine: !"fast_food");
+
+// Negated regex — exclude pattern
+out = search(node, amenity: "restaurant", name: !~"McDonald");
+
+// Multiple element types — ways and relations
+out = search(way, building: "yes");
+
+// All element types (nwr = node/way/relation)
+out = search(nwr, tourism: "museum");
+
+// Limit results
+out = search(node, amenity: "cafe").limit(10);
+
+// Limit with offset for pagination
+out = search(node, amenity: "cafe").sort("name").limit(10).offset(20);
+
+// Count matching features
+out = search(node, amenity: "cafe").count();
+
+// Return only IDs
+out = search(node, amenity: "school").ids();
+
+// Return only tags (no geometry)
+out = search(node, shop: "supermarket").tags();
+
+// Skeleton output (minimal geometry, no tags)
+out = search(way, highway: "primary").skel();
+
+// Select specific fields
+out = search(node, amenity: "cafe")
+  .fields("name", "cuisine", "opening_hours")
+  .limit(25);
+
+// Named outputs — multiple results from one query
+out.cafes = search(node, amenity: "cafe").limit(5);
+out.parks = search(way, leisure: "park").limit(5);
