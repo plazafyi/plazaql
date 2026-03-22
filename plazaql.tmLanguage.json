@@ -113,7 +113,7 @@
     "output-assignment": {
       "patterns": [
         {
-          "match": "\\b(out)(?:\\s*\\.\\s*([a-zA-Z_][a-zA-Z0-9_]*))?\\s*=",
+          "match": "(\\$\\$)(?:\\s*\\.\\s*([a-zA-Z_][a-zA-Z0-9_]*))?\\s*=",
           "captures": {
             "1": { "name": "variable.other.output.plazaql" },
             "2": { "name": "variable.other.output.plazaql" }
@@ -159,7 +159,7 @@
       "patterns": [
         {
           "name": "keyword.control.plazaql",
-          "match": "\\b(out|search|area)\\b(?!\\s*[.(])"
+          "match": "\\b(search|area)\\b(?!\\s*[.(])"
         },
         {
           "name": "keyword.other.modifier.plazaql",

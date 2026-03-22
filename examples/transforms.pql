@@ -1,59 +1,59 @@
 // Transform queries — buffer, simplify, centroid, precision, enrichments
 
 // Buffer — expand geometries by distance (meters)
-out = search(way, leisure: "park")
+$$ = search(way, leisure: "park")
   .within(area("Berlin, Germany"))
   .buffer(100)
   .limit(10);
 
 // Simplify — reduce geometry complexity (tolerance in meters)
-out = search(way, boundary: "administrative")
+$$ = search(way, boundary: "administrative")
   .within(area("France"))
   .simplify(1000)
   .limit(5);
 
 // Centroid — convert polygons to their center points
-out = search(way, building: "yes")
+$$ = search(way, building: "yes")
   .within(area("Manhattan, New York"))
   .centroid()
   .limit(50);
 
 // Precision — control coordinate decimal places
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .around(500, point(40.7128, -74.0060))
   .precision(4)
   .limit(20);
 
 // Elevation enrichment — add elevation data to features
-out = search(node, natural: "peak")
+$$ = search(node, natural: "peak")
   .within(area("Colorado, United States"))
   .elevation()
   .sort("elevation")
   .limit(10);
 
 // Distance enrichment — add distance from a reference point
-out = search(node, amenity: "hospital")
+$$ = search(node, amenity: "hospital")
   .around(5000, point(40.7128, -74.0060))
   .distance(point(40.7128, -74.0060))
   .sort("distance")
   .limit(5);
 
 // Area enrichment — compute area of polygon features
-out = search(way, leisure: "park")
+$$ = search(way, leisure: "park")
   .within(area("London, United Kingdom"))
   .area()
   .sort("area")
   .limit(10);
 
 // Length enrichment — compute length of linear features
-out = search(way, highway: "cycleway")
+$$ = search(way, highway: "cycleway")
   .within(area("Amsterdam, Netherlands"))
   .length()
   .sort("length")
   .limit(10);
 
 // Combine multiple transforms
-out = search(way, building: "university")
+$$ = search(way, building: "university")
   .within(area("Cambridge, Massachusetts"))
   .simplify(10)
   .precision(5)
@@ -62,14 +62,14 @@ out = search(way, building: "university")
   .limit(20);
 
 // Include related geometry data
-out = search(way, highway: "motorway")
+$$ = search(way, highway: "motorway")
   .within(area("California, United States"))
   .include("nodes")
   .simplify(500)
   .limit(10);
 
 // Elevation profile along a linestring
-out = elevation_profile(
+$$ = elevation_profile(
   linestring(
     point(46.5, 6.6),
     point(46.0, 7.6),
@@ -78,4 +78,4 @@ out = elevation_profile(
 );
 
 // Point elevation lookup
-out = elevation(point(27.9881, 86.9250));
+$$ = elevation(point(27.9881, 86.9250));

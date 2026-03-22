@@ -1,21 +1,21 @@
 // Spatial queries — within, around, intersects, bbox, and more
 
 // Find cafes within 500m of a point
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .around(500, point(40.7128, -74.0060));
 
 // Search within a bounding box
-out = search(node, amenity: "restaurant")
+$$ = search(node, amenity: "restaurant")
   .bbox(40.70, -74.02, 40.75, -73.97);
 
 // Search within an admin area
 $manhattan = area("Manhattan, New York");
-out = search(node, amenity: "bar")
+$$ = search(node, amenity: "bar")
   .within($manhattan);
 
 // NOT within — exclude an area
 $central_park = area("Central Park, New York");
-out = search(node, amenity: "bench")
+$$ = search(node, amenity: "bench")
   .within($manhattan)
   .not_within($central_park);
 
@@ -26,39 +26,39 @@ $zone = polygon(
   point(40.73, -73.99),
   point(40.73, -74.01)
 );
-out = search(node, shop: *).within($zone);
+$$ = search(node, shop: *).within($zone);
 
 // Intersects — features whose geometry crosses a line
 $river = linestring(
   point(40.70, -74.02),
   point(40.75, -73.97)
 );
-out = search(way, bridge: "yes").intersects($river);
+$$ = search(way, bridge: "yes").intersects($river);
 
 // Contains — features that fully contain a geometry
-out = search(way, landuse: "forest")
+$$ = search(way, landuse: "forest")
   .contains(point(47.6, -122.3));
 
 // Crosses — features that cross a geometry
-out = search(way, highway: "primary")
+$$ = search(way, highway: "primary")
   .crosses($river);
 
 // Touches — features that touch but don't overlap
-out = search(way, boundary: "administrative")
+$$ = search(way, boundary: "administrative")
   .touches($zone);
 
 // H3 cell filter
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .h3("872a1076dffffff");
 
 // Near — alias for around, returns results sorted by distance
-out = search(node, amenity: "pharmacy")
+$$ = search(node, amenity: "pharmacy")
   .near(1000, point(48.8566, 2.3522))
   .limit(5);
 
 // Combine spatial filters — within area AND near a point
 $paris = area("Paris, France");
-out = search(node, amenity: "restaurant", cuisine: "french")
+$$ = search(node, amenity: "restaurant", cuisine: "french")
   .within($paris)
   .around(200, point(48.8566, 2.3522))
   .limit(20);

@@ -12,7 +12,7 @@ $downtown = polygon(
 );
 
 // Use geometry variable in spatial filter
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .within($downtown)
   .limit(20);
 
@@ -23,7 +23,7 @@ $end = point(40.7580, -73.9855);
 $path = linestring($start, $mid, $end);
 
 // Search along the constructed linestring
-out = search(node, amenity: "restaurant")
+$$ = search(node, amenity: "restaurant")
   .around(200, $path)
   .fields("name", "cuisine")
   .limit(15);
@@ -33,7 +33,7 @@ $brooklyn = area("Brooklyn, New York");
 $prospect_park = area("Prospect Park, Brooklyn");
 
 // Search within Brooklyn but outside Prospect Park
-out = search(node, amenity: "bar")
+$$ = search(node, amenity: "bar")
   .within($brooklyn)
   .not_within($prospect_park)
   .sort("name")
@@ -46,19 +46,19 @@ $restaurants = search(node, amenity: "restaurant")
   .within($downtown);
 
 // Union — combine two result sets
-out = $cafes + $restaurants;
+$$ = $cafes + $restaurants;
 
 // Difference — subtract one set from another
 $all_food = search(node, amenity: ~"cafe|restaurant|fast_food")
   .within($downtown);
 $fast_food = search(node, amenity: "fast_food")
   .within($downtown);
-out = $all_food - $fast_food;
+$$ = $all_food - $fast_food;
 
 // Post-union tag filtering with .filter()
 $eating = search(node, amenity: "cafe").within($downtown)
         + search(node, amenity: "restaurant").within($downtown);
-out = $eating.filter(wheelchair: "yes").limit(10);
+$$ = $eating.filter(wheelchair: "yes").limit(10);
 
 // Route as geometry source
 $commute = route(
@@ -68,8 +68,8 @@ $commute = route(
 );
 
 // Use route result as spatial filter
-out.route = $commute;
-out.bike_parking = search(node, amenity: "bicycle_parking")
+$$.route = $commute;
+$$.bike_parking = search(node, amenity: "bicycle_parking")
   .around(50, $commute)
   .limit(10);
 
@@ -81,12 +81,12 @@ $walkable = isochrone(
 );
 
 // Multiple named outputs for a complete analysis
-out.walkable_area = $walkable;
-out.parks = search(way, leisure: "park").within($walkable);
-out.transit = search(node, railway: "station").within($walkable);
-out.groceries = search(node, shop: "supermarket").within($walkable);
+$$.walkable_area = $walkable;
+$$.parks = search(way, leisure: "park").within($walkable);
+$$.transit = search(node, railway: "station").within($walkable);
+$$.groceries = search(node, shop: "supermarket").within($walkable);
 
 // Expand — recurse into relation members or way nodes
-out = search(relation, name: "Central Park")
+$$ = search(relation, name: "Central Park")
   .expand(:down)
   .limit(100);

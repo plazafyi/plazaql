@@ -1,41 +1,41 @@
 // Routing queries — routes, isochrones, waypoints, and travel analysis
 
 // Simple driving route between two points
-out = route(
+$$ = route(
   point(40.7128, -74.0060),
   point(40.7580, -73.9855)
 );
 
 // Walking route with keyword arguments
-out = route(
+$$ = route(
   from: point(48.8566, 2.3522),
   to: point(48.8606, 2.3376),
   mode: "walk"
 );
 
 // Cycling route
-out = route(
+$$ = route(
   from: point(51.5074, -0.1278),
   to: point(51.5155, -0.1419),
   mode: "bike"
 );
 
 // Route with multiple waypoints
-out = route(
+$$ = route(
   point(40.7128, -74.0060),
   point(40.7484, -73.9856),
   point(40.7580, -73.9855)
 );
 
 // 15-minute walking isochrone
-out = isochrone(
+$$ = isochrone(
   center: point(40.7128, -74.0060),
   time: 15,
   mode: "walk"
 );
 
 // Multiple isochrone rings
-out = isochrone(
+$$ = isochrone(
   center: point(48.8566, 2.3522),
   time: 5,
   mode: "walk"
@@ -46,7 +46,7 @@ $my_route = route(
   point(40.7128, -74.0060),
   point(40.7580, -73.9855)
 );
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .around(100, $my_route)
   .limit(10);
 
@@ -56,11 +56,11 @@ $walkable = isochrone(
   time: 10,
   mode: "walk"
 );
-out = search(way, leisure: "park")
+$$ = search(way, leisure: "park")
   .within($walkable);
 
 // Map matching — snap GPS trace to road network
-out = map_match(
+$$ = map_match(
   linestring(
     point(40.7128, -74.0060),
     point(40.7131, -74.0055),
@@ -70,7 +70,7 @@ out = map_match(
 );
 
 // Optimize stop order (traveling salesman)
-out = optimize(
+$$ = optimize(
   point(40.7128, -74.0060),
   point(40.7484, -73.9856),
   point(40.7580, -73.9855),
@@ -79,14 +79,14 @@ out = optimize(
 );
 
 // EV-aware routing with charge stops
-out = ev_route(
+$$ = ev_route(
   from: point(40.7128, -74.0060),
   to: point(42.3601, -71.0589),
   mode: "drive"
 );
 
 // Distance matrix between multiple points
-out = matrix(
+$$ = matrix(
   point(40.7128, -74.0060),
   point(40.7484, -73.9856),
   point(40.7580, -73.9855)

@@ -3,7 +3,7 @@
 A LINQ-style query language for geospatial data. PlazaQL provides a composable, chainable syntax for searching, filtering, routing, geocoding, and transforming OpenStreetMap data through the [Plaza API](https://plaza.fyi).
 
 ```
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .within(area("Manhattan, New York"))
   .around(200, point(40.7484, -73.9856))
   .fields("name", "cuisine", "opening_hours")
@@ -19,7 +19,7 @@ out = search(node, amenity: "cafe")
 
 **Find restaurants near a point:**
 ```
-out = search(node, amenity: "restaurant")
+$$ = search(node, amenity: "restaurant")
   .around(500, point(48.8566, 2.3522))
   .limit(20);
 ```
@@ -27,14 +27,14 @@ out = search(node, amenity: "restaurant")
 **Walking isochrone with nearby parks:**
 ```
 $walkable = isochrone(center: point(40.71, -74.00), time: 15, mode: "walk");
-out.area = $walkable;
-out.parks = search(way, leisure: "park").within($walkable);
+$$.area = $walkable;
+$$.parks = search(way, leisure: "park").within($walkable);
 ```
 
 **Geocode and search nearby:**
 ```
 $home = geocode("350 Fifth Avenue, New York");
-out = search(node, shop: "supermarket")
+$$ = search(node, shop: "supermarket")
   .around(500, $home)
   .sort("distance")
   .limit(5);
@@ -44,7 +44,7 @@ out = search(node, shop: "supermarket")
 ```
 $eating = search(node, amenity: "cafe").within($area)
         + search(node, amenity: "restaurant").within($area);
-out = $eating.filter(wheelchair: "yes").limit(10);
+$$ = $eating.filter(wheelchair: "yes").limit(10);
 ```
 
 ---
@@ -74,7 +74,7 @@ out = $eating.filter(wheelchair: "yes").limit(10);
 A PlazaQL query is a sequence of **statements**, each terminated by `;`. Statements are either:
 
 - **Variable assignment:** `$name = expression;`
-- **Output assignment:** `out = expression;` or `out.name = expression;`
+- **Output assignment:** `$$ = expression;` or `$$.name = expression;`
 
 Expressions are built from **functions** (which produce values), **methods** (which transform values via chaining), and **operators** (union `+`, difference `-`).
 
@@ -83,7 +83,7 @@ Expressions are built from **functions** (which produce values), **methods** (wh
 $area = area("Berlin, Germany");
 
 // Output — defines what gets returned
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .within($area)
   .limit(10);
 ```
@@ -130,7 +130,7 @@ $radius = 500;
 $nyc = area("New York City");
 
 // Use in subsequent expressions
-out = search(node, amenity: "cafe")
+$$ = search(node, amenity: "cafe")
   .around($radius, $center)
   .within($nyc);
 ```
@@ -141,18 +141,18 @@ Variables are immutable — once assigned, they cannot be reassigned.
 
 ## Output Assignment
 
-Every query must have at least one `out` assignment. This defines what gets returned.
+Every query must have at least one `$$` assignment. This defines what gets returned.
 
 **Single output:**
 ```
-out = search(node, amenity: "cafe").limit(10);
+$$ = search(node, amenity: "cafe").limit(10);
 ```
 
 **Named outputs** — return multiple result sets:
 ```
-out.cafes = search(node, amenity: "cafe").limit(5);
-out.parks = search(way, leisure: "park").limit(5);
-out.route = route(point(40.71, -74.00), point(40.75, -73.98));
+$$.cafes = search(node, amenity: "cafe").limit(5);
+$$.parks = search(way, leisure: "park").limit(5);
+$$.route = route(point(40.71, -74.00), point(40.75, -73.98));
 ```
 
 ---
@@ -487,7 +487,7 @@ search(node, amenity: "cafe")
 
 ```
 $combined = search(node, amenity: "cafe") + search(node, amenity: "restaurant");
-out = $combined.filter(wheelchair: "yes", outdoor_seating: "yes");
+$$ = $combined.filter(wheelchair: "yes", outdoor_seating: "yes");
 ```
 
 ### Transforms (Phase 4)
@@ -638,7 +638,7 @@ Combine two result sets:
 ```
 $cafes = search(node, amenity: "cafe").within($area);
 $restaurants = search(node, amenity: "restaurant").within($area);
-out = $cafes + $restaurants;
+$$ = $cafes + $restaurants;
 ```
 
 ### Difference (`-`)
@@ -648,7 +648,7 @@ Subtract one result set from another:
 ```
 $all = search(node, amenity: ~"cafe|restaurant|fast_food").within($area);
 $fast = search(node, amenity: "fast_food").within($area);
-out = $all - $fast;
+$$ = $all - $fast;
 ```
 
 Type rules for set operations:
@@ -712,7 +712,7 @@ PlazaQL provides structured error messages with source location, description, an
 error: unexpected token
   --> query:3:15
    |
- 3 | out = search(node amenity: "cafe");
+ 3 | $$ = search(node amenity: "cafe");
    |                   ^^^^^^^ expected ',' between arguments
    |
    = hint: add a comma: search(node, amenity: "cafe")
@@ -769,7 +769,7 @@ setting        = IDENT ":" value ;
 
 statement      = var_assign | out_assign ;
 var_assign     = "$" IDENT "=" expression ";" ;
-out_assign     = "out" ("." IDENT)? "=" expression ";" ;
+out_assign     = "$$" ("." IDENT)? "=" expression ";" ;
 
 expression     = set_expr ;
 set_expr       = unary_expr (("+" | "-") unary_expr)* ;
