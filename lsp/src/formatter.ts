@@ -31,6 +31,8 @@ function formatStatement(stmt: Statement): string {
     }
     case "var_assign":
       return `${stmt.name} = ${formatExpr(stmt.expr)};`;
+    case "bare_output":
+      return `${formatExpr(stmt.expr)};`;
     case "output": {
       const lhs = stmt.name ? `$$.${stmt.name}` : "$$";
       return `${lhs} = ${formatExpr(stmt.expr)};`;
@@ -93,6 +95,8 @@ function formatExpr(expr: Expr): string {
       return String(expr.value);
     case "atom":
       return `:${expr.value}`;
+    case "output_ref":
+      return expr.name ? `$$.${expr.name}` : "$$";
     case "identifier":
       return expr.name;
   }

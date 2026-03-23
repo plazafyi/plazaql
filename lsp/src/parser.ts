@@ -29,6 +29,7 @@ import type {
   SettingsNode,
   VarAssignNode,
   OutputNode,
+  BareOutputNode,
   OutputRefNode,
 } from "./types.js";
 
@@ -252,14 +253,13 @@ class Parser {
     return this.parseBareExpr();
   }
 
-  private parseBareExpr(): OutputNode | null {
+  private parseBareExpr(): BareOutputNode | null {
     const pos = this.markPos();
     const expr = this.parseExpr();
     if (!expr) return null;
     this.skipWs();
     this.expect(";");
-    // Bare expressions are treated as implicit $$ = expr
-    return { kind: "output", name: null, expr, pos };
+    return { kind: "bare_output", expr, pos };
   }
 
   private peekWord(): string {

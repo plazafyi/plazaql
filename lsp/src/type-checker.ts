@@ -64,41 +64,46 @@ export function typeCheck(ast: Statement[]): TypeCheckResult {
   }
 
   // Check for at least one output
-  const outputs = ast.filter((s) => s.kind === "output");
+  const outputStmts = ast.filter((s) => s.kind === "output");
+  const bareStmts = ast.filter((s) => s.kind === "bare_output");
+  const hasOutput = outputStmts.length > 0 || bareStmts.length > 0;
   const hasNonSettings = ast.some((s) => s.kind !== "settings");
-  if (outputs.length === 0 && hasNonSettings) {
+  if (!hasOutput && hasNonSettings) {
     errors.push({
       line: 1,
       col: 1,
-      message: "at least one `$$` statement is required",
-      hint: 'add `$$ = <expression>;` at the end of your query',
+      message: "at least one output statement is required",
+      hint: 'add an expression like `search(amenity: "cafe");` or `$$ = <expression>;`',
       severity: "error",
     });
   }
 
-  // Check: only one simple $$ = allowed
-  const simpleOutputs = outputs.filter((s) => s.kind === "output" && s.name === null);
+  // Check: only one simple output allowed (bare or $$ =)
+  const simpleOutputs = [
+    ...outputStmts.filter((s) => s.kind === "output" && s.name === null),
+    ...bareStmts,
+  ];
   if (simpleOutputs.length > 1) {
     for (const s of simpleOutputs.slice(1)) {
       errors.push({
         line: s.pos.line,
         col: s.pos.col,
-        message: "only one `$$ = ...` statement is allowed per query",
+        message: "only one simple output is allowed per query",
         hint: "use named outputs (`$$.name = ...`) for multiple results",
         severity: "error",
       });
     }
   }
 
-  // Check: cannot mix simple $$ = and named $$.name =
-  const namedOutputs = outputs.filter((s) => s.kind === "output" && s.name !== null);
+  // Check: cannot mix simple output and named $$.name =
+  const namedOutputs = outputStmts.filter((s) => s.kind === "output" && s.name !== null);
   if (simpleOutputs.length > 0 && namedOutputs.length > 0) {
     const conflicting = namedOutputs[0]!;
     errors.push({
       line: conflicting.pos.line,
       col: conflicting.pos.col,
-      message: "cannot mix simple `$$` and named `$$.name` outputs",
-      hint: "use either `$$ = ...` or `$$.name = ...`, not both",
+      message: "cannot mix simple output and named `$$.name` outputs",
+      hint: "use either bare expressions or `$$ = ...` for single output, or `$$.name = ...` for multiple named outputs",
       severity: "error",
     });
   }
@@ -138,6 +143,11 @@ function checkStatement(
         expr: stmt.expr,
       });
       return { errs, type };
+    }
+
+    case "bare_output": {
+      const { type, errors: exprErrs } = checkExpr(stmt.expr, scope, outputScope);
+      return { errs: exprErrs, type };
     }
 
     case "output": {

@@ -248,6 +248,12 @@ export interface OutputNode {
   pos: Pos;
 }
 
+export interface BareOutputNode {
+  kind: "bare_output";
+  expr: Expr;
+  pos: Pos;
+}
+
 export type KwArg = { type: "kwarg"; name: string; value: Expr };
 export type PosArg = { type: "posarg"; value: Expr };
 export type Arg = KwArg | PosArg;
@@ -272,7 +278,7 @@ export type Expr =
   | DifferenceNode
   | ListNode;
 
-export type Statement = SettingsNode | VarAssignNode | OutputNode;
+export type Statement = SettingsNode | VarAssignNode | OutputNode | BareOutputNode;
 
 export type AstNode = Statement | Expr;
 
