@@ -313,6 +313,16 @@ connection.onDocumentSymbol((params) => {
           Range.create(stmt.pos.line - 1, stmt.pos.col - 1, stmt.pos.line - 1, stmt.pos.col + stmt.name.length)
         )
       );
+    } else if (stmt.kind === "bare_output") {
+      symbols.push(
+        DocumentSymbol.create(
+          "(output)",
+          undefined,
+          SymbolKind.Field,
+          Range.create(stmt.pos.line - 1, stmt.pos.col - 1, stmt.pos.line - 1, stmt.pos.col + 6),
+          Range.create(stmt.pos.line - 1, stmt.pos.col - 1, stmt.pos.line - 1, stmt.pos.col + 6)
+        )
+      );
     } else if (stmt.kind === "output") {
       const label = stmt.name ? `$$.${stmt.name}` : "$$";
       symbols.push(
@@ -403,6 +413,8 @@ connection.languages.semanticTokens.on((params) => {
         3, // keyword
         0
       );
+    } else if (stmt.kind === "bare_output") {
+      // No keyword token — bare expressions have no $$ prefix
     } else if (stmt.kind === "settings") {
       builder.push(
         stmt.pos.line - 1,

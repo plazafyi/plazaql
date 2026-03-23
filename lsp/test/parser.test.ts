@@ -449,4 +449,47 @@ describe("PlazaQL Parser", () => {
       expect(ast[0]!.expr.filters[0]!.value).toBe('O"Brien');
     }
   });
+
+  // ── Bare expression statements ─────────────────────────────────
+
+  it("parses bare search as bare_output", () => {
+    const { ast, errors } = parse('search(amenity: "cafe");');
+    expect(errors).toHaveLength(0);
+    expect(ast).toHaveLength(1);
+    expect(ast[0]!.kind).toBe("bare_output");
+    if (ast[0]!.kind === "bare_output") {
+      expect(ast[0]!.expr.kind).toBe("search");
+    }
+  });
+
+  it("parses bare search with method chain", () => {
+    const { ast, errors } = parse('search(node, amenity: "cafe").limit(10);');
+    expect(errors).toHaveLength(0);
+    expect(ast[0]!.kind).toBe("bare_output");
+  });
+
+  it("parses bare computation", () => {
+    const { ast, errors } = parse('route(mode: "auto");');
+    expect(errors).toHaveLength(0);
+    expect(ast[0]!.kind).toBe("bare_output");
+    if (ast[0]!.kind === "bare_output") {
+      expect(ast[0]!.expr.kind).toBe("computation");
+    }
+  });
+
+  it("parses bare set operation", () => {
+    const { ast, errors } = parse('search(amenity: "cafe") + search(amenity: "restaurant");');
+    expect(errors).toHaveLength(0);
+    expect(ast[0]!.kind).toBe("bare_output");
+    if (ast[0]!.kind === "bare_output") {
+      expect(ast[0]!.expr.kind).toBe("union");
+    }
+  });
+
+  it("distinguishes bare_output from explicit output", () => {
+    const { ast: bare } = parse('search(node);');
+    const { ast: explicit } = parse('$$ = search(node);');
+    expect(bare[0]!.kind).toBe("bare_output");
+    expect(explicit[0]!.kind).toBe("output");
+  });
 });

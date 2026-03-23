@@ -194,7 +194,7 @@ describe("PlazaQL Type Checker", () => {
   it("requires at least one output", () => {
     const result = check("$a = search();");
     expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some((e) => e.message.includes("$$"))).toBe(true);
+    expect(result.errors.some((e) => e.message.includes("output"))).toBe(true);
   });
 
   // ── Multiple output modes ──────────────────────────────────────
@@ -246,5 +246,35 @@ describe("PlazaQL Type Checker", () => {
   it("allows multiple named $$.name outputs", () => {
     const result = check("$$.cafes = search();\n$$.parks = search();");
     expect(result.errors).toHaveLength(0);
+  });
+
+  // ── Bare expression output ──────────────────────────────────
+
+  it("accepts bare expression as output", () => {
+    const result = check('search(amenity: "cafe");');
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("accepts bare expression with method chain", () => {
+    const result = check('search(node, amenity: "cafe").limit(10);');
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("rejects multiple bare outputs", () => {
+    const result = check("search();\nsearch(node);");
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.message.includes("only one"))).toBe(true);
+  });
+
+  it("rejects mixing bare output and named output", () => {
+    const result = check('search();\n$$.cafes = search(amenity: "cafe");');
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.message.includes("cannot mix"))).toBe(true);
+  });
+
+  it("rejects mixing bare output and explicit $$ output", () => {
+    const result = check("search();\n$$ = search(node);");
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.message.includes("only one"))).toBe(true);
   });
 });
