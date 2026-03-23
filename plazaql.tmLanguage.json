@@ -9,6 +9,7 @@
     { "include": "#directives" },
     { "include": "#strings" },
     { "include": "#numbers" },
+    { "include": "#atoms" },
     { "include": "#constants" },
     { "include": "#tag-access" },
     { "include": "#attribute-access" },
@@ -44,7 +45,7 @@
       "patterns": [
         {
           "name": "meta.settings.plazaql",
-          "begin": "\\[",
+          "begin": "^\\s*\\[",
           "end": "\\]",
           "beginCaptures": {
             "0": { "name": "punctuation.definition.settings.begin.plazaql" }
@@ -68,7 +69,7 @@
     "directives": {
       "patterns": [
         {
-          "match": "(#)(within|around|intersects|contains|crosses|touches|not_within|not_intersects|not_contains|buffer|simplify|centroid|precision|fields|include|sort|limit|offset|count|ids|tags|skel|elevation|distance|area|length|expand|h3|filter|bbox|member_of|has_member|filter_expr|geom|sum|min|max|avg|group_by)\\s*(?=\\()",
+          "match": "(#)(within|around|intersects|contains|crosses|touches|not_within|not_intersects|not_contains|buffer|simplify|centroid|precision|fields|include|sort|limit|offset|count|ids|tags|skel|elevation|distance|area|length|expand|h3|filter|bbox|member_of|has_member|geom|sum|min|max|avg|group_by)\\s*(?=\\()",
           "captures": {
             "1": { "name": "keyword.control.directive.plazaql" },
             "2": { "name": "entity.name.function.directive.plazaql" }
@@ -106,6 +107,14 @@
         {
           "name": "constant.numeric.integer.plazaql",
           "match": "-?\\b\\d+\\b"
+        }
+      ]
+    },
+    "atoms": {
+      "patterns": [
+        {
+          "name": "constant.language.atom.plazaql",
+          "match": ":[a-zA-Z_][a-zA-Z0-9_]*"
         }
       ]
     },
@@ -235,7 +244,7 @@
         },
         {
           "name": "keyword.operator.comparison.plazaql",
-          "match": ">=|<=|!=|=="
+          "match": ">=|<=|!=|==|>|<"
         },
         {
           "name": "keyword.operator.assignment.plazaql",

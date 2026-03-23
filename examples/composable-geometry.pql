@@ -1,8 +1,5 @@
 // Composable geometry — variables, constructors, set operations, multi-output
 
-// Settings block
-[timeout: 30, format: "geojson"]
-
 // Variable assignment — store geometry for reuse
 $downtown = polygon(
   point(40.710, -74.015),
@@ -29,8 +26,8 @@ search(node, amenity: "restaurant")
   .limit(15);
 
 // Area variables for complex spatial queries
-$brooklyn = area("Brooklyn, New York");
-$prospect_park = area("Prospect Park, Brooklyn");
+$brooklyn = area(name: "Brooklyn, New York");
+$prospect_park = area(name: "Prospect Park, Brooklyn");
 
 // Search within Brooklyn but outside Prospect Park
 search(node, amenity: "bar")
@@ -67,8 +64,8 @@ $eating.filter(wheelchair: "yes").limit(10);
 
 // Route as geometry source — $$.name values are referenceable
 $$.route = route(
-  from: $start,
-  to: $end,
+  origin: $start,
+  destination: $end,
   mode: "bike"
 );
 

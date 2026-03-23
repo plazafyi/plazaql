@@ -65,7 +65,7 @@ search(way, highway: "primary").skel();
 
 // Full geometry output mode
 search(way, building: "yes")
-  .within(area("Manhattan, New York"))
+  .within(area(name: "Manhattan, New York"))
   .geom();
 
 // Select specific fields
@@ -75,7 +75,7 @@ search(node, amenity: "cafe")
 
 // Quadtile sort — optimal for spatial locality
 search(node, amenity: "cafe")
-  .within(area("Berlin, Germany"))
+  .within(area(name: "Berlin, Germany"))
   .sort(by: :qt)
   .limit(100);
 

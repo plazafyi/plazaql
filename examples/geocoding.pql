@@ -20,7 +20,7 @@ nearest(
 
 // Geocode then search nearby — using $$.name references
 $$.location = geocode("350 Fifth Avenue, New York");
-$$.groceries = search(node, amenity: "grocery")
+$$.groceries = search(node, shop: "supermarket")
   .around(500, $$.location)
   .sort("distance")
   .limit(5);

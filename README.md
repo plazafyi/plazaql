@@ -4,7 +4,7 @@ A LINQ-style query language for geospatial data. PlazaQL provides a composable, 
 
 ```
 search(node, amenity: "cafe")
-  .within(area("Manhattan, New York"))
+  .within(area(name: "Manhattan, New York"))
   .around(200, point(40.7484, -73.9856))
   .fields("name", "cuisine", "opening_hours")
   .sort("name")
@@ -42,7 +42,7 @@ search(node, shop: "supermarket")
 **Expression filter and aggregation:**
 ```
 search(way, building: "yes")
-  .within(area("Manhattan, New York"))
+  .within(area(name: "Manhattan, New York"))
   .filter(is_number(t["height"]) && number(t["height"]) > 50)
   .group_by(t["building"])
   .count();
@@ -95,7 +95,7 @@ Expressions are built from **functions** (which produce values), **methods** (wh
 
 ```
 // Variable — stores a value for reuse
-$area = area("Berlin, Germany");
+$area = area(name: "Berlin, Germany");
 
 // Bare expression — implicitly becomes the output
 search(node, amenity: "cafe")
@@ -142,7 +142,7 @@ Variables store intermediate values for reuse. Names start with `$` followed by 
 ```
 $center = point(40.7128, -74.0060);
 $radius = 500;
-$nyc = area("New York City");
+$nyc = area(name: "New York City");
 
 // Use in subsequent expressions
 search(node, amenity: "cafe")
@@ -319,14 +319,14 @@ search(amenity: "cafe")                    // same as nwr (all types)
 
 **Element types:** `node`, `way`, `relation`, `nwr` (all)
 
-### `area(name)`
+### `area(name:)`
 
 Resolve a named administrative boundary or place.
 
 ```
-$nyc = area("New York City");
-$france = area("France");
-$park = area("Central Park, New York");
+$nyc = area(name: "New York City");
+$france = area(name: "France");
+$park = area(name: "Central Park, New York");
 ```
 
 Returns an `Area` which can be used as a geometry argument to `.within()`, `.intersects()`, etc.
@@ -342,8 +342,6 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98))
 // With mode
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "walk")
 
-// Multi-waypoint
-route(origin: point(40.71, -74.00), waypoints: [point(40.73, -73.99)], destination: point(40.75, -73.98))
 ```
 
 **Modes:** `"drive"`, `"walk"`, `"bike"`
@@ -519,7 +517,7 @@ Methods are chained onto expressions with `.method()` syntax. They are organized
 
 ```
 search(node, amenity: "cafe")
-  .within(area("Manhattan"))
+  .within(area(name: "Manhattan"))
   .around(200, point(40.74, -73.98));
 ```
 
@@ -599,9 +597,9 @@ search(node, amenity: "cafe").sort("name").limit(10).offset(20);
 | `.geom()` | `GeoSet → GeoSet` | Full geometry, no tags |
 
 ```
-search(node, amenity: "cafe").within(area("Paris")).count();
+search(node, amenity: "cafe").within(area(name: "Paris")).count();
 search(node, shop: *).ids();
-search(way, building: "yes").within(area("Manhattan")).geom();
+search(way, building: "yes").within(area(name: "Manhattan")).geom();
 ```
 
 Only one output mode per chain. These are terminal — no further chaining allowed.
@@ -612,7 +610,7 @@ Sort results by quadtile index for optimal spatial locality — features near ea
 
 ```
 search(node, amenity: "cafe")
-  .within(area("Berlin, Germany"))
+  .within(area(name: "Berlin, Germany"))
   .sort(by: :qt)
   .limit(100);
 ```
@@ -654,11 +652,11 @@ Narrowing methods reduce a set to a single element. Useful for picking a specifi
 ```
 // Nearest cafe
 $nearest = search(node, amenity: "cafe")
-  .around(distance: 1000, lat: 40.75, lng: -73.99).first();
+  .around(1000, point(40.75, -73.99)).first();
 
 // Third result
 $third = search(node, amenity: "cafe")
-  .around(distance: 1000, lat: 40.75, lng: -73.99).index(3);
+  .around(1000, point(40.75, -73.99)).index(3);
 ```
 
 ### Attribute Access (`$var[attr]`)
@@ -671,7 +669,7 @@ Extract tag values from variables using bracket notation. The behavior depends o
 ```
 // Scalar: find stops with the same ref as the nearest stop
 $stop = search(node, highway: "bus_stop")
-  .around(distance: 500, lat: 40.75, lng: -73.99).first();
+  .around(500, point(40.75, -73.99)).first();
 search(node, highway: "bus_stop", ref: $stop[ref]);
 
 // Value set: find routes matching any ref from a set of stops
@@ -900,7 +898,7 @@ Access feature metadata (not tags):
 
 ```
 search(node, amenity: "restaurant")
-  .within(area("Rome"))
+  .within(area(name: "Rome"))
   .filter(lat() < 41.89)
   .limit(10);
 ```
@@ -1012,18 +1010,18 @@ The expression argument uses the same [expression language](#expression-language
 ```
 // Total cycleway length in Amsterdam
 search(way, highway: "cycleway")
-  .within(area("Amsterdam"))
+  .within(area(name: "Amsterdam"))
   .sum(length());
 
 // Tallest building in Dubai
 search(way, building: "yes")
-  .within(area("Dubai"))
+  .within(area(name: "Dubai"))
   .filter(is_number(t["height"]))
   .max(number(t["height"]));
 
 // Average road segment length
 search(way, highway: "residential")
-  .within(area("London"))
+  .within(area(name: "London"))
   .avg(length());
 ```
 
@@ -1034,19 +1032,19 @@ search(way, highway: "residential")
 ```
 // Count restaurants by cuisine
 search(node, amenity: "restaurant", cuisine: *)
-  .within(area("Tokyo"))
+  .within(area(name: "Tokyo"))
   .group_by(t["cuisine"])
   .count();
 
 // Total road length by highway type
 search(way, highway: *)
-  .within(area("Berlin"))
+  .within(area(name: "Berlin"))
   .group_by(t["highway"])
   .sum(length());
 
 // Average building height by building type
 search(way, building: *)
-  .within(area("Singapore"))
+  .within(area(name: "Singapore"))
   .filter(is_number(t["height"]))
   .group_by(t["building"])
   .avg(number(t["height"]));
@@ -1070,7 +1068,7 @@ Phase 3: Spatial       .within() | .around() | .bbox() | .h3() |
 Phase 3b: Tag filter   .filter(key: value) | .filter(expression)
 Phase 4: Transforms    .buffer() | .simplify() | .centroid()
 Phase 5: Enrichments   .elevation() | .distance() | .area() | .length()
-Phase 6: Output shape  .fields() | .include() | .precision()
+Phase 6: Output shape  .fields() | .include() | .precision() | .expand()
 Phase 7: Ordering      .sort() | .limit() | .offset()
 Phase 7b: Narrowing    .first() | .last() | .index()
 Phase 7c: Group by     .group_by(expr)
@@ -1155,7 +1153,7 @@ error: undefined variable $downtown
  4 |   .within($downtown)
    |           ^^^^^^^^^ not defined
    |
-   = hint: assign it first: $downtown = area("Downtown");
+   = hint: assign it first: $downtown = area(name: "Downtown");
 ```
 
 ### Undefined Output Variable
@@ -1167,7 +1165,7 @@ error: undefined output variable $$.boundary
  3 |   .within($$.boundary)
    |           ^^^^^^^^^^^^ not defined
    |
-   = hint: assign it first: $$.boundary = area("Berlin, Germany");
+   = hint: assign it first: $$.boundary = area(name: "Berlin, Germany");
 ```
 
 ---
@@ -1201,7 +1199,7 @@ primary        = search | area_call | route_call | isochrone_call
 
 search         = "search" "(" (element_type ",")? (tag_filters | id_filter) ")" ;
 id_filter      = "id" ":" (NUMBER | "[" NUMBER ("," NUMBER)* "]") ;
-area_call      = "area" "(" STRING ")" ;
+area_call      = "area" "(" tag_filters ")" ;
 route_call     = "route" "(" arg_list ")" ;
 isochrone_call = "isochrone" "(" arg_list ")" ;
 geocode_call   = "geocode" "(" STRING ")" ;
@@ -1236,7 +1234,7 @@ and_expr       = comparison ("&&" comparison)* ;
 comparison     = add_expr (comp_op add_expr)? ;
 comp_op        = ">" | "<" | ">=" | "<=" | "==" | "!=" ;
 add_expr       = mul_expr (("+" | "-") mul_expr)* ;
-mul_expr       = unary ("*" | "/") unary)* ;
+mul_expr       = unary (("*" | "/") unary)* ;
 unary          = "!" unary | expr_primary ;
 expr_primary   = tag_access | prop_access | geom_func | coerce_func
                | string_func | NUMBER | STRING | BOOL

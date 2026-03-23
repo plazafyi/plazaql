@@ -8,23 +8,16 @@ route(
 
 // Walking route with keyword arguments
 route(
-  from: point(48.8566, 2.3522),
-  to: point(48.8606, 2.3376),
+  origin: point(48.8566, 2.3522),
+  destination: point(48.8606, 2.3376),
   mode: "walk"
 );
 
 // Cycling route
 route(
-  from: point(51.5074, -0.1278),
-  to: point(51.5155, -0.1419),
+  origin: point(51.5074, -0.1278),
+  destination: point(51.5155, -0.1419),
   mode: "bike"
-);
-
-// Route with multiple waypoints
-route(
-  point(40.7128, -74.0060),
-  point(40.7484, -73.9856),
-  point(40.7580, -73.9855)
 );
 
 // 15-minute walking isochrone
@@ -80,8 +73,8 @@ optimize(
 
 // EV-aware routing with charge stops
 ev_route(
-  from: point(40.7128, -74.0060),
-  to: point(42.3601, -71.0589),
+  origin: point(40.7128, -74.0060),
+  destination: point(42.3601, -71.0589),
   mode: "drive"
 );
 

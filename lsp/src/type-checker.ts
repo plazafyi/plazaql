@@ -615,9 +615,14 @@ function checkContextual(
 
 function sortByDistance(args: Arg[]): boolean {
   return args.some((arg) => {
-    if (arg.type === "kwarg" && arg.name === "by" && arg.value.kind === "identifier" && arg.value.name === "distance")
-      return true;
-    if (arg.type === "kwarg" && arg.name === "by" && arg.value.kind === "atom" && arg.value.value === "distance")
+    // Keyword form: .sort(by: :distance) or .sort(by: distance) or .sort(by: "distance")
+    if (arg.type === "kwarg" && arg.name === "by") {
+      if (arg.value.kind === "identifier" && arg.value.name === "distance") return true;
+      if (arg.value.kind === "atom" && arg.value.value === "distance") return true;
+      if (arg.value.kind === "string" && arg.value.value === "distance") return true;
+    }
+    // Positional form: .sort("distance")
+    if (arg.type === "posarg" && arg.value.kind === "string" && arg.value.value === "distance")
       return true;
     return false;
   });

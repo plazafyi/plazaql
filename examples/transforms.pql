@@ -2,19 +2,19 @@
 
 // Buffer — expand geometries by distance (meters)
 search(way, leisure: "park")
-  .within(area("Berlin, Germany"))
+  .within(area(name: "Berlin, Germany"))
   .buffer(100)
   .limit(10);
 
 // Simplify — reduce geometry complexity (tolerance in meters)
 search(way, boundary: "administrative")
-  .within(area("France"))
+  .within(area(name: "France"))
   .simplify(1000)
   .limit(5);
 
 // Centroid — convert polygons to their center points
 search(way, building: "yes")
-  .within(area("Manhattan, New York"))
+  .within(area(name: "Manhattan, New York"))
   .centroid()
   .limit(50);
 
@@ -26,7 +26,7 @@ search(node, amenity: "cafe")
 
 // Elevation enrichment — add elevation data to features
 search(node, natural: "peak")
-  .within(area("Colorado, United States"))
+  .within(area(name: "Colorado, United States"))
   .elevation()
   .sort("elevation")
   .limit(10);
@@ -40,21 +40,21 @@ search(node, amenity: "hospital")
 
 // Area enrichment — compute area of polygon features
 search(way, leisure: "park")
-  .within(area("London, United Kingdom"))
+  .within(area(name: "London, United Kingdom"))
   .area()
   .sort("area")
   .limit(10);
 
 // Length enrichment — compute length of linear features
 search(way, highway: "cycleway")
-  .within(area("Amsterdam, Netherlands"))
+  .within(area(name: "Amsterdam, Netherlands"))
   .length()
   .sort("length")
   .limit(10);
 
 // Combine multiple transforms
 search(way, building: "university")
-  .within(area("Cambridge, Massachusetts"))
+  .within(area(name: "Cambridge, Massachusetts"))
   .simplify(10)
   .precision(5)
   .fields("name", "operator")
@@ -63,7 +63,7 @@ search(way, building: "university")
 
 // Include related geometry data
 search(way, highway: "motorway")
-  .within(area("California, United States"))
+  .within(area(name: "California, United States"))
   .include("nodes")
   .simplify(500)
   .limit(10);

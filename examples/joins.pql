@@ -18,17 +18,17 @@ $$ = search(relation, route: "bus").has_member($stops);
 
 // Nearest cafe
 $nearest = search(node, amenity: "cafe")
-  .around(distance: 1000, lat: 40.75, lng: -73.99).first();
+  .around(1000, point(40.75, -73.99)).first();
 
 // Third-nearest
 $third = search(node, amenity: "cafe")
-  .around(distance: 1000, lat: 40.75, lng: -73.99).index(3);
+  .around(1000, point(40.75, -73.99)).index(3);
 
 // ── Attribute Access ($var[attr]) ───────────────────────────
 
 // Single element → scalar (exact match with =)
 $stop = search(node, highway: "bus_stop")
-  .around(distance: 500, lat: 40.75, lng: -73.99).first();
+  .around(500, point(40.75, -73.99)).first();
 $$ = search(node, highway: "bus_stop", ref: $stop[ref]);
 
 // Set → value_set (multi-value match with ANY)
@@ -38,6 +38,6 @@ $$ = search(relation, route: "bus", ref: $stops[ref]);
 // ── Complex: Subway Transfer Map ────────────────────────────
 
 $my_stop = search(node, railway: "station")
-  .around(distance: 500, lat: 40.75, lng: -73.99).first();
+  .around(500, point(40.75, -73.99)).first();
 $lines = search(relation, route: "subway").has_member($my_stop);
 $$ = search(node, railway: "station").member_of($lines);
