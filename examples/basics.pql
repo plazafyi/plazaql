@@ -1,4 +1,4 @@
-// Basic PlazaQL queries — simple searches, tag filters, and output options
+// Basic PlazaQL queries — searches, tag filters, ID filters, and output options
 
 // Find all cafes
 search(node, amenity: "cafe");
@@ -27,6 +27,24 @@ search(way, building: "yes");
 // All element types (nwr = node/way/relation)
 search(nwr, tourism: "museum");
 
+// ── ID Filters ────────────────────────────────────────────────
+
+// Look up a single OSM element by ID
+search(node, id: 12345);
+
+// Look up multiple elements by ID list
+search(way, id: [123, 456, 789]);
+
+// ── Key+Value Regex ───────────────────────────────────────────
+
+// Match any tag whose KEY matches a regex (all addr:* tags that start with a digit)
+search(node, ~"^addr:": ~"^[0-9]");
+
+// Find features with any name:* translation tag
+search(node, ~"^name:": *);
+
+// ── Output Options ────────────────────────────────────────────
+
 // Limit results
 search(node, amenity: "cafe").limit(10);
 
@@ -45,10 +63,21 @@ search(node, shop: "supermarket").tags();
 // Skeleton output (minimal geometry, no tags)
 search(way, highway: "primary").skel();
 
+// Full geometry output mode
+search(way, building: "yes")
+  .within(area("Manhattan, New York"))
+  .geom();
+
 // Select specific fields
 search(node, amenity: "cafe")
   .fields("name", "cuisine", "opening_hours")
   .limit(25);
+
+// Quadtile sort — optimal for spatial locality
+search(node, amenity: "cafe")
+  .within(area("Berlin, Germany"))
+  .sort(by: :qt)
+  .limit(100);
 
 // Named outputs — multiple results from one query
 $$.cafes = search(node, amenity: "cafe").limit(5);

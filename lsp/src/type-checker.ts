@@ -20,6 +20,7 @@ import {
   unionType,
   methodGroup,
   methodCategory,
+  methodPhase,
 } from "./types.js";
 import type { MethodGroup } from "./types.js";
 
@@ -551,7 +552,7 @@ function spatialHint(method: string, argType: PqlType): string | undefined {
 function checkVarRefsInArgs(args: Arg[], scope: Scope, outputScope: Scope): TypeCheckError[] {
   const errors: TypeCheckError[] = [];
   for (const arg of args) {
-    const expr = arg.type === "posarg" ? arg.value : arg.value;
+    const expr = arg.value;
     if (expr.kind === "var_ref" && !scope.has(expr.name)) {
       errors.push({
         line: expr.pos.line,
@@ -639,22 +640,130 @@ export function inferExprType(expr: Expr, scope: Scope, outputScope?: Scope): Pq
 export function getExprAtPosition(
   ast: Statement[],
   line: number,
-  col: number
+  _col: number
 ): { expr: Expr | null; scope: Scope; outputScope: Scope } {
   const scope: Scope = new Map();
   const outputScope: Scope = new Map();
-  // Build scope up to the given position
-  for (const stmt of ast) {
-    if (stmt.pos.line < line || (stmt.pos.line === line && stmt.pos.col < col)) {
-      if (stmt.kind === "var_assign") {
-        const type = checkExpr(stmt.expr, scope, outputScope).type;
-        scope.set(stmt.name, { type, line: stmt.pos.line, col: stmt.pos.col, expr: stmt.expr });
-      } else if (stmt.kind === "output" && stmt.name !== null) {
-        const type = checkExpr(stmt.expr, scope, outputScope).type;
-        const key = `$$.${stmt.name}`;
-        outputScope.set(key, { type, line: stmt.pos.line, col: stmt.pos.col, expr: stmt.expr });
-      }
+  let targetExpr: Expr | null = null;
+
+  for (let i = 0; i < ast.length; i++) {
+    const stmt = ast[i]!;
+    const nextLine = ast[i + 1]?.pos.line ?? Infinity;
+
+    // Build scope
+    if (stmt.kind === "var_assign") {
+      const type = checkExpr(stmt.expr, scope, outputScope).type;
+      scope.set(stmt.name, { type, line: stmt.pos.line, col: stmt.pos.col, expr: stmt.expr });
+    } else if (stmt.kind === "output" && stmt.name !== null) {
+      const type = checkExpr(stmt.expr, scope, outputScope).type;
+      const key = `$$.${stmt.name}`;
+      outputScope.set(key, { type, line: stmt.pos.line, col: stmt.pos.col, expr: stmt.expr });
+    }
+
+    // Find the statement that contains the cursor line
+    if (stmt.pos.line <= line && line < nextLine) {
+      const expr = stmt.kind === "settings" ? null
+        : stmt.kind === "var_assign" ? stmt.expr
+        : stmt.expr;
+      targetExpr = expr;
     }
   }
-  return { expr: null, scope, outputScope };
+
+  return { expr: targetExpr, scope, outputScope };
+}
+
+export function inferChainStateAtPosition(
+  ast: Statement[],
+  line: number,
+  col: number
+): { type: PqlType; lastGroup: MethodGroup; lastOrdinal: number } {
+  const { expr, scope, outputScope } = getExprAtPosition(ast, line, col);
+  if (!expr) return { type: "GeoSet", lastGroup: "source", lastOrdinal: 0 };
+
+  return walkExprForChainState(expr, scope, outputScope, line, col);
+}
+
+function walkMethodsUpToCursor(
+  methods: MethodNode[],
+  startType: PqlType,
+  startGroup: MethodGroup,
+  startOrdinal: number,
+  line: number,
+  col: number
+): { type: PqlType; lastGroup: MethodGroup; lastOrdinal: number } {
+  let currentType = startType;
+  let lastGroup = startGroup;
+  let lastOrdinal = startOrdinal;
+
+  for (const method of methods) {
+    if (method.pos.line > line || (method.pos.line === line && method.pos.col >= col)) {
+      break;
+    }
+    const result = methodOutputType(method.name, currentType);
+    if (result.ok) currentType = result.type;
+    const mg = methodGroup(method.name);
+    const mp = methodPhase(method.name);
+    if (GROUP_RANK[mg] > GROUP_RANK[lastGroup]) lastGroup = mg;
+    lastOrdinal = mp.ordinal;
+  }
+
+  return { type: currentType, lastGroup, lastOrdinal };
+}
+
+const SOURCE_STATE = { lastGroup: "source" as MethodGroup, lastOrdinal: 0 };
+
+const CHAIN_STATE_BY_KIND: Partial<Record<Expr["kind"], PqlType>> = {
+  area: "Area",
+  point: "Point",
+  bbox: "Polygon",
+  polygon: "Polygon",
+  circle: "Polygon",
+  linestring: "LineString",
+};
+
+function walkExprForChainState(
+  expr: Expr,
+  scope: Scope,
+  outputScope: Scope,
+  line: number,
+  col: number
+): { type: PqlType; lastGroup: MethodGroup; lastOrdinal: number } {
+  if (expr.kind === "search") {
+    const baseType = searchBaseType(expr.elementType);
+    return walkMethodsUpToCursor(expr.methods, baseType, "source", 0, line, col);
+  }
+
+  if (expr.kind === "chain") {
+    const { base, methods } = flattenChain(expr);
+    const baseResult = walkExprForChainState(base, scope, outputScope, line, col);
+    return walkMethodsUpToCursor(methods, baseResult.type, baseResult.lastGroup, baseResult.lastOrdinal, line, col);
+  }
+
+  if (expr.kind === "union") {
+    const left = walkExprForChainState(expr.left, scope, outputScope, line, col);
+    const right = walkExprForChainState(expr.right, scope, outputScope, line, col);
+    return { type: unionType(left.type, right.type), ...SOURCE_STATE };
+  }
+  if (expr.kind === "difference") {
+    const left = walkExprForChainState(expr.left, scope, outputScope, line, col);
+    return { type: left.type, ...SOURCE_STATE };
+  }
+
+  if (expr.kind === "var_ref") {
+    const info = scope.get(expr.name);
+    return { type: info?.type ?? "GeoSet", ...SOURCE_STATE };
+  }
+  if (expr.kind === "output_ref") {
+    const info = outputScope.get(`$$.${expr.name}`);
+    return { type: info?.type ?? "GeoSet", ...SOURCE_STATE };
+  }
+
+  if (expr.kind === "computation") {
+    return { type: computationType(expr.name), ...SOURCE_STATE };
+  }
+
+  const knownType = CHAIN_STATE_BY_KIND[expr.kind];
+  if (knownType) return { type: knownType, ...SOURCE_STATE };
+
+  return { type: "GeoSet", ...SOURCE_STATE };
 }

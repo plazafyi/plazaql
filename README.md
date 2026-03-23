@@ -39,11 +39,22 @@ search(node, shop: "supermarket")
   .limit(5);
 ```
 
-**Union two result sets and filter:**
+**Expression filter and aggregation:**
 ```
-$eating = search(node, amenity: "cafe").within($area)
-        + search(node, amenity: "restaurant").within($area);
-$eating.filter(wheelchair: "yes").limit(10);
+search(way, building: "yes")
+  .within(area("Manhattan, New York"))
+  .filter(is_number(t["height"]) && number(t["height"]) > 50)
+  .group_by(t["building"])
+  .count();
+```
+
+**Global directive scoping:**
+```
+#within(geometry: area(name: "Berlin"));
+#filter(wheelchair: "yes");
+
+$$.cafes = search(node, amenity: "cafe").limit(10);
+$$.restaurants = search(node, amenity: "restaurant").limit(10);
 ```
 
 ---
@@ -61,6 +72,9 @@ $eating.filter(wheelchair: "yes").limit(10);
 - [Methods](#methods)
 - [Tag Filters](#tag-filters)
 - [Set Operations](#set-operations)
+- [Global Directives](#global-directives)
+- [Expression Language](#expression-language)
+- [Aggregation](#aggregation)
 - [Chain Ordering](#chain-ordering)
 - [Argument Style](#argument-style)
 - [Error Messages](#error-messages)
@@ -75,8 +89,9 @@ A PlazaQL query is a sequence of **statements**, each terminated by `;`. Stateme
 - **Bare expression:** `expression;` (implicit output)
 - **Variable assignment:** `$name = expression;`
 - **Output assignment:** `$$ = expression;` or `$$.name = expression;`
+- **Global directive:** `#method(args);` (applies to all subsequent queries)
 
-Expressions are built from **functions** (which produce values), **methods** (which transform values via chaining), and **operators** (union `+`, difference `-`).
+Expressions are built from **functions** (which produce values), **methods** (which transform values via chaining), and **operators** (union `+`, difference `-`, intersection `&`).
 
 ```
 // Variable — stores a value for reuse
@@ -212,7 +227,7 @@ Result sets returned by search and computation functions.
 | `Area`      | Admin/named boundary       | `area()`                             | Yes                 |
 | `Matrix`    | Distance/duration table    | `matrix()`                           | No (terminal)       |
 | `Elevation` | Elevation data             | `elevation()`, `elevation_profile()` | No (terminal)       |
-| `Scalar`    | Single numeric value       | `.count()`                           | No (terminal)       |
+| `Scalar`    | Single numeric value       | `.count()`, `.sum()`, `.min()`, `.max()`, `.avg()` | No (terminal)       |
 
 ### Type Hierarchy
 
@@ -271,6 +286,11 @@ nearest(...)           → PointSet
 .centroid()            :: GeoSet → PointSet
 .buffer(n)             :: GeoSet → PolygonSet
 .count()               :: GeoSet → Scalar
+.sum(expr)             :: GeoSet → Scalar
+.min(expr)             :: GeoSet → Scalar
+.max(expr)             :: GeoSet → Scalar
+.avg(expr)             :: GeoSet → Scalar
+.group_by(expr).agg()  :: GeoSet → Scalar (map)
 
 // Set operations
 PointSet + PointSet       → PointSet
@@ -278,6 +298,7 @@ LineSet + LineSet         → LineSet
 PolygonSet + PolygonSet   → PolygonSet
 mixed + anything          → GeoSet
 difference preserves left operand type
+intersection preserves left operand type
 ```
 
 ---
@@ -575,13 +596,28 @@ search(node, amenity: "cafe").sort("name").limit(10).offset(20);
 | `.ids()` | `GeoSet → GeoSet` | Return only feature IDs |
 | `.tags()` | `GeoSet → GeoSet` | Return only tags (no geometry) |
 | `.skel()` | `GeoSet → GeoSet` | Minimal geometry, no tags |
+| `.geom()` | `GeoSet → GeoSet` | Full geometry, no tags |
 
 ```
 search(node, amenity: "cafe").within(area("Paris")).count();
 search(node, shop: *).ids();
+search(way, building: "yes").within(area("Manhattan")).geom();
 ```
 
 Only one output mode per chain. These are terminal — no further chaining allowed.
+
+### Quadtile Sort (Phase 7)
+
+Sort results by quadtile index for optimal spatial locality — features near each other geographically appear near each other in the output:
+
+```
+search(node, amenity: "cafe")
+  .within(area("Berlin, Germany"))
+  .sort(by: :qt)
+  .limit(100);
+```
+
+The `:qt` atom is a special sort mode, not a field name. It's distinct from `.sort("name")` which sorts by a tag value.
 
 ### Structural Joins (Phase 3)
 
@@ -657,7 +693,34 @@ search(relation, name: "Central Park").expand(:down);
 
 ## Tag Filters
 
-Tag filters appear inside `search()` and `.filter()`. Seven filter types:
+Tag filters appear inside `search()` and `.filter()`.
+
+### ID Filter
+
+Look up specific OSM elements by ID:
+
+```
+search(node, id: 12345)           // single element
+search(way, id: [123, 456, 789])  // multiple elements
+```
+
+ID filters bypass tag matching entirely — they fetch specific elements by their OSM ID.
+
+### Key+Value Regex
+
+Match tags whose **key** matches a regex pattern, using the `~"pattern"` prefix syntax on the key side:
+
+```
+search(node, ~"^addr:": ~"^[0-9]")   // addr:* tags with digit values
+search(node, ~"^name:": *)            // any name:* translation tag
+search(way, ~"^highway": "primary")   // keys matching ^highway with exact value
+```
+
+The key regex is a full POSIX regex. The value side supports all normal filter types (exact, regex, exists, etc.).
+
+### Tag Value Filters
+
+Nine filter types:
 
 ### Equals
 
@@ -734,10 +797,262 @@ $fast = search(node, amenity: "fast_food").within($area);
 $all - $fast;
 ```
 
+### Intersection (`&`)
+
+Keep only features that appear in both sets:
+
+```
+$italian = search(node, cuisine: "italian").within($area);
+$wheelchair = search(node, wheelchair: "yes").within($area);
+$italian & $wheelchair;
+```
+
 Type rules for set operations:
 - Same types preserve the type: `PointSet + PointSet → PointSet`
 - Mixed types produce `GeoSet`: `PointSet + LineSet → GeoSet`
 - Difference preserves the left operand's type
+- Intersection preserves the left operand's type
+
+---
+
+## Global Directives
+
+Global directives apply a method to **all subsequent queries** in the program. They use `#method(args);` syntax — the same method names as chain methods, but prefixed with `#` and written as standalone statements.
+
+```
+#within(geometry: area(name: "Berlin"));
+#filter(name: *);
+#limit(count: 10);
+
+// Every query below is scoped to Berlin, requires a name, and is capped at 10
+$$.cafes = search(node, amenity: "cafe");
+$$.parks = search(way, leisure: "park");
+```
+
+### Spatial Directives
+
+```
+#within(geometry: area(name: "Paris"));        // scope to area
+#bbox(south: 47.0, west: 10.0, north: 48.0, east: 11.0);  // scope to bbox
+#around(distance: 500, geometry: point(lat: 48.85, lng: 2.35));  // scope to radius
+```
+
+### Tag Filter Directive
+
+```
+#filter(name: *);                  // require name tag
+#filter(wheelchair: "yes");        // require wheelchair access
+```
+
+### Expression Filter Directive
+
+```
+#filter(number(t["population"]) > 100000);   // only large cities
+#filter(is_number(t["height"]));             // only features with numeric height
+```
+
+### Limit Directive
+
+```
+#limit(count: 5);    // cap all results to 5
+```
+
+### Stacking
+
+Directives accumulate — each new one adds a constraint (AND semantics):
+
+```
+#within(geometry: area(name: "Tokyo"));
+#filter(wheelchair: "yes");
+#limit(count: 20);
+
+// All queries below: in Tokyo, wheelchair-accessible, max 20 results
+$$.cafes = search(node, amenity: "cafe");
+$$.restaurants = search(node, amenity: "restaurant");
+```
+
+---
+
+## Expression Language
+
+PlazaQL includes an expression language for complex filtering and aggregation. Expressions appear inside `.filter()` and aggregation methods (`.sum()`, `.min()`, `.max()`, `.avg()`, `.group_by()`).
+
+### Tag Access: `t["key"]`
+
+Access tag values by key. Returns the string value of the tag, or null if the tag doesn't exist.
+
+```
+t["name"]            // → "Starbucks"
+t["population"]      // → "3677000" (string — use number() for arithmetic)
+t["cuisine"]         // → "italian"
+```
+
+### Property Accessors
+
+Access feature metadata (not tags):
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `id()` | integer | OSM element ID |
+| `type()` | string | Element type: `"node"`, `"way"`, `"relation"` |
+| `lat()` | float | Latitude (nodes only) |
+| `lon()` | float | Longitude (nodes only) |
+
+```
+search(node, amenity: "restaurant")
+  .within(area("Rome"))
+  .filter(lat() < 41.89)
+  .limit(10);
+```
+
+### Geometry Functions
+
+Compute properties of each feature's geometry:
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `length()` | float | Geometry length in meters (lines/ways) |
+| `area()` | float | Geometry area in square meters (polygons) |
+| `is_closed()` | boolean | Whether a linestring forms a closed ring |
+
+```
+// Long cycleways (> 5km)
+search(way, highway: "cycleway")
+  .filter(length() > 5000);
+
+// Large parks
+search(way, leisure: "park")
+  .filter(area() > 100000);
+```
+
+**Important:** `length()` is always geometric (meters). For string character count, use `size()`.
+
+### Type Coercion
+
+| Function | Description |
+|----------|-------------|
+| `number(expr)` | Convert string to number for arithmetic |
+| `is_number(expr)` | Check if value can be parsed as a number |
+
+```
+// Guard + convert pattern
+.filter(is_number(t["height"]) && number(t["height"]) > 50)
+```
+
+### String Functions
+
+| Function | Description |
+|----------|-------------|
+| `starts_with(expr, str)` | String prefix check |
+| `ends_with(expr, str)` | String suffix check |
+| `str_contains(expr, str)` | Substring check |
+| `size(expr)` | Character count |
+
+```
+.filter(starts_with(t["name"], "Via"))
+.filter(size(t["name"]) > 50)
+```
+
+**Important:** `str_contains()` is for string containment. The spatial `.contains()` method is a separate chain method for geometry containment.
+
+### Operators
+
+| Operator | Type | Description |
+|----------|------|-------------|
+| `+`, `-`, `*`, `/` | Arithmetic | Numeric operations |
+| `>`, `<`, `>=`, `<=` | Comparison | Numeric/string comparison |
+| `==`, `!=` | Equality | Exact match / not match |
+| `&&` | Logical AND | Both conditions true |
+| `\|\|` | Logical OR | Either condition true |
+| `!` | Logical NOT | Negate a condition |
+
+```
+// Compound: Italian OR Japanese restaurants
+.filter(t["cuisine"] == "italian" || t["cuisine"] == "japanese")
+
+// Arithmetic: multi-lane roads
+.filter(is_number(t["lanes"]) && number(t["lanes"]) >= 4)
+
+// Negation
+.filter(!(t["opening_hours"] == ""))
+```
+
+### Expression Filter (`.filter(expr)`)
+
+When `.filter()` receives an expression (rather than tag key-value pairs), it evaluates the expression for each feature:
+
+```
+// Tag filter syntax (key: value pairs)
+.filter(amenity: "cafe", wheelchair: "yes")
+
+// Expression filter syntax (full expression)
+.filter(number(t["capacity"]) > 50 && t["wheelchair"] == "yes")
+```
+
+Both forms use `.filter()` — the parser distinguishes them automatically. Tag filters use `key: value` syntax; expression filters use operators and function calls.
+
+---
+
+## Aggregation
+
+Aggregation methods reduce a result set to a single numeric value.
+
+### Aggregation Methods (Phase 8) — Terminal
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `.count()` | `GeoSet → Scalar` | Number of features |
+| `.sum(expr)` | `GeoSet → Scalar` | Sum of expression values |
+| `.min(expr)` | `GeoSet → Scalar` | Minimum expression value |
+| `.max(expr)` | `GeoSet → Scalar` | Maximum expression value |
+| `.avg(expr)` | `GeoSet → Scalar` | Average expression value |
+
+The expression argument uses the same [expression language](#expression-language) — `t["key"]`, `number()`, `length()`, `area()`, etc.
+
+```
+// Total cycleway length in Amsterdam
+search(way, highway: "cycleway")
+  .within(area("Amsterdam"))
+  .sum(length());
+
+// Tallest building in Dubai
+search(way, building: "yes")
+  .within(area("Dubai"))
+  .filter(is_number(t["height"]))
+  .max(number(t["height"]));
+
+// Average road segment length
+search(way, highway: "residential")
+  .within(area("London"))
+  .avg(length());
+```
+
+### Group By
+
+`.group_by(expr)` partitions results by an expression value, then applies an aggregation to each group. Returns a map of `{group_key → aggregated_value}`.
+
+```
+// Count restaurants by cuisine
+search(node, amenity: "restaurant", cuisine: *)
+  .within(area("Tokyo"))
+  .group_by(t["cuisine"])
+  .count();
+
+// Total road length by highway type
+search(way, highway: *)
+  .within(area("Berlin"))
+  .group_by(t["highway"])
+  .sum(length());
+
+// Average building height by building type
+search(way, building: *)
+  .within(area("Singapore"))
+  .filter(is_number(t["height"]))
+  .group_by(t["building"])
+  .avg(number(t["height"]));
+```
+
+`.group_by()` must be followed by exactly one aggregation method (`.count()`, `.sum()`, `.min()`, `.max()`, `.avg()`). The result type is `Scalar` (a map, not a feature collection).
 
 ---
 
@@ -747,18 +1062,20 @@ Methods must follow a specific phase order. Methods within the same phase can ap
 
 ```
 Phase 1: Source        search() | area() | route() | isochrone() | ...
-Phase 2: Set ops       + | -
+Phase 2: Set ops       + | - | &
 Phase 3: Spatial       .within() | .around() | .bbox() | .h3() |
                        .intersects() | .contains() | .crosses() | .touches() |
                        .not_within() | .not_intersects() | .not_contains() |
                        .member_of() | .has_member()
-Phase 3b: Tag filter   .filter()
+Phase 3b: Tag filter   .filter(key: value) | .filter(expression)
 Phase 4: Transforms    .buffer() | .simplify() | .centroid()
 Phase 5: Enrichments   .elevation() | .distance() | .area() | .length()
 Phase 6: Output shape  .fields() | .include() | .precision()
 Phase 7: Ordering      .sort() | .limit() | .offset()
 Phase 7b: Narrowing    .first() | .last() | .index()
-Phase 8: Output mode   .count() | .ids() | .tags() | .skel()
+Phase 7c: Group by     .group_by(expr)
+Phase 8: Output mode   .count() | .ids() | .tags() | .skel() | .geom() |
+                       .sum(expr) | .min(expr) | .max(expr) | .avg(expr)
 ```
 
 **Valid:**
@@ -860,9 +1177,11 @@ error: undefined output variable $$.boundary
 ### EBNF
 
 ```ebnf
-program        = settings? statement+ ;
+program        = settings? (directive | statement)+ ;
 settings       = "[" setting ("," setting)* "]" ;
 setting        = IDENT ":" value ;
+
+directive      = "#" IDENT "(" (tag_filters | filter_expr | arg_list) ")" ";" ;
 
 statement      = var_assign | out_assign | bare_expr ;
 var_assign     = "$" IDENT "=" expression ";" ;
@@ -870,7 +1189,7 @@ out_assign     = "$$" ("." IDENT)? "=" expression ";" ;
 bare_expr      = expression ";" ;
 
 expression     = set_expr ;
-set_expr       = unary_expr (("+" | "-") unary_expr)* ;
+set_expr       = unary_expr (("+" | "-" | "&") unary_expr)* ;
 unary_expr     = primary method_chain? ;
 
 primary        = search | area_call | route_call | isochrone_call
@@ -880,7 +1199,8 @@ primary        = search | area_call | route_call | isochrone_call
                | elevation_profile_call | nearest_call
                | constructor | variable | "(" expression ")" ;
 
-search         = "search" "(" (element_type ",")? tag_filters ")" ;
+search         = "search" "(" (element_type ",")? (tag_filters | id_filter) ")" ;
+id_filter      = "id" ":" (NUMBER | "[" NUMBER ("," NUMBER)* "]") ;
 area_call      = "area" "(" STRING ")" ;
 route_call     = "route" "(" arg_list ")" ;
 isochrone_call = "isochrone" "(" arg_list ")" ;
@@ -895,7 +1215,7 @@ bbox           = "bbox" "(" NUMBER "," NUMBER "," NUMBER "," NUMBER ")" ;
 circle         = "circle" "(" arg_list ")" ;
 
 method_chain   = ("." method_call)+ ;
-method_call    = IDENT "(" arg_list? ")" ;
+method_call    = IDENT "(" (arg_list | filter_expr)? ")" ;
 
 arg_list       = keyword_args | positional_args ;
 keyword_args   = keyword_arg ("," keyword_arg)* ;
@@ -903,9 +1223,31 @@ keyword_arg    = IDENT ":" value ;
 positional_args= value ("," value)* ;
 
 tag_filters    = tag_filter ("," tag_filter)* ;
-tag_filter     = IDENT ":" tag_value ;
+tag_filter     = (IDENT | regex_key) ":" tag_value ;
+regex_key      = "~" STRING ;
 tag_value      = STRING | "!" STRING | "~" STRING | "~i" STRING
-               | "!~" STRING | "*" | "!*" ;
+               | "!~" STRING | "*" | "!*" | NUMBER | id_list ;
+id_list        = "[" NUMBER ("," NUMBER)* "]" ;
+
+/* Expression language (used in .filter(expr), .sum(expr), etc.) */
+filter_expr    = or_expr ;
+or_expr        = and_expr ("||" and_expr)* ;
+and_expr       = comparison ("&&" comparison)* ;
+comparison     = add_expr (comp_op add_expr)? ;
+comp_op        = ">" | "<" | ">=" | "<=" | "==" | "!=" ;
+add_expr       = mul_expr (("+" | "-") mul_expr)* ;
+mul_expr       = unary ("*" | "/") unary)* ;
+unary          = "!" unary | expr_primary ;
+expr_primary   = tag_access | prop_access | geom_func | coerce_func
+               | string_func | NUMBER | STRING | BOOL
+               | "(" filter_expr ")" ;
+tag_access     = "t" "[" STRING "]" ;
+prop_access    = ("id" | "type" | "lat" | "lon") "(" ")" ;
+geom_func      = ("length" | "area" | "is_closed") "(" ")" ;
+coerce_func    = ("number" | "is_number") "(" filter_expr ")" ;
+string_func    = ("starts_with" | "ends_with" | "str_contains")
+                 "(" filter_expr "," filter_expr ")"
+               | "size" "(" filter_expr ")" ;
 
 element_type   = "node" | "way" | "relation" | "nwr" ;
 

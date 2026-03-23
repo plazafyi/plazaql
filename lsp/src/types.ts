@@ -374,6 +374,8 @@ export function methodOutputType(
     return { ok: true, type: "PolygonSet" };
   if (method === "count" && isChainable(inputType))
     return { ok: true, type: "Scalar" };
+  if ((method === "ids" || method === "tags" || method === "skel") && isChainable(inputType))
+    return { ok: true, type: "Scalar" };
   if (isChainable(inputType)) {
     if (ALL_METHODS.includes(method)) return { ok: true, type: inputType };
     return { ok: false, error: `unknown method \`.${method}()\`` };
@@ -487,40 +489,6 @@ export const METHOD_CATALOG: MethodInfo[] = [
   { name: "index", signature: ".index(n: number)", description: "Narrow set to its nth element (1-indexed). Transforms GeoSet to GeoElement.", phase: "Narrowing", ordinal: 7.5, group: "late_chain" },
 ];
 
-// ── Common OSM Tag Keys (for completions) ────────────────────────────
-
-export const COMMON_TAG_KEYS = [
-  "amenity",
-  "name",
-  "building",
-  "highway",
-  "shop",
-  "tourism",
-  "leisure",
-  "natural",
-  "landuse",
-  "waterway",
-  "railway",
-  "aeroway",
-  "boundary",
-  "place",
-  "addr:street",
-  "addr:housenumber",
-  "addr:city",
-  "addr:postcode",
-  "cuisine",
-  "sport",
-  "religion",
-  "surface",
-  "access",
-  "wheelchair",
-  "opening_hours",
-  "phone",
-  "website",
-  "operator",
-  "brand",
-];
-
 // ── Function Signatures (for signature help) ─────────────────────────
 
 export interface ParamInfo {
@@ -528,6 +496,7 @@ export interface ParamInfo {
   type: string;
   optional?: boolean;
   description?: string;
+  enumValues?: Array<{ value: string; description?: string }>;
 }
 
 export interface FunctionSignature {
@@ -597,7 +566,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       { name: "origin", type: "Point", description: "Starting point" },
       { name: "destination", type: "Point", description: "Ending point" },
       { name: "waypoints", type: "Point[]", optional: true, description: "Intermediate waypoints" },
-      { name: "mode", type: "\"auto\" | \"car\" | \"bicycle\" | \"foot\" | \"truck\"", optional: true, description: "Travel mode" },
+      { name: "mode", type: "\"auto\" | \"car\" | \"bicycle\" | \"foot\" | \"truck\"", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }, { value: '"truck"' }, { value: '"car"' }] },
     ],
     returnType: "Route",
     description: "Compute a route between waypoints.",
@@ -608,7 +577,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       { name: "center", type: "Point", description: "Center point" },
       { name: "time", type: "number", optional: true, description: "Travel time in seconds" },
       { name: "distance", type: "number", optional: true, description: "Travel distance in meters" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode" },
+      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
     ],
     returnType: "Isochrone",
     description: "Compute a travel-time or travel-distance polygon.",
@@ -651,7 +620,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     params: [
       { name: "sources", type: "Point[]", description: "Source points" },
       { name: "destinations", type: "Point[]", description: "Destination points" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode" },
+      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
     ],
     returnType: "Matrix",
     description: "Compute a distance/duration matrix between point sets.",
@@ -660,7 +629,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     name: "map_match",
     params: [
       { name: "points", type: "Point[]", description: "GPS trace points" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode" },
+      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
     ],
     returnType: "Route",
     description: "Snap a GPS trace to the road network.",
@@ -669,7 +638,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     name: "optimize",
     params: [
       { name: "waypoints", type: "Point[]", description: "Waypoints to optimize" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode" },
+      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
     ],
     returnType: "Route",
     description: "Optimize waypoint ordering (TSP).",
@@ -708,5 +677,25 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     ],
     returnType: "PointSet",
     description: "Find nearest OSM features to a point.",
+  },
+};
+
+export const METHOD_PARAM_VALUES: Record<string, Record<string, Array<{ value: string; description?: string }>>> = {
+  sort: {
+    by: [
+      { value: ":distance", description: "Sort by distance from reference point (requires .around())" },
+      { value: ":name", description: "Sort alphabetically by name tag" },
+      { value: ":osm_id", description: "Sort by OSM element ID" },
+    ],
+    order: [
+      { value: ":asc", description: "Ascending order" },
+      { value: ":desc", description: "Descending order" },
+    ],
+  },
+  expand: {
+    direction: [
+      { value: ":down", description: "Expand relations to members / ways to nodes" },
+      { value: ":up", description: "Expand nodes to parent ways / ways to parent relations" },
+    ],
   },
 };

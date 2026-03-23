@@ -170,6 +170,10 @@ function completionKindMap(kind: string): CompletionItemKind {
       return CompletionItemKind.Function;
     case "param":
       return CompletionItemKind.Field;
+    case "value":
+      return CompletionItemKind.Value;
+    case "operator":
+      return CompletionItemKind.Operator;
     default:
       return CompletionItemKind.Text;
   }

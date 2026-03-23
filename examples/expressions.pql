@@ -1,0 +1,109 @@
+// Expression language — tag access, property accessors, functions, operators
+
+// ── Tag Access ────────────────────────────────────────────────
+
+// t["key"] returns the tag value for each feature.
+// Tag values are strings — use number() to do arithmetic.
+
+// Filter cafes with capacity > 50
+search(node, amenity: "cafe")
+  .within(area("Vienna, Austria"))
+  .filter(number(t["capacity"]) > 50)
+  .limit(20);
+
+// ── Property Accessors ────────────────────────────────────────
+
+// id(), type(), lat(), lon() — access feature metadata
+
+// Find features south of a latitude
+search(node, amenity: "restaurant")
+  .within(area("Rome, Italy"))
+  .filter(lat() < 41.89)
+  .limit(10);
+
+// ── Geometry Functions ────────────────────────────────────────
+
+// length() — returns geometry length in meters (always geometric)
+// area() — returns geometry area in square meters
+// is_closed() — true if linestring forms a closed ring
+
+// Find long cycleways (> 5km)
+search(way, highway: "cycleway")
+  .within(area("Amsterdam, Netherlands"))
+  .filter(length() > 5000)
+  .limit(20);
+
+// Find large parks (> 100,000 m²)
+search(way, leisure: "park")
+  .within(area("London, United Kingdom"))
+  .filter(area() > 100000)
+  .limit(10);
+
+// ── Type Coercion ─────────────────────────────────────────────
+
+// number() converts a string tag value to a number for arithmetic
+// is_number() checks if a tag value can be parsed as a number
+
+// Find buildings taller than 50 meters
+search(way, building: "yes")
+  .within(area("Dubai"))
+  .filter(is_number(t["height"]) && number(t["height"]) > 50)
+  .limit(20);
+
+// ── String Functions ──────────────────────────────────────────
+
+// starts_with(expr, str) — string prefix check
+// ends_with(expr, str) — string suffix check
+// str_contains(expr, str) — substring check (NOT spatial .contains())
+// size(expr) — character count of a string
+
+// Streets that start with "Via"
+search(way, highway: *)
+  .within(area("Florence, Italy"))
+  .filter(starts_with(t["name"], "Via"))
+  .limit(20);
+
+// Features with long names (> 50 chars)
+search(node, name: *)
+  .within(area("Tokyo, Japan"))
+  .filter(size(t["name"]) > 50)
+  .limit(10);
+
+// ── Operators ─────────────────────────────────────────────────
+
+// Arithmetic: + - * /
+// Comparison: > < >= <= == !=
+// Logical: && || !
+
+// Multi-lane roads wider than 3 lanes
+search(way, highway: "primary")
+  .within(area("Los Angeles, United States"))
+  .filter(is_number(t["lanes"]) && number(t["lanes"]) >= 4)
+  .limit(30);
+
+// Compound filter — restaurants that are either Italian or Japanese
+search(node, amenity: "restaurant")
+  .within(area("New York City"))
+  .filter(t["cuisine"] == "italian" || t["cuisine"] == "japanese")
+  .limit(20);
+
+// Negation — exclude features without opening hours
+search(node, amenity: "cafe")
+  .within(area("Berlin, Germany"))
+  .filter(!(t["opening_hours"] == ""))
+  .fields("name", "opening_hours")
+  .limit(15);
+
+// ── Combined Example ──────────────────────────────────────────
+
+// High-capacity venues with wheelchair access, sorted by name
+search(node, amenity: *)
+  .within(area("Barcelona, Spain"))
+  .filter(
+    is_number(t["capacity"]) &&
+    number(t["capacity"]) > 100 &&
+    t["wheelchair"] == "yes"
+  )
+  .fields("name", "amenity", "capacity", "wheelchair")
+  .sort("name")
+  .limit(25);
