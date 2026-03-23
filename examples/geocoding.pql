@@ -1,33 +1,32 @@
 // Geocoding queries — geocode, reverse geocode, autocomplete, and text search
 
 // Forward geocode — address to coordinates
-$$ = geocode("1600 Pennsylvania Avenue, Washington DC");
+geocode("1600 Pennsylvania Avenue, Washington DC");
 
 // Reverse geocode — coordinates to address
-$$ = reverse_geocode(point(38.8977, -77.0365));
+reverse_geocode(point(38.8977, -77.0365));
 
 // Autocomplete — partial text to suggestions
-$$ = autocomplete("Eiffel Tow");
+autocomplete("Eiffel Tow");
 
 // Text search — full-text search across place names
-$$ = text_search("pizza near Times Square");
+text_search("pizza near Times Square");
 
 // Find nearest features to a point
-$$ = nearest(
+nearest(
   point(40.7128, -74.0060),
   amenity: "hospital"
 );
 
-// Geocode then search nearby
-$home = geocode("350 Fifth Avenue, New York");
-$$ = search(node, amenity: "grocery")
-  .around(500, $home)
+// Geocode then search nearby — using $$.name references
+$$.location = geocode("350 Fifth Avenue, New York");
+$$.groceries = search(node, amenity: "grocery")
+  .around(500, $$.location)
   .sort("distance")
   .limit(5);
 
 // Reverse geocode with context search
-$location = reverse_geocode(point(48.8566, 2.3522));
-$$.address = $location;
+$$.address = reverse_geocode(point(48.8566, 2.3522));
 $$.nearby_cafes = search(node, amenity: "cafe")
   .around(200, point(48.8566, 2.3522))
   .limit(10);

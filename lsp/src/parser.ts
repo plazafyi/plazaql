@@ -29,6 +29,7 @@ import type {
   SettingsNode,
   VarAssignNode,
   OutputNode,
+  OutputRefNode,
 } from "./types.js";
 
 // ── Diagnostic ───────────────────────────────────────────────────────
@@ -233,16 +234,32 @@ class Parser {
     }
 
     // Output assignment: $$ = expr; or $$.name = expr;
+    // Must distinguish from $$.name used as bare expression
     if (this.peek() === "$" && this.peek(1) === "$") {
-      return this.parseOutput();
+      const saved = this.saveState();
+      const result = this.parseOutput();
+      if (result) return result;
+      // If parseOutput failed (e.g. no '=' found), restore and try as bare expression
+      this.restoreState(saved);
     }
 
     // Variable assignment: $name = expr;
-    if (this.peek() === "$") {
+    if (this.peek() === "$" && this.peek(1) !== "$") {
       return this.parseVarAssign();
     }
 
-    return null;
+    // Bare expression statement
+    return this.parseBareExpr();
+  }
+
+  private parseBareExpr(): OutputNode | null {
+    const pos = this.markPos();
+    const expr = this.parseExpr();
+    if (!expr) return null;
+    this.skipWs();
+    this.expect(";");
+    // Bare expressions are treated as implicit $$ = expr
+    return { kind: "output", name: null, expr, pos };
   }
 
   private peekWord(): string {
@@ -328,7 +345,9 @@ class Parser {
       name = this.parseIdent();
     }
     this.skipWs();
-    if (!this.expect("=")) return null;
+    // If no '=' follows, this isn't an output assignment
+    if (this.peek() !== "=") return null;
+    this.advance(); // consume '='
     this.skipWs();
     const expr = this.parseExpr();
     if (!expr) {
@@ -484,8 +503,11 @@ class Parser {
       return expr;
     }
 
-    // Variable reference
+    // Output variable reference ($$.name) or regular variable reference ($name)
     if (ch === "$") {
+      if (this.peek(1) === "$") {
+        return this.parseOutputRef();
+      }
       return this.parseVarRef();
     }
 
@@ -538,6 +560,19 @@ class Parser {
     this.advance(); // skip $
     const name = this.parseIdent() ?? "";
     return { kind: "var_ref", name: `$${name}`, pos };
+  }
+
+  // ── Output ref ($$.name) ──────────────────────────────────────────
+
+  private parseOutputRef(): OutputRefNode {
+    const pos = this.markPos();
+    this.advance(); // skip first $
+    this.advance(); // skip second $
+    if (this.peek() === ".") {
+      this.advance(); // skip .
+    }
+    const name = this.parseIdent() ?? "";
+    return { kind: "output_ref", name, pos };
   }
 
   // ── Number ───────────────────────────────────────────────────────

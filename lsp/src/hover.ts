@@ -19,9 +19,38 @@ export function getHover(
   const { ast } = parse(source);
   const { scope } = typeCheck(ast);
 
+  // Build output scope from named outputs
+  const outputScope: Map<string, { type: string; line: number }> = new Map();
+  for (const stmt of ast) {
+    if (stmt.kind === "output" && stmt.name !== null) {
+      const stmtIdx = ast.indexOf(stmt);
+      const stmtType = typeCheck(ast).stmtTypes[stmtIdx];
+      outputScope.set(`$$.${stmt.name}`, {
+        type: stmtType ?? "unknown",
+        line: stmt.pos.line,
+      });
+    }
+  }
+
   // Find what's at the cursor position
   const token = getTokenAtPosition(source, line, col);
   if (!token) return null;
+
+  // Output variable hover ($$.name)
+  if (token.startsWith("$$.")) {
+    const info = outputScope.get(token);
+    if (info) {
+      return {
+        contents: [
+          `${token} :: ${info.type}`,
+          `  Named output defined at line ${info.line}`,
+        ].join("\n"),
+      };
+    }
+    return {
+      contents: `${token} — undefined output variable`,
+    };
+  }
 
   // Variable hover
   if (token.startsWith("$")) {
@@ -115,6 +144,29 @@ function getTokenAtPosition(
   if (!currentLine) return null;
 
   const idx = col - 1;
+
+  // Check for $$.name output reference
+  // Find if cursor is within a $$.name token by scanning backward
+  {
+    let s = idx;
+    // Move backward through identifier chars
+    while (s > 0 && isIdentChar(currentLine[s - 1]!)) s--;
+    // Check for preceding "$$."
+    if (s >= 3 && currentLine[s - 1] === "." && currentLine[s - 2] === "$" && currentLine[s - 3] === "$") {
+      const end = findIdentEnd(currentLine, s);
+      const name = currentLine.slice(s, end);
+      if (name) return "$$." + name;
+    }
+    // Cursor on the $$ or $$.
+    if (currentLine[idx] === "$" && currentLine[idx + 1] === "$") {
+      if (currentLine[idx + 2] === ".") {
+        const nameStart = idx + 3;
+        const end = findIdentEnd(currentLine, nameStart);
+        const name = currentLine.slice(nameStart, end);
+        if (name) return "$$." + name;
+      }
+    }
+  }
 
   // Check for $variable
   if (currentLine[idx] === "$" || (idx > 0 && currentLine[idx - 1] === "$")) {

@@ -118,6 +118,13 @@
             "1": { "name": "variable.other.output.plazaql" },
             "2": { "name": "variable.other.output.plazaql" }
           }
+        },
+        {
+          "match": "(\\$\\$)\\.([a-zA-Z_][a-zA-Z0-9_]*)(?!\\s*=)",
+          "captures": {
+            "1": { "name": "variable.other.output.plazaql" },
+            "2": { "name": "variable.other.output.plazaql" }
+          }
         }
       ]
     },

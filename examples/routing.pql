@@ -1,66 +1,66 @@
 // Routing queries — routes, isochrones, waypoints, and travel analysis
 
 // Simple driving route between two points
-$$ = route(
+route(
   point(40.7128, -74.0060),
   point(40.7580, -73.9855)
 );
 
 // Walking route with keyword arguments
-$$ = route(
+route(
   from: point(48.8566, 2.3522),
   to: point(48.8606, 2.3376),
   mode: "walk"
 );
 
 // Cycling route
-$$ = route(
+route(
   from: point(51.5074, -0.1278),
   to: point(51.5155, -0.1419),
   mode: "bike"
 );
 
 // Route with multiple waypoints
-$$ = route(
+route(
   point(40.7128, -74.0060),
   point(40.7484, -73.9856),
   point(40.7580, -73.9855)
 );
 
 // 15-minute walking isochrone
-$$ = isochrone(
+isochrone(
   center: point(40.7128, -74.0060),
   time: 15,
   mode: "walk"
 );
 
 // Multiple isochrone rings
-$$ = isochrone(
+isochrone(
   center: point(48.8566, 2.3522),
   time: 5,
   mode: "walk"
 );
 
-// Find cafes along a route
-$my_route = route(
+// Find cafes along a route — using $$.name references
+$$.route = route(
   point(40.7128, -74.0060),
   point(40.7580, -73.9855)
 );
-$$ = search(node, amenity: "cafe")
-  .around(100, $my_route)
+$$.cafes = search(node, amenity: "cafe")
+  .around(100, $$.route)
   .limit(10);
 
-// Find parks within a walking isochrone
-$walkable = isochrone(
+// Find parks within a walking isochrone — $$.name as spatial filter
+$$.walkable = isochrone(
   center: point(40.7128, -74.0060),
   time: 10,
   mode: "walk"
 );
-$$ = search(way, leisure: "park")
-  .within($walkable);
+$$.parks = search(way, leisure: "park")
+  .within($$.walkable);
 
 // Map matching — snap GPS trace to road network
-$$ = map_match(
+map_match(
   linestring(
     point(40.7128, -74.0060),
     point(40.7131, -74.0055),
@@ -70,7 +70,7 @@ $$ = map_match(
 );
 
 // Optimize stop order (traveling salesman)
-$$ = optimize(
+optimize(
   point(40.7128, -74.0060),
   point(40.7484, -73.9856),
   point(40.7580, -73.9855),
@@ -79,14 +79,14 @@ $$ = optimize(
 );
 
 // EV-aware routing with charge stops
-$$ = ev_route(
+ev_route(
   from: point(40.7128, -74.0060),
   to: point(42.3601, -71.0589),
   mode: "drive"
 );
 
 // Distance matrix between multiple points
-$$ = matrix(
+matrix(
   point(40.7128, -74.0060),
   point(40.7484, -73.9856),
   point(40.7580, -73.9855)

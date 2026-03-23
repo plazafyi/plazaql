@@ -1,52 +1,52 @@
 // Basic PlazaQL queries — simple searches, tag filters, and output options
 
 // Find all cafes
-$$ = search(node, amenity: "cafe");
+search(node, amenity: "cafe");
 
 // Find restaurants with cuisine tag
-$$ = search(node, amenity: "restaurant", cuisine: *);
+search(node, amenity: "restaurant", cuisine: *);
 
 // Find vegan restaurants using regex
-$$ = search(node, amenity: "restaurant", cuisine: ~"vegan");
+search(node, amenity: "restaurant", cuisine: ~"vegan");
 
 // Case-insensitive regex search
-$$ = search(node, name: ~i"starbucks");
+search(node, name: ~i"starbucks");
 
 // Find nodes that do NOT have a name
-$$ = search(node, amenity: "bench", name: !*);
+search(node, amenity: "bench", name: !*);
 
 // Exclude a specific value
-$$ = search(node, amenity: "restaurant", cuisine: !"fast_food");
+search(node, amenity: "restaurant", cuisine: !"fast_food");
 
 // Negated regex — exclude pattern
-$$ = search(node, amenity: "restaurant", name: !~"McDonald");
+search(node, amenity: "restaurant", name: !~"McDonald");
 
 // Multiple element types — ways and relations
-$$ = search(way, building: "yes");
+search(way, building: "yes");
 
 // All element types (nwr = node/way/relation)
-$$ = search(nwr, tourism: "museum");
+search(nwr, tourism: "museum");
 
 // Limit results
-$$ = search(node, amenity: "cafe").limit(10);
+search(node, amenity: "cafe").limit(10);
 
 // Limit with offset for pagination
-$$ = search(node, amenity: "cafe").sort("name").limit(10).offset(20);
+search(node, amenity: "cafe").sort("name").limit(10).offset(20);
 
 // Count matching features
-$$ = search(node, amenity: "cafe").count();
+search(node, amenity: "cafe").count();
 
 // Return only IDs
-$$ = search(node, amenity: "school").ids();
+search(node, amenity: "school").ids();
 
 // Return only tags (no geometry)
-$$ = search(node, shop: "supermarket").tags();
+search(node, shop: "supermarket").tags();
 
 // Skeleton output (minimal geometry, no tags)
-$$ = search(way, highway: "primary").skel();
+search(way, highway: "primary").skel();
 
 // Select specific fields
-$$ = search(node, amenity: "cafe")
+search(node, amenity: "cafe")
   .fields("name", "cuisine", "opening_hours")
   .limit(25);
 

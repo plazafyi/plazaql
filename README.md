@@ -3,7 +3,7 @@
 A LINQ-style query language for geospatial data. PlazaQL provides a composable, chainable syntax for searching, filtering, routing, geocoding, and transforming OpenStreetMap data through the [Plaza API](https://plaza.fyi).
 
 ```
-$$ = search(node, amenity: "cafe")
+search(node, amenity: "cafe")
   .within(area("Manhattan, New York"))
   .around(200, point(40.7484, -73.9856))
   .fields("name", "cuisine", "opening_hours")
@@ -19,22 +19,21 @@ $$ = search(node, amenity: "cafe")
 
 **Find restaurants near a point:**
 ```
-$$ = search(node, amenity: "restaurant")
+search(node, amenity: "restaurant")
   .around(500, point(48.8566, 2.3522))
   .limit(20);
 ```
 
 **Walking isochrone with nearby parks:**
 ```
-$walkable = isochrone(center: point(40.71, -74.00), time: 15, mode: "walk");
-$$.area = $walkable;
-$$.parks = search(way, leisure: "park").within($walkable);
+$$.area = isochrone(center: point(40.71, -74.00), time: 15, mode: "walk");
+$$.parks = search(way, leisure: "park").within($$.area);
 ```
 
 **Geocode and search nearby:**
 ```
 $home = geocode("350 Fifth Avenue, New York");
-$$ = search(node, shop: "supermarket")
+search(node, shop: "supermarket")
   .around(500, $home)
   .sort("distance")
   .limit(5);
@@ -44,7 +43,7 @@ $$ = search(node, shop: "supermarket")
 ```
 $eating = search(node, amenity: "cafe").within($area)
         + search(node, amenity: "restaurant").within($area);
-$$ = $eating.filter(wheelchair: "yes").limit(10);
+$eating.filter(wheelchair: "yes").limit(10);
 ```
 
 ---
@@ -73,6 +72,7 @@ $$ = $eating.filter(wheelchair: "yes").limit(10);
 
 A PlazaQL query is a sequence of **statements**, each terminated by `;`. Statements are either:
 
+- **Bare expression:** `expression;` (implicit output)
 - **Variable assignment:** `$name = expression;`
 - **Output assignment:** `$$ = expression;` or `$$.name = expression;`
 
@@ -82,8 +82,8 @@ Expressions are built from **functions** (which produce values), **methods** (wh
 // Variable — stores a value for reuse
 $area = area("Berlin, Germany");
 
-// Output — defines what gets returned
-$$ = search(node, amenity: "cafe")
+// Bare expression — implicitly becomes the output
+search(node, amenity: "cafe")
   .within($area)
   .limit(10);
 ```
@@ -130,20 +130,27 @@ $radius = 500;
 $nyc = area("New York City");
 
 // Use in subsequent expressions
-$$ = search(node, amenity: "cafe")
+search(node, amenity: "cafe")
   .around($radius, $center)
   .within($nyc);
 ```
 
 Variables are immutable — once assigned, they cannot be reassigned.
 
+Named output variables (`$$.name`) can also be used as values in later expressions — see [Output Assignment](#output-assignment).
+
 ---
 
 ## Output Assignment
 
-Every query must have at least one `$$` assignment. This defines what gets returned.
+Every query must produce at least one output. This defines what gets returned.
 
-**Single output:**
+**Single output** — bare expression (preferred):
+```
+search(node, amenity: "cafe").limit(10);
+```
+
+A bare expression statement is equivalent to `$$ = expression;`. The explicit `$$ =` prefix is supported but optional for single-output queries:
 ```
 $$ = search(node, amenity: "cafe").limit(10);
 ```
@@ -154,6 +161,21 @@ $$.cafes = search(node, amenity: "cafe").limit(5);
 $$.parks = search(way, leisure: "park").limit(5);
 $$.route = route(point(40.71, -74.00), point(40.75, -73.98));
 ```
+
+**Named output references** — `$$.name` values can be referenced in later statements, eliminating the need for intermediate variables:
+```
+$$.route = route(point(40.71, -74.00), point(40.75, -73.98));
+$$.stops = search(node, amenity: "cafe").around(200, $$.route);
+```
+
+This is equivalent to the more verbose:
+```
+$r = route(point(40.71, -74.00), point(40.75, -73.98));
+$$.route = $r;
+$$.stops = search(node, amenity: "cafe").around(200, $r);
+```
+
+Named outputs are immutable — once assigned, they cannot be reassigned.
 
 ---
 
@@ -487,7 +509,7 @@ search(node, amenity: "cafe")
 
 ```
 $combined = search(node, amenity: "cafe") + search(node, amenity: "restaurant");
-$$ = $combined.filter(wheelchair: "yes", outdoor_seating: "yes");
+$combined.filter(wheelchair: "yes", outdoor_seating: "yes");
 ```
 
 ### Transforms (Phase 4)
@@ -638,7 +660,7 @@ Combine two result sets:
 ```
 $cafes = search(node, amenity: "cafe").within($area);
 $restaurants = search(node, amenity: "restaurant").within($area);
-$$ = $cafes + $restaurants;
+$cafes + $restaurants;
 ```
 
 ### Difference (`-`)
@@ -648,7 +670,7 @@ Subtract one result set from another:
 ```
 $all = search(node, amenity: ~"cafe|restaurant|fast_food").within($area);
 $fast = search(node, amenity: "fast_food").within($area);
-$$ = $all - $fast;
+$all - $fast;
 ```
 
 Type rules for set operations:
@@ -756,6 +778,18 @@ error: undefined variable $downtown
    = hint: assign it first: $downtown = area("Downtown");
 ```
 
+### Undefined Output Variable
+
+```
+error: undefined output variable $$.boundary
+  --> query:3:12
+   |
+ 3 |   .within($$.boundary)
+   |           ^^^^^^^^^^^^ not defined
+   |
+   = hint: assign it first: $$.boundary = area("Berlin, Germany");
+```
+
 ---
 
 ## Grammar
@@ -767,9 +801,10 @@ program        = settings? statement+ ;
 settings       = "[" setting ("," setting)* "]" ;
 setting        = IDENT ":" value ;
 
-statement      = var_assign | out_assign ;
+statement      = var_assign | out_assign | bare_expr ;
 var_assign     = "$" IDENT "=" expression ";" ;
 out_assign     = "$$" ("." IDENT)? "=" expression ";" ;
+bare_expr      = expression ";" ;
 
 expression     = set_expr ;
 set_expr       = unary_expr (("+" | "-") unary_expr)* ;
@@ -812,8 +847,9 @@ tag_value      = STRING | "!" STRING | "~" STRING | "~i" STRING
 element_type   = "node" | "way" | "relation" | "nwr" | "nw" | "nr" | "wr" ;
 
 value          = STRING | NUMBER | BOOL | constructor | variable
-               | ":" IDENT ;
+               | output_ref | ":" IDENT ;
 variable       = "$" IDENT ;
+output_ref     = "$$." IDENT ;
 
 STRING         = '"' ( ~["\\\n] | '\\' . )* '"' ;
 NUMBER         = "-"? [0-9]+ ("." [0-9]+)? ;

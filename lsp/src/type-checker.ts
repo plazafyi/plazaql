@@ -53,11 +53,12 @@ export interface TypeCheckResult {
 
 export function typeCheck(ast: Statement[]): TypeCheckResult {
   const scope: Scope = new Map();
+  const outputScope: Scope = new Map(); // tracks $$.name outputs
   const errors: TypeCheckError[] = [];
   const stmtTypes: (PqlType | null)[] = [];
 
   for (const stmt of ast) {
-    const { errs, type } = checkStatement(stmt, scope);
+    const { errs, type } = checkStatement(stmt, scope, outputScope);
     errors.push(...errs);
     stmtTypes.push(type);
   }
@@ -110,7 +111,8 @@ export function typeCheck(ast: Statement[]): TypeCheckResult {
 
 function checkStatement(
   stmt: Statement,
-  scope: Scope
+  scope: Scope,
+  outputScope: Scope
 ): { errs: TypeCheckError[]; type: PqlType | null } {
   switch (stmt.kind) {
     case "settings":
@@ -127,7 +129,7 @@ function checkStatement(
           severity: "error",
         });
       }
-      const { type, errors: exprErrs } = checkExpr(stmt.expr, scope);
+      const { type, errors: exprErrs } = checkExpr(stmt.expr, scope, outputScope);
       errs.push(...exprErrs);
       scope.set(stmt.name, {
         type,
@@ -139,8 +141,28 @@ function checkStatement(
     }
 
     case "output": {
-      const { type, errors: exprErrs } = checkExpr(stmt.expr, scope);
-      return { errs: exprErrs, type };
+      const { type, errors: exprErrs } = checkExpr(stmt.expr, scope, outputScope);
+      const errs = [...exprErrs];
+      // Register named output in outputScope for later $$.name references
+      if (stmt.name !== null) {
+        const key = `$$.${stmt.name}`;
+        if (outputScope.has(key)) {
+          errs.push({
+            line: stmt.pos.line,
+            col: stmt.pos.col,
+            message: `duplicate output variable \`${key}\``,
+            hint: "choose a different name or remove the earlier definition",
+            severity: "error",
+          });
+        }
+        outputScope.set(key, {
+          type,
+          line: stmt.pos.line,
+          col: stmt.pos.col,
+          expr: stmt.expr,
+        });
+      }
+      return { errs, type };
     }
   }
 }
@@ -152,14 +174,15 @@ interface ExprResult {
   errors: TypeCheckError[];
 }
 
-function checkExpr(expr: Expr, scope: Scope): ExprResult {
+function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
   switch (expr.kind) {
     case "search": {
       const baseType = searchBaseType(expr.elementType);
       const { finalType, errors } = checkMethodChain(
         expr.methods,
         baseType,
-        scope
+        scope,
+        outputScope
       );
       return { type: finalType, errors };
     }
@@ -169,7 +192,7 @@ function checkExpr(expr: Expr, scope: Scope): ExprResult {
 
     case "computation": {
       const type = computationType(expr.name);
-      const argErrors = checkVarRefsInArgs(expr.args, scope);
+      const argErrors = checkVarRefsInArgs(expr.args, scope, outputScope);
       return { type, errors: argErrors };
     }
 
@@ -206,13 +229,33 @@ function checkExpr(expr: Expr, scope: Scope): ExprResult {
       return { type: info.type, errors: [] };
     }
 
+    case "output_ref": {
+      const key = `$$.${expr.name}`;
+      const info = outputScope.get(key);
+      if (!info) {
+        return {
+          type: "GeoSet",
+          errors: [
+            {
+              line: expr.pos.line,
+              col: expr.pos.col,
+              message: `undefined output variable \`${key}\``,
+              hint: `assign it first: ${key} = <expression>;`,
+              severity: "error",
+            },
+          ],
+        };
+      }
+      return { type: info.type, errors: [] };
+    }
+
     case "chain": {
-      return checkChain(expr, scope);
+      return checkChain(expr, scope, outputScope);
     }
 
     case "union": {
-      const leftR = checkExpr(expr.left, scope);
-      const rightR = checkExpr(expr.right, scope);
+      const leftR = checkExpr(expr.left, scope, outputScope);
+      const rightR = checkExpr(expr.right, scope, outputScope);
       const resultType = unionType(leftR.type, rightR.type);
       return {
         type: resultType,
@@ -221,8 +264,8 @@ function checkExpr(expr: Expr, scope: Scope): ExprResult {
     }
 
     case "difference": {
-      const leftR = checkExpr(expr.left, scope);
-      const rightR = checkExpr(expr.right, scope);
+      const leftR = checkExpr(expr.left, scope, outputScope);
+      const rightR = checkExpr(expr.right, scope, outputScope);
       return {
         type: leftR.type,
         errors: [...leftR.errors, ...rightR.errors],
@@ -230,12 +273,12 @@ function checkExpr(expr: Expr, scope: Scope): ExprResult {
     }
 
     case "arrow_chain": {
-      const itemErrors = expr.items.flatMap((item) => checkExpr(item, scope).errors);
+      const itemErrors = expr.items.flatMap((item) => checkExpr(item, scope, outputScope).errors);
       return { type: "Point", errors: itemErrors };
     }
 
     case "list": {
-      const itemErrors = expr.items.flatMap((item) => checkExpr(item, scope).errors);
+      const itemErrors = expr.items.flatMap((item) => checkExpr(item, scope, outputScope).errors);
       return { type: "Scalar", errors: itemErrors };
     }
 
@@ -253,13 +296,14 @@ function checkExpr(expr: Expr, scope: Scope): ExprResult {
 
 // ── Chain flattening & checking ──────────────────────────────────────
 
-function checkChain(chain: ChainNode, scope: Scope): ExprResult {
+function checkChain(chain: ChainNode, scope: Scope, outputScope: Scope): ExprResult {
   const { base, methods } = flattenChain(chain);
-  const baseResult = checkExpr(base, scope);
+  const baseResult = checkExpr(base, scope, outputScope);
   const { finalType, errors: methodErrors } = checkMethodChain(
     methods,
     baseResult.type,
-    scope
+    scope,
+    outputScope
   );
   return {
     type: finalType,
@@ -292,7 +336,8 @@ interface ChainContext {
 function checkMethodChain(
   methods: MethodNode[],
   baseType: PqlType,
-  scope: Scope
+  scope: Scope,
+  outputScope: Scope
 ): { finalType: PqlType; errors: TypeCheckError[] } {
   const ctx: ChainContext = {
     lastPhase: 0,
@@ -307,7 +352,7 @@ function checkMethodChain(
   const errors: TypeCheckError[] = [];
 
   for (const method of methods) {
-    const methodErrs = checkMethod(method, ctx, scope);
+    const methodErrs = checkMethod(method, ctx, scope, outputScope);
     errors.push(...methodErrs);
   }
 
@@ -317,7 +362,8 @@ function checkMethodChain(
 function checkMethod(
   method: MethodNode,
   ctx: ChainContext,
-  scope: Scope
+  scope: Scope,
+  outputScope: Scope
 ): TypeCheckError[] {
   const { ordinal: phaseNum, label: phaseName } = methodPhase(method.name);
   const errors: TypeCheckError[] = [];
@@ -359,11 +405,11 @@ function checkMethod(
   }
 
   // 4. Spatial arg type checking
-  errors.push(...checkSpatialArgs(method.name, method.args, method.pos, scope));
+  errors.push(...checkSpatialArgs(method.name, method.args, method.pos, scope, outputScope));
 
   // 5. Var refs in args (only for Arg[], not TagFilter[])
   if (isArgArray(method.args)) {
-    errors.push(...checkVarRefsInArgs(method.args, scope));
+    errors.push(...checkVarRefsInArgs(method.args, scope, outputScope));
   }
 
   // 6. Contextual requirements
@@ -409,7 +455,8 @@ function checkSpatialArgs(
   methodName: string,
   args: Arg[] | TagFilter[],
   pos: Pos,
-  scope: Scope
+  scope: Scope,
+  outputScope: Scope
 ): TypeCheckError[] {
   if (!SPATIAL_WITH_GEOMETRY.has(methodName)) return [];
   if (!isArgArray(args)) return [];
@@ -418,7 +465,7 @@ function checkSpatialArgs(
   const errors: TypeCheckError[] = [];
 
   for (const expr of extractGeometryExprs(args)) {
-    const argType = inferArgType(expr, scope);
+    const argType = inferArgType(expr, scope, outputScope);
     if (argType !== null && !validTypes.includes(argType)) {
       errors.push({
         line: pos.line,
@@ -457,9 +504,13 @@ const ARG_TYPE_BY_KIND: Partial<Record<Expr["kind"], PqlType>> = {
   area: "Area",
 };
 
-function inferArgType(expr: Expr, scope: Scope): PqlType | null {
+function inferArgType(expr: Expr, scope: Scope, outputScope: Scope): PqlType | null {
   if (expr.kind === "var_ref") {
     const info = scope.get(expr.name);
+    return info?.type ?? null;
+  }
+  if (expr.kind === "output_ref") {
+    const info = outputScope.get(`$$.${expr.name}`);
     return info?.type ?? null;
   }
   if (expr.kind === "computation") {
@@ -480,7 +531,7 @@ function spatialHint(method: string, argType: PqlType): string | undefined {
 
 // ── Var ref checking in args ─────────────────────────────────────────
 
-function checkVarRefsInArgs(args: Arg[], scope: Scope): TypeCheckError[] {
+function checkVarRefsInArgs(args: Arg[], scope: Scope, outputScope: Scope): TypeCheckError[] {
   const errors: TypeCheckError[] = [];
   for (const arg of args) {
     const expr = arg.type === "posarg" ? arg.value : arg.value;
@@ -492,6 +543,18 @@ function checkVarRefsInArgs(args: Arg[], scope: Scope): TypeCheckError[] {
         hint: `define it first: ${expr.name} = <expression>;`,
         severity: "error",
       });
+    }
+    if (expr.kind === "output_ref") {
+      const key = `$$.${expr.name}`;
+      if (!outputScope.has(key)) {
+        errors.push({
+          line: expr.pos.line,
+          col: expr.pos.col,
+          message: `undefined output variable \`${key}\``,
+          hint: `assign it first: ${key} = <expression>;`,
+          severity: "error",
+        });
+      }
     }
   }
   return errors;
@@ -556,24 +619,29 @@ function isArgArray(args: Arg[] | TagFilter[]): args is Arg[] {
 
 // ── Exported helpers for LSP features ────────────────────────────────
 
-export function inferExprType(expr: Expr, scope: Scope): PqlType {
-  return checkExpr(expr, scope).type;
+export function inferExprType(expr: Expr, scope: Scope, outputScope?: Scope): PqlType {
+  return checkExpr(expr, scope, outputScope ?? new Map()).type;
 }
 
 export function getExprAtPosition(
   ast: Statement[],
   line: number,
   col: number
-): { expr: Expr | null; scope: Scope } {
+): { expr: Expr | null; scope: Scope; outputScope: Scope } {
   const scope: Scope = new Map();
+  const outputScope: Scope = new Map();
   // Build scope up to the given position
   for (const stmt of ast) {
-    if (stmt.kind === "var_assign") {
-      if (stmt.pos.line < line || (stmt.pos.line === line && stmt.pos.col < col)) {
-        const type = checkExpr(stmt.expr, scope).type;
+    if (stmt.pos.line < line || (stmt.pos.line === line && stmt.pos.col < col)) {
+      if (stmt.kind === "var_assign") {
+        const type = checkExpr(stmt.expr, scope, outputScope).type;
         scope.set(stmt.name, { type, line: stmt.pos.line, col: stmt.pos.col, expr: stmt.expr });
+      } else if (stmt.kind === "output" && stmt.name !== null) {
+        const type = checkExpr(stmt.expr, scope, outputScope).type;
+        const key = `$$.${stmt.name}`;
+        outputScope.set(key, { type, line: stmt.pos.line, col: stmt.pos.col, expr: stmt.expr });
       }
     }
   }
-  return { expr: null, scope };
+  return { expr: null, scope, outputScope };
 }

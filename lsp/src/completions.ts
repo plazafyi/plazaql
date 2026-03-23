@@ -37,6 +37,8 @@ export function getCompletions(
       return getDotCompletions(source, context.currentType, context.lastPhase);
     case "dollar":
       return getVariableCompletions(source, line);
+    case "dollar_dollar":
+      return getOutputRefCompletions(source);
     case "inside_search":
       return getTagCompletions();
     case "inside_function_params":
@@ -55,6 +57,7 @@ export function getCompletions(
 type AnalyzedContext =
   | { kind: "dot"; currentType: PqlType | null; lastPhase: number }
   | { kind: "dollar" }
+  | { kind: "dollar_dollar" }
   | { kind: "inside_search" }
   | { kind: "inside_function_params"; functionName: string }
   | { kind: "top_level" }
@@ -68,7 +71,13 @@ function analyzeContext(source: string, line: number, col: number): AnalyzedCont
   const textUpTo = currentLine.slice(0, col);
   const trimmed = textUpTo.trimEnd();
 
-  // After "$$" (must check before dot and dollar)
+  // After "$$." in value position (not at start of line / not an assignment)
+  // e.g. .around(200, $$.  or .within($$.
+  if (/\$\$\.\w*$/.test(textUpTo) && !/^\s*\$\$\./.test(textUpTo)) {
+    return { kind: "dollar_dollar" };
+  }
+
+  // After "$$" at start of statement (output assignment context)
   if (/^\s*\$\$\s*$/.test(textUpTo) || /^\s*\$\$\.$/.test(textUpTo)) {
     return { kind: "after_out" };
   }
@@ -259,6 +268,29 @@ function getTopLevelCompletions(): CompletionItem[] {
       insertText: "geocode(",
     },
   ];
+}
+
+function getOutputRefCompletions(source: string): CompletionItem[] {
+  const { ast } = parse(source);
+  const { scope } = typeCheck(ast);
+  const items: CompletionItem[] = [];
+
+  // Find all named output assignments in the AST
+  for (const stmt of ast) {
+    if (stmt.kind === "output" && stmt.name !== null) {
+      // Look up type from scope entries (output scope mirrors to scope)
+      const key = `$$.${stmt.name}`;
+      items.push({
+        label: stmt.name,
+        kind: "variable",
+        detail: `:: output variable`,
+        documentation: `Named output defined at line ${stmt.pos.line}`,
+        insertText: stmt.name,
+      });
+    }
+  }
+
+  return items;
 }
 
 function getOutputCompletions(): CompletionItem[] {

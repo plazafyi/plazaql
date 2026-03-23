@@ -122,6 +122,12 @@ export interface VarRefNode {
   pos: Pos;
 }
 
+export interface OutputRefNode {
+  kind: "output_ref";
+  name: string; // the identifier after "$$."
+  pos: Pos;
+}
+
 export interface PointNode {
   kind: "point";
   lat: number | null;
@@ -253,6 +259,7 @@ export type Expr =
   | AtomNode
   | IdentifierNode
   | VarRefNode
+  | OutputRefNode
   | PointNode
   | BboxNode
   | GeometryNode
