@@ -132,7 +132,7 @@
       "patterns": [
         {
           "name": "keyword.other.element-type.plazaql",
-          "match": "\\b(node|way|relation|nwr|nw|nr|wr)\\b"
+          "match": "\\b(node|way|relation|nwr)\\b"
         }
       ]
     },
@@ -155,7 +155,7 @@
     "methods": {
       "patterns": [
         {
-          "match": "\\.\\s*(within|around|near|intersects|contains|crosses|touches|not_within|not_intersects|not_contains|buffer|simplify|centroid|precision|fields|include|sort|limit|offset|count|ids|tags|skel|elevation|distance|area|length|expand|h3|filter|bbox)\\s*(?=\\(|;|$)",
+          "match": "\\.\\s*(within|around|intersects|contains|crosses|touches|not_within|not_intersects|not_contains|buffer|simplify|centroid|precision|fields|include|sort|limit|offset|count|ids|tags|skel|elevation|distance|area|length|expand|h3|filter|bbox)\\s*(?=\\(|;|$)",
           "captures": {
             "1": { "name": "entity.name.function.method.plazaql" }
           }
@@ -183,10 +183,6 @@
         {
           "name": "keyword.operator.arithmetic.plazaql",
           "match": "[+\\-]"
-        },
-        {
-          "name": "keyword.operator.arrow.plazaql",
-          "match": "->"
         },
         {
           "name": "keyword.operator.plazaql",

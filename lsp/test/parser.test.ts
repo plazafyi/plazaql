@@ -277,9 +277,9 @@ describe("PlazaQL Parser", () => {
 
   // ── Computation functions ──────────────────────────────────────
 
-  it("parses route with arrow syntax", () => {
+  it("parses route with keyword syntax", () => {
     const { ast, errors } = parse(
-      '$$ =route(point(38.9, -77.0) -> point(40.7, -74.0), mode: "auto");'
+      '$$ =route(origin: point(38.9, -77.0), destination: point(40.7, -74.0), mode: "auto");'
     );
     expect(errors).toHaveLength(0);
     if (ast[0]!.kind === "output" && ast[0]!.expr.kind === "computation") {
@@ -408,11 +408,11 @@ describe("PlazaQL Parser", () => {
   // ── List literal ───────────────────────────────────────────────
 
   it("parses list literal", () => {
-    const { ast, errors } = parse('$tags = ["name", "amenity"];\n$$ =search();');
+    parse('$tags = ["name", "amenity"];\n$$ =search();');
     // The parser doesn't actually create a var_assign for list on its own
     // since list isn't a top-level statement — but inside an expr it should work
     // Let's test it differently
-    const { ast: ast2, errors: errors2 } = parse(
+    const { errors: errors2 } = parse(
       "$$ =search().fields([\"name\", \"amenity\"]);"
     );
     expect(errors2).toHaveLength(0);

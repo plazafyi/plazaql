@@ -51,9 +51,10 @@ search(way, boundary: "administrative")
 search(node, amenity: "cafe")
   .h3("872a1076dffffff");
 
-// Near — alias for around, returns results sorted by distance
+// Around — find features within distance of a point
 search(node, amenity: "pharmacy")
-  .near(1000, point(48.8566, 2.3522))
+  .around(1000, point(48.8566, 2.3522))
+  .sort(by: :distance)
   .limit(5);
 
 // Combine spatial filters — within area AND near a point

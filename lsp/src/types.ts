@@ -69,7 +69,7 @@ export interface Pos {
 
 // ── AST Nodes ────────────────────────────────────────────────────────
 
-export type ElementType = "node" | "way" | "relation" | "nwr" | "nw" | "nr" | "wr";
+export type ElementType = "node" | "way" | "relation" | "nwr";
 
 export type TagFilterOp =
   | "eq"
@@ -202,12 +202,6 @@ export interface ChainNode {
   pos: Pos;
 }
 
-export interface ArrowChainNode {
-  kind: "arrow_chain";
-  items: Expr[];
-  pos: Pos;
-}
-
 export interface UnionNode {
   kind: "union";
   left: Expr;
@@ -273,7 +267,6 @@ export type Expr =
   | AreaNode
   | ComputationNode
   | ChainNode
-  | ArrowChainNode
   | UnionNode
   | DifferenceNode
   | ListNode;
@@ -293,7 +286,6 @@ const SPATIAL_METHODS = [
   "within",
   "not_within",
   "around",
-  "near",
   "bbox",
   "h3",
   "intersects",
@@ -337,6 +329,25 @@ export function methodPhase(method: string): MethodPhase {
   return { ordinal: 0, label: "unknown" };
 }
 
+export type MethodGroup = "source" | "freely_orderable" | "late_chain" | "terminal";
+
+export function methodGroup(method: string): MethodGroup {
+  if (ORDERING_METHODS.includes(method)) return "late_chain";
+  if (OUTPUT_MODE_METHODS.includes(method)) return "terminal";
+  return "freely_orderable";
+}
+
+export function methodCategory(method: string): string {
+  if (SPATIAL_METHODS.includes(method)) return "spatial";
+  if (method === "filter") return "filter";
+  if (TRANSFORM_METHODS.includes(method)) return "transform";
+  if (ENRICHMENT_METHODS.includes(method)) return "enrichment";
+  if (OUTPUT_SHAPE_METHODS.includes(method)) return "output shape";
+  if (ORDERING_METHODS.includes(method)) return "ordering";
+  if (OUTPUT_MODE_METHODS.includes(method)) return "output mode";
+  return "unknown";
+}
+
 export function isOutputMode(method: string): boolean {
   return OUTPUT_MODE_METHODS.includes(method);
 }
@@ -355,11 +366,6 @@ export function methodOutputType(
     return { ok: true, type: "PolygonSet" };
   if (method === "count" && isChainable(inputType))
     return { ok: true, type: "Scalar" };
-  if (method === "simplify" && inputType === "PointSet")
-    return {
-      ok: false,
-      error: "`.simplify()` cannot be applied to PointSet",
-    };
   if (isChainable(inputType)) {
     if (ALL_METHODS.includes(method)) return { ok: true, type: inputType };
     return { ok: false, error: `unknown method \`.${method}()\`` };
@@ -423,47 +429,47 @@ export interface MethodInfo {
   description: string;
   phase: string;
   ordinal: number;
+  group: MethodGroup;
 }
 
 export const METHOD_CATALOG: MethodInfo[] = [
-  // Spatial (phase 3)
-  { name: "within", signature: ".within(geometry: Area | Polygon | Isochrone)", description: "Filter to features fully inside the geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "not_within", signature: ".not_within(geometry: Area | Polygon | Isochrone)", description: "Exclude features inside the geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "around", signature: ".around(distance: number, geometry?: Point | Area)", description: "Filter to features within distance (meters) of a point or geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "near", signature: ".near(geometry: Point, distance?: number)", description: "Alias for .around() with reversed argument order.", phase: "Spatial", ordinal: 3 },
-  { name: "bbox", signature: ".bbox(s: number, w: number, n: number, e: number)", description: "Filter to features within a bounding box.", phase: "Spatial", ordinal: 3 },
-  { name: "h3", signature: ".h3(cell: string)", description: "Filter to features within an H3 cell.", phase: "Spatial", ordinal: 3 },
-  { name: "intersects", signature: ".intersects(geometry: Geometry)", description: "Filter to features that intersect the geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "not_intersects", signature: ".not_intersects(geometry: Geometry)", description: "Exclude features that intersect the geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "contains", signature: ".contains(geometry: Geometry)", description: "Filter to features that contain the geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "not_contains", signature: ".not_contains(geometry: Geometry)", description: "Exclude features that contain the geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "crosses", signature: ".crosses(geometry: LineString | Route)", description: "Filter to features that cross the geometry.", phase: "Spatial", ordinal: 3 },
-  { name: "touches", signature: ".touches(geometry: Geometry)", description: "Filter to features that touch the geometry.", phase: "Spatial", ordinal: 3 },
-  // Tag filter (phase 3b)
-  { name: "filter", signature: ".filter(key: value, ...)", description: "Post-search/post-union tag filtering.", phase: "Tag Filter", ordinal: 3.5 },
-  // Transform (phase 4)
-  { name: "buffer", signature: ".buffer(meters: number)", description: "Expand geometries by a buffer distance.", phase: "Transform", ordinal: 4 },
-  { name: "simplify", signature: ".simplify(tolerance: number)", description: "Simplify geometries (not valid on PointSet).", phase: "Transform", ordinal: 4 },
-  { name: "centroid", signature: ".centroid()", description: "Replace geometries with their centroids. Result type becomes PointSet.", phase: "Transform", ordinal: 4 },
-  // Enrichment (phase 5)
-  { name: "elevation", signature: ".elevation()", description: "Add elevation data to features.", phase: "Enrichment", ordinal: 5 },
-  { name: "distance", signature: ".distance(geometry: Point)", description: "Add distance from a reference point to each feature.", phase: "Enrichment", ordinal: 5 },
-  { name: "area", signature: ".area()", description: "Add area calculation to polygon features.", phase: "Enrichment", ordinal: 5 },
-  { name: "length", signature: ".length()", description: "Add length calculation to line features.", phase: "Enrichment", ordinal: 5 },
-  // Output shape (phase 6)
-  { name: "fields", signature: ".fields(field1, field2, ...)", description: "Select specific tag fields to include in output.", phase: "Output Shape", ordinal: 6 },
-  { name: "include", signature: ".include(extra1, extra2, ...)", description: "Include additional data (e.g., geometry, metadata).", phase: "Output Shape", ordinal: 6 },
-  { name: "precision", signature: ".precision(digits: number)", description: "Set coordinate precision for output.", phase: "Output Shape", ordinal: 6 },
-  { name: "expand", signature: ".expand(direction: :down | :up)", description: "Expand relations to their members or ways to their nodes.", phase: "Output Shape", ordinal: 6 },
-  // Ordering (phase 7)
-  { name: "sort", signature: ".sort(by: field, order?: :asc | :desc)", description: "Sort results by a field. Use `distance` with prior `.around()`.", phase: "Ordering", ordinal: 7 },
-  { name: "limit", signature: ".limit(n: number)", description: "Limit the number of results.", phase: "Ordering", ordinal: 7 },
-  { name: "offset", signature: ".offset(n: number)", description: "Skip the first n results. Requires `.limit()` first.", phase: "Ordering", ordinal: 7 },
-  // Output mode (phase 8)
-  { name: "count", signature: ".count()", description: "Return only the count of matching features. Result type becomes Scalar.", phase: "Output Mode", ordinal: 8 },
-  { name: "ids", signature: ".ids()", description: "Return only OSM IDs.", phase: "Output Mode", ordinal: 8 },
-  { name: "tags", signature: ".tags()", description: "Return only tags (no geometry).", phase: "Output Mode", ordinal: 8 },
-  { name: "skel", signature: ".skel()", description: "Return skeleton (IDs + minimal geometry).", phase: "Output Mode", ordinal: 8 },
+  // Spatial
+  { name: "within", signature: ".within(geometry: Area | Polygon | Isochrone)", description: "Filter to features fully inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "not_within", signature: ".not_within(geometry: Area | Polygon | Isochrone)", description: "Exclude features inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "around", signature: ".around(distance: number, geometry?: Point | Area)", description: "Filter to features within distance (meters) of a point or geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "bbox", signature: ".bbox(s: number, w: number, n: number, e: number)", description: "Filter to features within a bounding box.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "h3", signature: ".h3(cell: string)", description: "Filter to features within an H3 cell.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "intersects", signature: ".intersects(geometry: Geometry)", description: "Filter to features that intersect the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "not_intersects", signature: ".not_intersects(geometry: Geometry)", description: "Exclude features that intersect the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "contains", signature: ".contains(geometry: Geometry)", description: "Filter to features that contain the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "not_contains", signature: ".not_contains(geometry: Geometry)", description: "Exclude features that contain the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "crosses", signature: ".crosses(geometry: LineString | Route)", description: "Filter to features that cross the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "touches", signature: ".touches(geometry: Geometry)", description: "Filter to features that touch the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  // Tag filter
+  { name: "filter", signature: ".filter(key: value, ...)", description: "Post-search/post-union tag filtering.", phase: "Tag Filter", ordinal: 3.5, group: "freely_orderable" },
+  // Transform
+  { name: "buffer", signature: ".buffer(meters: number)", description: "Expand geometries by a buffer distance.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
+  { name: "simplify", signature: ".simplify(tolerance: number)", description: "Simplify geometries by reducing coordinate precision.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
+  { name: "centroid", signature: ".centroid()", description: "Replace geometries with their centroids. Result type becomes PointSet.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
+  // Enrichment
+  { name: "elevation", signature: ".elevation()", description: "Add elevation data to features.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
+  { name: "distance", signature: ".distance(geometry: Point)", description: "Add distance from a reference point to each feature.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
+  { name: "area", signature: ".area()", description: "Add area calculation to polygon features.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
+  { name: "length", signature: ".length()", description: "Add length calculation to line features.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
+  // Output shape
+  { name: "fields", signature: ".fields(field1, field2, ...)", description: "Select specific tag fields to include in output.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
+  { name: "include", signature: ".include(extra1, extra2, ...)", description: "Include additional data (e.g., geometry, metadata).", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
+  { name: "precision", signature: ".precision(digits: number)", description: "Set coordinate precision for output.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
+  { name: "expand", signature: ".expand(direction: :down | :up)", description: "Expand relations to their members or ways to their nodes.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
+  // Ordering
+  { name: "sort", signature: ".sort(by: field, order?: :asc | :desc)", description: "Sort results by a field. Use `distance` with prior `.around()`.", phase: "Ordering", ordinal: 7, group: "late_chain" },
+  { name: "limit", signature: ".limit(n: number)", description: "Limit the number of results.", phase: "Ordering", ordinal: 7, group: "late_chain" },
+  { name: "offset", signature: ".offset(n: number)", description: "Skip the first n results. Requires `.limit()` first.", phase: "Ordering", ordinal: 7, group: "late_chain" },
+  // Output mode
+  { name: "count", signature: ".count()", description: "Return only the count of matching features. Result type becomes Scalar.", phase: "Output Mode", ordinal: 8, group: "terminal" },
+  { name: "ids", signature: ".ids()", description: "Return only OSM IDs.", phase: "Output Mode", ordinal: 8, group: "terminal" },
+  { name: "tags", signature: ".tags()", description: "Return only tags (no geometry).", phase: "Output Mode", ordinal: 8, group: "terminal" },
+  { name: "skel", signature: ".skel()", description: "Return skeleton (IDs + minimal geometry).", phase: "Output Mode", ordinal: 8, group: "terminal" },
 ];
 
 // ── Common OSM Tag Keys (for completions) ────────────────────────────
@@ -573,7 +579,9 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   route: {
     name: "route",
     params: [
-      { name: "waypoints", type: "Point -> Point -> ...", description: "Route waypoints using arrow syntax" },
+      { name: "origin", type: "Point", description: "Starting point" },
+      { name: "destination", type: "Point", description: "Ending point" },
+      { name: "waypoints", type: "Point[]", optional: true, description: "Intermediate waypoints" },
       { name: "mode", type: "\"auto\" | \"car\" | \"bicycle\" | \"foot\" | \"truck\"", optional: true, description: "Travel mode" },
     ],
     returnType: "Route",
@@ -654,7 +662,8 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   ev_route: {
     name: "ev_route",
     params: [
-      { name: "waypoints", type: "Point -> Point", description: "Route waypoints" },
+      { name: "origin", type: "Point", description: "Starting point" },
+      { name: "destination", type: "Point", description: "Ending point" },
       { name: "battery", type: "number", optional: true, description: "Battery capacity" },
     ],
     returnType: "Route",

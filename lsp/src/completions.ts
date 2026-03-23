@@ -2,7 +2,7 @@
 
 import { parse } from "./parser.js";
 import { typeCheck } from "./type-checker.js";
-import type { PqlType } from "./types.js";
+import type { PqlType, MethodGroup } from "./types.js";
 import {
   METHOD_CATALOG,
   COMMON_TAG_KEYS,
@@ -34,7 +34,7 @@ export function getCompletions(
 
   switch (context.kind) {
     case "dot":
-      return getDotCompletions(source, context.currentType, context.lastPhase);
+      return getDotCompletions(source, context.currentType, context.lastGroup);
     case "dollar":
       return getVariableCompletions(source, line);
     case "dollar_dollar":
@@ -55,7 +55,7 @@ export function getCompletions(
 // ── Context Analysis ─────────────────────────────────────────────────
 
 type AnalyzedContext =
-  | { kind: "dot"; currentType: PqlType | null; lastPhase: number }
+  | { kind: "dot"; currentType: PqlType | null; lastGroup: MethodGroup }
   | { kind: "dollar" }
   | { kind: "dollar_dollar" }
   | { kind: "inside_search" }
@@ -84,9 +84,9 @@ function analyzeContext(source: string, line: number, col: number): AnalyzedCont
 
   // After "."
   if (trimmed.endsWith(".") || /\.\w*$/.test(textUpTo)) {
-    // Try to determine the type and phase of what's before the dot
-    const { type, lastPhase } = inferTypeBeforeDot(source, line, col);
-    return { kind: "dot", currentType: type, lastPhase };
+    // Try to determine the type and group of what's before the dot
+    const { type, lastGroup } = inferTypeBeforeDot(source, line, col);
+    return { kind: "dot", currentType: type, lastGroup };
   }
 
   // After "$"
@@ -131,18 +131,18 @@ function inferTypeBeforeDot(
   source: string,
   _line: number,
   _col: number
-): { type: PqlType | null; lastPhase: number } {
+): { type: PqlType | null; lastGroup: MethodGroup } {
   // Parse the full source and check what types variables have
   const { ast } = parse(source);
-  if (ast.length === 0) return { type: null, lastPhase: 0 };
+  if (ast.length === 0) return { type: null, lastGroup: "source" };
   typeCheck(ast);
 
   // Simple heuristic: default to GeoSet
   // A more accurate implementation would track the exact expression at cursor
   const type: PqlType | null = "GeoSet";
-  const lastPhase = 0;
+  const lastGroup: MethodGroup = "source";
 
-  return { type, lastPhase };
+  return { type, lastGroup };
 }
 
 // ── Completion generators ────────────────────────────────────────────
@@ -150,25 +150,26 @@ function inferTypeBeforeDot(
 function getDotCompletions(
   _source: string,
   currentType: PqlType | null,
-  lastPhase: number
+  lastGroup: MethodGroup
 ): CompletionItem[] {
   const items: CompletionItem[] = [];
 
   for (const m of METHOD_CATALOG) {
-    // Skip methods from phases that are already past
-    if (m.ordinal > 0 && m.ordinal < lastPhase) continue;
+    // Skip methods from groups that are no longer valid
+    if (m.group === "freely_orderable" && lastGroup === "late_chain") continue;
+    if (m.group === "freely_orderable" && lastGroup === "terminal") continue;
+    if (m.group === "late_chain" && lastGroup === "terminal") continue;
 
     // Skip methods incompatible with current type
     if (currentType && !isChainable(currentType)) continue;
-    if (currentType === "PointSet" && m.name === "simplify") continue;
 
     items.push({
       label: m.name,
       kind: "method",
-      detail: `${m.signature} — Phase ${m.ordinal} (${m.phase})`,
+      detail: `${m.signature} — ${m.phase}`,
       documentation: m.description,
       insertText: m.name + (m.name === "centroid" || m.name === "count" || m.name === "ids" || m.name === "tags" || m.name === "skel" ? "()" : "("),
-      sortText: String(m.ordinal).padStart(2, "0") + m.name,
+      sortText: (m.group === "terminal" ? "z" : m.group === "late_chain" ? "y" : "a") + m.name,
     });
   }
 

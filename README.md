@@ -159,18 +159,18 @@ $$ = search(node, amenity: "cafe").limit(10);
 ```
 $$.cafes = search(node, amenity: "cafe").limit(5);
 $$.parks = search(way, leisure: "park").limit(5);
-$$.route = route(point(40.71, -74.00), point(40.75, -73.98));
+$$.route = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98));
 ```
 
 **Named output references** — `$$.name` values can be referenced in later statements, eliminating the need for intermediate variables:
 ```
-$$.route = route(point(40.71, -74.00), point(40.75, -73.98));
+$$.route = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98));
 $$.stops = search(node, amenity: "cafe").around(200, $$.route);
 ```
 
 This is equivalent to the more verbose:
 ```
-$r = route(point(40.71, -74.00), point(40.75, -73.98));
+$r = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98));
 $$.route = $r;
 $$.stops = search(node, amenity: "cafe").around(200, $r);
 ```
@@ -296,7 +296,7 @@ search(nwr, tourism: "museum")             // any element type
 search(amenity: "cafe")                    // same as nwr (all types)
 ```
 
-**Element types:** `node`, `way`, `relation`, `nwr` (all), `nw` (node+way), `nr` (node+relation), `wr` (way+relation)
+**Element types:** `node`, `way`, `relation`, `nwr` (all)
 
 ### `area(name)`
 
@@ -310,19 +310,19 @@ $park = area("Central Park, New York");
 
 Returns an `Area` which can be used as a geometry argument to `.within()`, `.intersects()`, etc.
 
-### `route(points...) / route(from:, to:, mode:)`
+### `route(origin:, destination:, mode:)`
 
 Compute a route between points.
 
 ```
-// Positional — drive by default
-route(point(40.71, -74.00), point(40.75, -73.98))
+// Keyword (preferred)
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98))
 
-// Keyword
-route(from: point(40.71, -74.00), to: point(40.75, -73.98), mode: "walk")
+// With mode
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "walk")
 
 // Multi-waypoint
-route(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98))
+route(origin: point(40.71, -74.00), waypoints: [point(40.73, -73.99)], destination: point(40.75, -73.98))
 ```
 
 **Modes:** `"drive"`, `"walk"`, `"bike"`
@@ -405,12 +405,12 @@ Solve the traveling salesman problem — optimal visit order.
 optimize(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98), mode: "drive")
 ```
 
-### `ev_route(from:, to:, mode:)`
+### `ev_route(origin:, destination:, mode:)`
 
 EV-aware routing with charge stop planning.
 
 ```
-ev_route(from: point(40.71, -74.00), to: point(42.36, -71.06), mode: "drive")
+ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), mode: "drive")
 ```
 
 ### `elevation(point)`
@@ -484,7 +484,6 @@ Methods are chained onto expressions with `.method()` syntax. They are organized
 |--------|-----------|-------------|
 | `.within(geom)` | `GeoSet → GeoSet` | Features inside a geometry |
 | `.around(distance, geom)` | `GeoSet → GeoSet` | Features within distance (meters) of a geometry |
-| `.near(distance, geom)` | `GeoSet → GeoSet` | Like `.around()` but results sorted by distance |
 | `.bbox(s, w, n, e)` | `GeoSet → GeoSet` | Features in bounding box |
 | `.h3(cell)` | `GeoSet → GeoSet` | Features in H3 cell |
 | `.intersects(geom)` | `GeoSet → GeoSet` | Features that intersect a geometry |
@@ -687,7 +686,7 @@ Methods must follow a specific phase order. Methods within the same phase can ap
 ```
 Phase 1: Source        search() | area() | route() | isochrone() | ...
 Phase 2: Set ops       + | -
-Phase 3: Spatial       .within() | .around() | .bbox() | .near() | .h3() |
+Phase 3: Spatial       .within() | .around() | .bbox() | .h3() |
                        .intersects() | .contains() | .crosses() | .touches() |
                        .not_within() | .not_intersects() | .not_contains()
 Phase 3b: Tag filter   .filter()
@@ -844,7 +843,7 @@ tag_filter     = IDENT ":" tag_value ;
 tag_value      = STRING | "!" STRING | "~" STRING | "~i" STRING
                | "!~" STRING | "*" | "!*" ;
 
-element_type   = "node" | "way" | "relation" | "nwr" | "nw" | "nr" | "wr" ;
+element_type   = "node" | "way" | "relation" | "nwr" ;
 
 value          = STRING | NUMBER | BOOL | constructor | variable
                | output_ref | ":" IDENT ;

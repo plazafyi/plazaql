@@ -26,12 +26,11 @@ describe("PlazaQL Type Checker", () => {
     expect(result.errors.some((e) => e.message.includes("cannot follow"))).toBe(true);
   });
 
-  it("rejects spatial after transform", () => {
+  it("accepts spatial after transform (relaxed ordering)", () => {
     const result = check(
-      "$$ =search().buffer(100).within(area(name: \"Berlin\"));"
+      '$$ =search().buffer(100).within(area(name: "Berlin"));'
     );
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some((e) => e.message.includes("cannot follow"))).toBe(true);
+    expect(result.errors).toHaveLength(0);
   });
 
   // ── Type inference for search ──────────────────────────────────
@@ -71,12 +70,11 @@ describe("PlazaQL Type Checker", () => {
     expect(result.errors.some((e) => e.message.includes("requires"))).toBe(true);
   });
 
-  // ── .simplify() not on PointSet ────────────────────────────────
+  // ── .simplify() ────────────────────────────────────────────────
 
-  it("rejects .simplify() on PointSet (search node)", () => {
-    const result = check("$$ =search(node).simplify(100);");
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some((e) => e.message.includes("simplify"))).toBe(true);
+  it("accepts .simplify() on PointSet", () => {
+    const result = check('$$ =search(node, amenity: "cafe").simplify(10);');
+    expect(result.errors).toHaveLength(0);
   });
 
   it("accepts .simplify() on GeoSet", () => {
@@ -86,15 +84,15 @@ describe("PlazaQL Type Checker", () => {
 
   // ── .sort(distance) requires .around() ─────────────────────────
 
-  it("rejects .sort(distance) without .around()", () => {
-    const result = check("$$ =search().sort(distance);");
+  it("rejects .sort(by: :distance) without .around()", () => {
+    const result = check("$$ =search().sort(by: :distance);");
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors.some((e) => e.message.includes("spatial reference"))).toBe(true);
   });
 
-  it("accepts .sort(distance) with .around()", () => {
+  it("accepts .sort(by: :distance) with .around()", () => {
     const result = check(
-      "$$ =search().around(500, point(38.9, -77.0)).sort(distance);"
+      "$$ =search().around(500, point(38.9, -77.0)).sort(by: :distance);"
     );
     expect(result.errors).toHaveLength(0);
   });
@@ -217,7 +215,7 @@ describe("PlazaQL Type Checker", () => {
 
   it("infers Route type for route()", () => {
     const result = check(
-      "$$ =route(point(0, 0) -> point(1, 1));"
+      "$$ =route(origin: point(0, 0), destination: point(1, 1));"
     );
     expect(result.errors).toHaveLength(0);
     expect(result.stmtTypes[0]).toBe("Route");
@@ -276,5 +274,34 @@ describe("PlazaQL Type Checker", () => {
     const result = check("search();\n$$ = search(node);");
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors.some((e) => e.message.includes("only one"))).toBe(true);
+  });
+
+  // ── Relaxed ordering tests ──────────────────────────────────────
+
+  it("accepts filter after transform (relaxed ordering)", () => {
+    const result = check('$$ =search(node, amenity: "cafe").buffer(50).filter(cuisine: "italian");');
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("accepts enrichment before transform (relaxed ordering)", () => {
+    const result = check('$$ =search(node, amenity: "cafe").elevation().buffer(50);');
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("rejects spatial after ordering", () => {
+    const result = check('$$ =search().limit(10).within(area(name: "Berlin"));');
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.message.includes("cannot follow"))).toBe(true);
+  });
+
+  it("rejects anything after output mode", () => {
+    const result = check('$$ =search(node, amenity: "cafe").count().limit(10);');
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.message.includes("cannot follow"))).toBe(true);
+  });
+
+  it("accepts centroid then simplify (relaxed type restriction)", () => {
+    const result = check('$$ =search(way, building: "yes").centroid().simplify(10);');
+    expect(result.errors).toHaveLength(0);
   });
 });

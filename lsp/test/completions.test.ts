@@ -13,9 +13,9 @@ describe("PlazaQL Completions", () => {
     expect(items.some((i) => i.label === "count")).toBe(true);
   });
 
-  // ── After "." after phase 4 method → only phase 5+ ────────────
+  // ── After "." — suggests valid methods ────────────────────────
 
-  it("suggests all valid methods (initial state has no phase restriction)", () => {
+  it("suggests all valid methods (initial state has no group restriction)", () => {
     const items = getCompletions("$$ =search().buffer(100).", 1, 27);
     // Should still show methods (since our heuristic defaults to lastPhase=0)
     expect(items.length).toBeGreaterThan(0);
@@ -83,13 +83,13 @@ describe("PlazaQL Completions", () => {
     expect(pVar?.detail).toContain("Point");
   });
 
-  // ── Methods have phase info ────────────────────────────────────
+  // ── Methods have category info ──────────────────────────────────
 
-  it("method completions include phase info", () => {
+  it("method completions include category info", () => {
     const items = getCompletions("$$ =search().", 1, 16);
     const within = items.find((i) => i.label === "within");
     expect(within).toBeDefined();
-    expect(within?.detail).toContain("Phase");
+    expect(within?.detail).toContain("Spatial");
   });
 
   // ── Empty source ───────────────────────────────────────────────

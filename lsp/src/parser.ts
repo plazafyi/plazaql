@@ -22,7 +22,6 @@ import type {
   ComputationNode,
   AreaNode,
   ChainNode,
-  ArrowChainNode,
   UnionNode,
   DifferenceNode,
   ListNode,
@@ -64,7 +63,7 @@ const COMPUTATION_NAMES = new Set([
   "nearest",
 ]);
 
-const ELEMENT_TYPES = new Set(["node", "way", "relation", "nwr", "nw", "nr", "wr"]);
+const ELEMENT_TYPES = new Set(["node", "way", "relation", "nwr"]);
 
 const _METHOD_ATOMS = new Set([
   "around",
@@ -84,7 +83,6 @@ const _METHOD_ATOMS = new Set([
   "include",
   "intersects",
   "limit",
-  "near",
   "not_contains",
   "not_intersects",
   "not_within",
@@ -366,7 +364,7 @@ class Parser {
   }
 
   private parseSetExpr(): Expr | null {
-    let left = this.parseArrowOrChain();
+    let left = this.parseChainExpr();
     if (!left) return null;
 
     while (!this.eof()) {
@@ -375,7 +373,7 @@ class Parser {
         const pos = left.pos;
         this.advance();
         this.skipWs();
-        const right = this.parseArrowOrChain();
+        const right = this.parseChainExpr();
         if (!right) {
           this.addError("expected expression after '+'");
           break;
@@ -389,7 +387,7 @@ class Parser {
         const next = this.peek();
         if (isIdentStart(next) || next === "$" || next === "(") {
           const pos = left.pos;
-          const right = this.parseArrowOrChain();
+          const right = this.parseChainExpr();
           if (!right) {
             this.addError("expected expression after '-'");
             break;
@@ -404,32 +402,6 @@ class Parser {
       }
     }
     return left;
-  }
-
-  private parseArrowOrChain(): Expr | null {
-    const first = this.parseChainExpr();
-    if (!first) return null;
-
-    const items: Expr[] = [first];
-    while (!this.eof()) {
-      this.skipWs();
-      if (this.peekStr(2) === "->") {
-        this.advance();
-        this.advance();
-        this.skipWs();
-        const next = this.parseChainExpr();
-        if (!next) {
-          this.addError("expected expression after '->'");
-          break;
-        }
-        items.push(next);
-      } else {
-        break;
-      }
-    }
-
-    if (items.length === 1) return items[0]!;
-    return { kind: "arrow_chain", items, pos: first.pos } as ArrowChainNode;
   }
 
   private parseChainExpr(): Expr | null {

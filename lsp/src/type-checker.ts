@@ -14,12 +14,14 @@ import type {
 import {
   searchBaseType,
   computationType,
-  methodPhase,
   isOutputMode,
   methodOutputType,
   validSpatialArgTypes,
   unionType,
+  methodGroup,
+  methodCategory,
 } from "./types.js";
+import type { MethodGroup } from "./types.js";
 
 // ── Diagnostic ───────────────────────────────────────────────────────
 
@@ -282,11 +284,6 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
       };
     }
 
-    case "arrow_chain": {
-      const itemErrors = expr.items.flatMap((item) => checkExpr(item, scope, outputScope).errors);
-      return { type: "Point", errors: itemErrors };
-    }
-
     case "list": {
       const itemErrors = expr.items.flatMap((item) => checkExpr(item, scope, outputScope).errors);
       return { type: "Scalar", errors: itemErrors };
@@ -333,9 +330,15 @@ function flattenChain(node: Expr): { base: Expr; methods: MethodNode[] } {
 
 // ── Method chain validation ──────────────────────────────────────────
 
+const GROUP_RANK: Record<MethodGroup, number> = {
+  source: 0,
+  freely_orderable: 1,
+  late_chain: 2,
+  terminal: 3,
+};
+
 interface ChainContext {
-  lastPhase: number;
-  lastPhaseName: string;
+  lastGroup: MethodGroup;
   lastMethodName: string | null;
   hasAround: boolean;
   hasLimit: boolean;
@@ -350,8 +353,7 @@ function checkMethodChain(
   outputScope: Scope
 ): { finalType: PqlType; errors: TypeCheckError[] } {
   const ctx: ChainContext = {
-    lastPhase: 0,
-    lastPhaseName: "source",
+    lastGroup: "source" as MethodGroup,
     lastMethodName: null,
     hasAround: false,
     hasLimit: false,
@@ -375,16 +377,25 @@ function checkMethod(
   scope: Scope,
   outputScope: Scope
 ): TypeCheckError[] {
-  const { ordinal: phaseNum, label: phaseName } = methodPhase(method.name);
+  const group = methodGroup(method.name);
+  const category = methodCategory(method.name);
   const errors: TypeCheckError[] = [];
 
-  // 1. Phase ordering
-  if (phaseNum > 0 && phaseNum < ctx.lastPhase) {
+  // 1. Group ordering
+  if (ctx.lastGroup === "terminal") {
     errors.push({
       line: method.pos.line,
       col: method.pos.col,
-      message: `\`.${method.name}()\` is ${phaseName} — cannot follow \`.${ctx.lastMethodName}()\` which is ${ctx.lastPhaseName}`,
-      hint: `reorder methods so that ${phaseName} comes before ${ctx.lastPhaseName}`,
+      message: `\`.${method.name}()\` cannot follow \`.${ctx.lastMethodName}()\` — output modes must be last in the chain`,
+      hint: `move \`.${method.name}()\` before the output mode`,
+      severity: "error",
+    });
+  } else if (group === "freely_orderable" && ctx.lastGroup === "late_chain") {
+    errors.push({
+      line: method.pos.line,
+      col: method.pos.col,
+      message: `\`.${method.name}()\` (${category}) cannot follow \`.${ctx.lastMethodName}()\` (ordering) — ordering methods must come after all other methods`,
+      hint: `move \`.${method.name}()\` before \`.${ctx.lastMethodName}()\``,
       severity: "error",
     });
   }
@@ -426,12 +437,11 @@ function checkMethod(
   errors.push(...checkContextual(method.name, method.args, ctx, method.pos));
 
   // Update context
-  if (phaseNum >= ctx.lastPhase) {
-    ctx.lastPhase = phaseNum;
-    ctx.lastPhaseName = phaseName;
+  if (GROUP_RANK[group] > GROUP_RANK[ctx.lastGroup]) {
+    ctx.lastGroup = group;
   }
   ctx.lastMethodName = method.name;
-  if (method.name === "around" || method.name === "near") ctx.hasAround = true;
+  if (method.name === "around") ctx.hasAround = true;
   if (method.name === "limit") ctx.hasLimit = true;
   if (isOutputMode(method.name)) ctx.outputModeCount++;
 
@@ -440,9 +450,7 @@ function checkMethod(
 
 // ── Method compatibility hints ───────────────────────────────────────
 
-function simplifyHint(method: string, inputType: PqlType): string | undefined {
-  if (method === "simplify" && inputType === "PointSet")
-    return "remove `.simplify()`, or search for `way` or `relation` types";
+function simplifyHint(_method: string, _inputType: PqlType): string | undefined {
   return undefined;
 }
 
@@ -452,7 +460,6 @@ const SPATIAL_WITH_GEOMETRY = new Set([
   "within",
   "not_within",
   "around",
-  "near",
   "intersects",
   "not_intersects",
   "contains",
@@ -584,7 +591,7 @@ function checkContextual(
         line: pos.line,
         col: pos.col,
         message: "`.sort(distance)` requires a spatial reference point",
-        hint: "use `.around(...)` or `.near(...)` before `.sort(distance)`, or sort by `name` or `osm_id`",
+        hint: "use `.around(...)` before `.sort(by: :distance)`, or sort by `name` or `osm_id`",
         severity: "error",
       },
     ];
@@ -607,11 +614,7 @@ function checkContextual(
 
 function sortByDistance(args: Arg[]): boolean {
   return args.some((arg) => {
-    if (arg.type === "posarg" && arg.value.kind === "identifier" && arg.value.name === "distance")
-      return true;
     if (arg.type === "kwarg" && arg.name === "by" && arg.value.kind === "identifier" && arg.value.name === "distance")
-      return true;
-    if (arg.type === "posarg" && arg.value.kind === "atom" && arg.value.value === "distance")
       return true;
     if (arg.type === "kwarg" && arg.name === "by" && arg.value.kind === "atom" && arg.value.value === "distance")
       return true;

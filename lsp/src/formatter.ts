@@ -79,8 +79,6 @@ function formatExpr(expr: Expr): string {
       return `${expr.kind}(${expr.items.map(formatExpr).join(", ")})`;
     case "list":
       return `[${expr.items.map(formatExpr).join(", ")}]`;
-    case "arrow_chain":
-      return expr.items.map(formatExpr).join(" -> ");
     case "union":
       return `${formatExpr(expr.left)} + ${formatExpr(expr.right)}`;
     case "difference":
@@ -99,6 +97,10 @@ function formatExpr(expr: Expr): string {
       return expr.name ? `$$.${expr.name}` : "$$";
     case "identifier":
       return expr.name;
+    default: {
+      const _exhaustive: never = expr;
+      return String(_exhaustive);
+    }
   }
 }
 

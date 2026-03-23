@@ -64,7 +64,7 @@ export function getHover(
       contents: [
         `${methodInfo.signature} → same type`,
         `  ${methodInfo.description}`,
-        `  Phase ${methodInfo.ordinal} (${methodInfo.phase})`,
+        `  ${methodInfo.phase}`,
       ].join("\n"),
     };
   }
@@ -89,9 +89,6 @@ export function getHover(
     way: "OSM Way — an ordered list of nodes forming a line or polygon. Examples: roads, buildings, rivers.",
     relation: "OSM Relation — a group of nodes/ways with roles. Examples: bus routes, admin boundaries.",
     nwr: "Any element type (node, way, or relation).",
-    nw: "Node or Way.",
-    nr: "Node or Relation.",
-    wr: "Way or Relation.",
   };
 
   const elemDesc = elementDescriptions[token];
