@@ -493,6 +493,8 @@ Methods are chained onto expressions with `.method()` syntax. They are organized
 | `.not_within(geom)` | `GeoSet → GeoSet` | Features NOT inside a geometry |
 | `.not_intersects(geom)` | `GeoSet → GeoSet` | Features NOT intersecting a geometry |
 | `.not_contains(geom)` | `GeoSet → GeoSet` | Features NOT containing a geometry |
+| `.member_of(source, role?)` | `GeoSet → GeoSet` | Features that are members of the source set |
+| `.has_member(source, role?)` | `GeoSet → GeoSet` | Features that contain source elements as members |
 
 ```
 search(node, amenity: "cafe")
@@ -580,6 +582,66 @@ search(node, shop: *).ids();
 ```
 
 Only one output mode per chain. These are terminal — no further chaining allowed.
+
+### Structural Joins (Phase 3)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `.member_of(source, role?)` | `GeoSet → GeoSet` | Features that are members of the source set |
+| `.has_member(source, role?)` | `GeoSet → GeoSet` | Features that contain the source elements as members |
+
+Structural joins let you traverse OSM relationships — relations contain members (ways, nodes, other relations), and ways contain nodes. `.member_of()` finds elements that belong to a source, while `.has_member()` finds containers of a source.
+
+```
+// Bus stops on route 42
+$route = search(relation, route: "bus", ref: "42");
+search(node, highway: "bus_stop").member_of($route);
+
+// With role filter
+search(node, highway: "bus_stop").member_of($route, role: "stop");
+
+// Reverse: find routes containing these stops
+$stops = search(node, highway: "bus_stop").bbox(40.7, -74.0, 40.8, -73.9);
+search(relation, route: "bus").has_member($stops);
+```
+
+### Narrowing (Phase 7b)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `.first()` | `GeoSet → GeoElement` | First element of the set |
+| `.last()` | `GeoSet → GeoElement` | Last element of the set |
+| `.index(n)` | `GeoSet → GeoElement` | Nth element (1-indexed) |
+
+Narrowing methods reduce a set to a single element. Useful for picking a specific result to use in subsequent expressions.
+
+```
+// Nearest cafe
+$nearest = search(node, amenity: "cafe")
+  .around(distance: 1000, lat: 40.75, lng: -73.99).first();
+
+// Third result
+$third = search(node, amenity: "cafe")
+  .around(distance: 1000, lat: 40.75, lng: -73.99).index(3);
+```
+
+### Attribute Access (`$var[attr]`)
+
+Extract tag values from variables using bracket notation. The behavior depends on the source type:
+
+- **GeoElement** (single element, e.g. from `.first()`): `$var[attr]` returns a scalar value, usable with `=` equality.
+- **GeoSet** (multiple elements): `$var[attr]` returns a value set, matched with `ANY` semantics.
+
+```
+// Scalar: find stops with the same ref as the nearest stop
+$stop = search(node, highway: "bus_stop")
+  .around(distance: 500, lat: 40.75, lng: -73.99).first();
+search(node, highway: "bus_stop", ref: $stop[ref]);
+
+// Value set: find routes matching any ref from a set of stops
+$stops = search(node, highway: "bus_stop").bbox(40.7, -74.0, 40.8, -73.9);
+search(relation, route: "bus", ref: $stops[ref]);
+```
 
 ### Recursion
 
@@ -688,12 +750,14 @@ Phase 1: Source        search() | area() | route() | isochrone() | ...
 Phase 2: Set ops       + | -
 Phase 3: Spatial       .within() | .around() | .bbox() | .h3() |
                        .intersects() | .contains() | .crosses() | .touches() |
-                       .not_within() | .not_intersects() | .not_contains()
+                       .not_within() | .not_intersects() | .not_contains() |
+                       .member_of() | .has_member()
 Phase 3b: Tag filter   .filter()
 Phase 4: Transforms    .buffer() | .simplify() | .centroid()
 Phase 5: Enrichments   .elevation() | .distance() | .area() | .length()
 Phase 6: Output shape  .fields() | .include() | .precision()
 Phase 7: Ordering      .sort() | .limit() | .offset()
+Phase 7b: Narrowing    .first() | .last() | .index()
 Phase 8: Output mode   .count() | .ids() | .tags() | .skel()
 ```
 
@@ -846,8 +910,9 @@ tag_value      = STRING | "!" STRING | "~" STRING | "~i" STRING
 element_type   = "node" | "way" | "relation" | "nwr" ;
 
 value          = STRING | NUMBER | BOOL | constructor | variable
-               | output_ref | ":" IDENT ;
+               | attr_access | output_ref | ":" IDENT ;
 variable       = "$" IDENT ;
+attr_access    = variable "[" IDENT "]" ;
 output_ref     = "$$." IDENT ;
 
 STRING         = '"' ( ~["\\\n] | '\\' . )* '"' ;

@@ -9,6 +9,7 @@
     { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#constants" },
+    { "include": "#attribute-access" },
     { "include": "#variables" },
     { "include": "#output-assignment" },
     { "include": "#element-types" },
@@ -102,6 +103,19 @@
         }
       ]
     },
+    "attribute-access": {
+      "patterns": [
+        {
+          "match": "(\\$[a-zA-Z_][a-zA-Z0-9_]*)(\\[)([a-zA-Z_][a-zA-Z0-9_:]*)(\\])",
+          "captures": {
+            "1": { "name": "variable.other.plazaql" },
+            "2": { "name": "punctuation.bracket.open.plazaql" },
+            "3": { "name": "entity.name.tag.attribute.plazaql" },
+            "4": { "name": "punctuation.bracket.close.plazaql" }
+          }
+        }
+      ]
+    },
     "variables": {
       "patterns": [
         {
@@ -155,7 +169,7 @@
     "methods": {
       "patterns": [
         {
-          "match": "\\.\\s*(within|around|intersects|contains|crosses|touches|not_within|not_intersects|not_contains|buffer|simplify|centroid|precision|fields|include|sort|limit|offset|count|ids|tags|skel|elevation|distance|area|length|expand|h3|filter|bbox)\\s*(?=\\(|;|$)",
+          "match": "\\.\\s*(within|around|intersects|contains|crosses|touches|not_within|not_intersects|not_contains|buffer|simplify|centroid|precision|fields|include|sort|limit|offset|count|ids|tags|skel|elevation|distance|area|length|expand|h3|filter|bbox|member_of|has_member|first|last|index)\\s*(?=\\(|;|$)",
           "captures": {
             "1": { "name": "entity.name.function.method.plazaql" }
           }

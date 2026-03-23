@@ -1,0 +1,43 @@
+// PlazaQL Joins — structural and attribute-based relationships
+
+// ── Structural Joins ────────────────────────────────────────
+
+// Bus stops on route 42 (inline expression)
+$$ = search(node, highway: "bus_stop")
+  .member_of(search(relation, route: "bus", ref: "42"), role: "stop");
+
+// Using variables for multi-step joins
+$route = search(relation, route: "bus", ref: "42");
+$$ = search(node, highway: "bus_stop").member_of($route);
+
+// Reverse: find relations containing these stops
+$stops = search(node, highway: "bus_stop").bbox(40.7, -74.0, 40.8, -73.9);
+$$ = search(relation, route: "bus").has_member($stops);
+
+// ── Narrowing (set → element) ───────────────────────────────
+
+// Nearest cafe
+$nearest = search(node, amenity: "cafe")
+  .around(distance: 1000, lat: 40.75, lng: -73.99).first();
+
+// Third-nearest
+$third = search(node, amenity: "cafe")
+  .around(distance: 1000, lat: 40.75, lng: -73.99).index(3);
+
+// ── Attribute Access ($var[attr]) ───────────────────────────
+
+// Single element → scalar (exact match with =)
+$stop = search(node, highway: "bus_stop")
+  .around(distance: 500, lat: 40.75, lng: -73.99).first();
+$$ = search(node, highway: "bus_stop", ref: $stop[ref]);
+
+// Set → value_set (multi-value match with ANY)
+$stops = search(node, highway: "bus_stop").bbox(40.7, -74.0, 40.8, -73.9);
+$$ = search(relation, route: "bus", ref: $stops[ref]);
+
+// ── Complex: Subway Transfer Map ────────────────────────────
+
+$my_stop = search(node, railway: "station")
+  .around(distance: 500, lat: 40.75, lng: -73.99).first();
+$lines = search(relation, route: "subway").has_member($my_stop);
+$$ = search(node, railway: "station").member_of($lines);

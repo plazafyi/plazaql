@@ -294,12 +294,15 @@ const SPATIAL_METHODS = [
   "not_contains",
   "crosses",
   "touches",
+  "member_of",
+  "has_member",
 ];
 const TRANSFORM_METHODS = ["buffer", "simplify", "centroid"];
 const ENRICHMENT_METHODS = ["elevation", "distance", "area", "length"];
 const OUTPUT_SHAPE_METHODS = ["fields", "include", "precision", "expand"];
 const ORDERING_METHODS = ["sort", "limit", "offset"];
 const OUTPUT_MODE_METHODS = ["count", "ids", "tags", "skel"];
+const NARROWING_METHODS = ["first", "last", "index"];
 
 export const ALL_METHODS = [
   ...SPATIAL_METHODS,
@@ -309,6 +312,7 @@ export const ALL_METHODS = [
   ...OUTPUT_SHAPE_METHODS,
   ...ORDERING_METHODS,
   ...OUTPUT_MODE_METHODS,
+  ...NARROWING_METHODS,
 ];
 
 export function methodPhase(method: string): MethodPhase {
@@ -326,6 +330,8 @@ export function methodPhase(method: string): MethodPhase {
     return { ordinal: 7, label: "ordering (phase 7)" };
   if (OUTPUT_MODE_METHODS.includes(method))
     return { ordinal: 8, label: "output mode (phase 8)" };
+  if (NARROWING_METHODS.includes(method))
+    return { ordinal: 7.5, label: "narrowing (phase 7b)" };
   return { ordinal: 0, label: "unknown" };
 }
 
@@ -333,6 +339,7 @@ export type MethodGroup = "source" | "freely_orderable" | "late_chain" | "termin
 
 export function methodGroup(method: string): MethodGroup {
   if (ORDERING_METHODS.includes(method)) return "late_chain";
+  if (NARROWING_METHODS.includes(method)) return "late_chain";
   if (OUTPUT_MODE_METHODS.includes(method)) return "terminal";
   return "freely_orderable";
 }
@@ -345,6 +352,7 @@ export function methodCategory(method: string): string {
   if (OUTPUT_SHAPE_METHODS.includes(method)) return "output shape";
   if (ORDERING_METHODS.includes(method)) return "ordering";
   if (OUTPUT_MODE_METHODS.includes(method)) return "output mode";
+  if (NARROWING_METHODS.includes(method)) return "narrowing";
   return "unknown";
 }
 
@@ -470,6 +478,13 @@ export const METHOD_CATALOG: MethodInfo[] = [
   { name: "ids", signature: ".ids()", description: "Return only OSM IDs.", phase: "Output Mode", ordinal: 8, group: "terminal" },
   { name: "tags", signature: ".tags()", description: "Return only tags (no geometry).", phase: "Output Mode", ordinal: 8, group: "terminal" },
   { name: "skel", signature: ".skel()", description: "Return skeleton (IDs + minimal geometry).", phase: "Output Mode", ordinal: 8, group: "terminal" },
+  // Structural joins
+  { name: "member_of", signature: ".member_of(source, role?: string)", description: "Filter to elements that are members of the source set. Works with OSM relations and ways.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "has_member", signature: ".has_member(source, role?: string)", description: "Filter to elements that contain the source elements as members. Reverse of .member_of().", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  // Narrowing
+  { name: "first", signature: ".first()", description: "Narrow set to its first element. Transforms GeoSet to GeoElement.", phase: "Narrowing", ordinal: 7.5, group: "late_chain" },
+  { name: "last", signature: ".last()", description: "Narrow set to its last element. Transforms GeoSet to GeoElement.", phase: "Narrowing", ordinal: 7.5, group: "late_chain" },
+  { name: "index", signature: ".index(n: number)", description: "Narrow set to its nth element (1-indexed). Transforms GeoSet to GeoElement.", phase: "Narrowing", ordinal: 7.5, group: "late_chain" },
 ];
 
 // ── Common OSM Tag Keys (for completions) ────────────────────────────
