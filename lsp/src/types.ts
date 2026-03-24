@@ -323,7 +323,7 @@ export function methodPhase(method: string): MethodPhase {
   if (TRANSFORM_METHODS.includes(method))
     return { ordinal: 4, label: "transform (phase 4)" };
   if (COMPUTED_METHODS.includes(method))
-    return { ordinal: 5, label: "enrichment (phase 5)" };
+    return { ordinal: 5, label: "computed (phase 5)" };
   if (OUTPUT_SHAPE_METHODS.includes(method))
     return { ordinal: 6, label: "output shape (phase 6)" };
   if (ORDERING_METHODS.includes(method))
@@ -348,7 +348,7 @@ export function methodCategory(method: string): string {
   if (SPATIAL_METHODS.includes(method)) return "spatial";
   if (method === "filter") return "filter";
   if (TRANSFORM_METHODS.includes(method)) return "transform";
-  if (COMPUTED_METHODS.includes(method)) return "enrichment";
+  if (COMPUTED_METHODS.includes(method)) return "computed";
   if (OUTPUT_SHAPE_METHODS.includes(method)) return "output shape";
   if (ORDERING_METHODS.includes(method)) return "ordering";
   if (OUTPUT_MODE_METHODS.includes(method)) return "output mode";

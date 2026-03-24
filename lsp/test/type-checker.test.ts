@@ -282,7 +282,7 @@ describe("PlazaQL Type Checker", () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it("accepts enrichment before transform (relaxed ordering)", () => {
+  it("accepts computed method before transform (relaxed ordering)", () => {
     const result = check('$$ =search(node, amenity: "cafe").elevation().buffer(50);');
     expect(result.errors).toHaveLength(0);
   });

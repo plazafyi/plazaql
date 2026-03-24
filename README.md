@@ -546,7 +546,7 @@ search(way, boundary: *).simplify(1000);     // simplify to 1km tolerance
 search(way, building: "yes").centroid();      // building center points
 ```
 
-### Enrichments (Phase 5)
+### Computed Columns (Phase 5)
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
