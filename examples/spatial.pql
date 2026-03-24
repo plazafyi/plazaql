@@ -9,12 +9,12 @@ search(node, amenity: "restaurant")
   .bbox(40.70, -74.02, 40.75, -73.97);
 
 // Search within an admin area
-$manhattan = area(name: "Manhattan, New York");
+$manhattan = boundary(name: "Manhattan, New York");
 search(node, amenity: "bar")
   .within($manhattan);
 
 // NOT within — exclude an area
-$central_park = area(name: "Central Park, New York");
+$central_park = boundary(name: "Central Park, New York");
 search(node, amenity: "bench")
   .within($manhattan)
   .not_within($central_park);
@@ -54,11 +54,11 @@ search(node, amenity: "cafe")
 // Around — find features within distance of a point
 search(node, amenity: "pharmacy")
   .around(1000, point(48.8566, 2.3522))
-  .sort(by: :distance)
+  .sort(distance(point(48.8566, 2.3522)))
   .limit(5);
 
 // Combine spatial filters — within area AND near a point
-$paris = area(name: "Paris, France");
+$paris = boundary(name: "Paris, France");
 search(node, amenity: "restaurant", cuisine: "french")
   .within($paris)
   .around(200, point(48.8566, 2.3522))

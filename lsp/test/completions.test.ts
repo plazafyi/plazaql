@@ -387,11 +387,43 @@ describe("PlazaQL Completions", () => {
       expect(items.some((i) => i.label === '"foot"')).toBe(true);
     });
 
-    it("suggests sort-by values for .sort(by: )", () => {
+    it("suggests expression functions for .sort(by: )", () => {
       const items = getCompletions("$$ = search().sort(by: ", 1, 24);
-      expect(items.some((i) => i.label === ":distance")).toBe(true);
-      expect(items.some((i) => i.label === ":name")).toBe(true);
-      expect(items.some((i) => i.label === ":osm_id")).toBe(true);
+      expect(items.some((i) => i.label === 't["')).toBe(true);
+      expect(items.some((i) => i.label === "distance(")).toBe(true);
+      expect(items.some((i) => i.label === "area()")).toBe(true);
+      expect(items.some((i) => i.label === "length()")).toBe(true);
+      expect(items.some((i) => i.label === "elevation()")).toBe(true);
+      expect(items.some((i) => i.label === "number(")).toBe(true);
+      expect(items.some((i) => i.label === "id()")).toBe(true);
+    });
+
+    it("suggests expression functions for .sort(", () => {
+      const items = getCompletions("$$ = search().sort(", 1, 20);
+      expect(items.some((i) => i.label === 't["')).toBe(true);
+      expect(items.some((i) => i.label === "distance(")).toBe(true);
+      expect(items.some((i) => i.label === "area()")).toBe(true);
+      expect(items.some((i) => i.label === "elevation()")).toBe(true);
+      expect(items.some((i) => i.label === "id()")).toBe(true);
+    });
+
+    it("suggests by: and order: params for .sort(", () => {
+      const items = getCompletions("$$ = search().sort(", 1, 20);
+      expect(items.some((i) => i.label === "by" && i.kind === "param")).toBe(true);
+      expect(items.some((i) => i.label === "order" && i.kind === "param")).toBe(true);
+    });
+
+    it("suggests :asc and :desc for .sort(..., order: )", () => {
+      const items = getCompletions("$$ = search().sort(distance(), order: ", 1, 38);
+      expect(items.some((i) => i.label === ":asc")).toBe(true);
+      expect(items.some((i) => i.label === ":desc")).toBe(true);
+    });
+
+    it("does not suggest old atom sort values", () => {
+      const items = getCompletions("$$ = search().sort(", 1, 20);
+      expect(items.some((i) => i.label === ":distance")).toBe(false);
+      expect(items.some((i) => i.label === ":name")).toBe(false);
+      expect(items.some((i) => i.label === ":osm_id")).toBe(false);
     });
 
     it("suggests expand direction values for .expand(direction: )", () => {
@@ -426,7 +458,7 @@ describe("PlazaQL Completions", () => {
       const items = getCompletions("", 1, 1);
       const labels = items.map((i) => i.label);
       expect(labels).toContain("search");
-      expect(labels).toContain("area");
+      expect(labels).toContain("boundary");
       expect(labels).toContain("route");
       expect(labels).toContain("isochrone");
       expect(labels).toContain("geocode");
@@ -467,16 +499,16 @@ describe("PlazaQL Completions", () => {
 
   describe("Variable completions", () => {
     it("suggests defined variables after $", () => {
-      const source = '$berlin = area(name: "Berlin");\n$$ = $';
+      const source = '$berlin = boundary(name: "Berlin");\n$$ = $';
       const items = getCompletions(source, 2, 7);
       expect(items.some((i) => i.label === "$berlin")).toBe(true);
     });
 
     it("includes type info in detail", () => {
-      const source = '$berlin = area(name: "Berlin");\n$$ = $';
+      const source = '$berlin = boundary(name: "Berlin");\n$$ = $';
       const items = getCompletions(source, 2, 7);
       const berlin = items.find((i) => i.label === "$berlin");
-      expect(berlin?.detail).toContain("Area");
+      expect(berlin?.detail).toContain("Boundary");
     });
 
     it("includes definition line in documentation", () => {

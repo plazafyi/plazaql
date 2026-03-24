@@ -30,6 +30,7 @@ import { getSignatureHelp } from "./signatures.js";
 import { parse } from "./parser.js";
 import { typeCheck } from "./type-checker.js";
 import { formatDocument } from "./formatter.js";
+import { DIAGNOSTIC_DEBOUNCE_MS } from "./constants.js";
 
 // ── Connection ───────────────────────────────────────────────────────
 
@@ -39,7 +40,6 @@ const documents = new TextDocuments(TextDocument);
 // ── Debounce state ───────────────────────────────────────────────────
 
 const diagnosticTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const DEBOUNCE_MS = 150;
 
 // ── Semantic token types ─────────────────────────────────────────────
 
@@ -102,7 +102,7 @@ documents.onDidChangeContent((change) => {
     setTimeout(() => {
       publishDiagnostics(change.document);
       diagnosticTimers.delete(uri);
-    }, DEBOUNCE_MS)
+    }, DIAGNOSTIC_DEBOUNCE_MS)
   );
 });
 

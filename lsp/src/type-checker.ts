@@ -200,8 +200,8 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
       return { type: finalType, errors };
     }
 
-    case "area":
-      return { type: "Area", errors: [] };
+    case "boundary":
+      return { type: "Boundary", errors: [] };
 
     case "computation": {
       const type = computationType(expr.name);
@@ -519,7 +519,7 @@ const ARG_TYPE_BY_KIND: Partial<Record<Expr["kind"], PqlType>> = {
   polygon: "Polygon",
   bbox: "Polygon",
   circle: "Polygon",
-  area: "Area",
+  boundary: "Boundary",
 };
 
 function inferArgType(expr: Expr, scope: Scope, outputScope: Scope): PqlType | null {
@@ -541,7 +541,7 @@ function spatialHint(method: string, argType: PqlType): string | undefined {
   if (method === "within" && argType === "Route")
     return "use `.around(distance: 200, geometry: $var)` to search near the route";
   if (method === "within")
-    return "use an `area()`, `polygon()`, or `isochrone()` variable";
+    return "use a `boundary()`, `polygon()`, or `isochrone()` variable";
   if (method === "crosses")
     return "`.crosses()` requires a LineString or Route geometry";
   return undefined;
@@ -586,18 +586,6 @@ function checkContextual(
   ctx: ChainContext,
   pos: Pos
 ): TypeCheckError[] {
-  if (methodName === "sort" && isArgArray(args) && sortByDistance(args) && !ctx.hasAround) {
-    return [
-      {
-        line: pos.line,
-        col: pos.col,
-        message: "`.sort(distance)` requires a spatial reference point",
-        hint: "use `.around(...)` before `.sort(by: :distance)`, or sort by `name` or `osm_id`",
-        severity: "error",
-      },
-    ];
-  }
-
   if (methodName === "offset" && !ctx.hasLimit) {
     return [
       {
@@ -611,21 +599,6 @@ function checkContextual(
   }
 
   return [];
-}
-
-function sortByDistance(args: Arg[]): boolean {
-  return args.some((arg) => {
-    // Keyword form: .sort(by: :distance) or .sort(by: distance) or .sort(by: "distance")
-    if (arg.type === "kwarg" && arg.name === "by") {
-      if (arg.value.kind === "identifier" && arg.value.name === "distance") return true;
-      if (arg.value.kind === "atom" && arg.value.value === "distance") return true;
-      if (arg.value.kind === "string" && arg.value.value === "distance") return true;
-    }
-    // Positional form: .sort("distance")
-    if (arg.type === "posarg" && arg.value.kind === "string" && arg.value.value === "distance")
-      return true;
-    return false;
-  });
 }
 
 // ── Type guard ───────────────────────────────────────────────────────
@@ -718,7 +691,7 @@ function walkMethodsUpToCursor(
 const SOURCE_STATE = { lastGroup: "source" as MethodGroup, lastOrdinal: 0 };
 
 const CHAIN_STATE_BY_KIND: Partial<Record<Expr["kind"], PqlType>> = {
-  area: "Area",
+  boundary: "Boundary",
   point: "Point",
   bbox: "Polygon",
   polygon: "Polygon",

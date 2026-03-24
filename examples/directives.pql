@@ -3,7 +3,7 @@
 // ── Spatial Directives ────────────────────────────────────────
 
 // Scope all queries to Berlin
-#within(geometry: area(name: "Berlin"));
+#within(geometry: boundary(name: "Berlin"));
 
 // Every search below is automatically filtered to Berlin
 $$.cafes = search(node, amenity: "cafe").limit(10);
@@ -39,7 +39,7 @@ $$.hospitals = search(node, amenity: "hospital");
 // Directives accumulate — each new one adds a constraint (AND semantics).
 // This query scopes to Paris, requires wheelchair access, and limits to 10.
 
-#within(geometry: area(name: "Paris"));
+#within(geometry: boundary(name: "Paris"));
 #filter(wheelchair: "yes");
 #limit(count: 10);
 

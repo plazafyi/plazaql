@@ -162,13 +162,13 @@ describe("PlazaQL Parser", () => {
   // ── Variable assignment ────────────────────────────────────────
 
   it("parses variable assignment", () => {
-    const { ast, errors } = parse('$berlin = area(name: "Berlin");');
+    const { ast, errors } = parse('$berlin = boundary(name: "Berlin");');
     expect(errors).toHaveLength(0);
     expect(ast).toHaveLength(1);
     expect(ast[0]!.kind).toBe("var_assign");
     if (ast[0]!.kind === "var_assign") {
       expect(ast[0]!.name).toBe("$berlin");
-      expect(ast[0]!.expr.kind).toBe("area");
+      expect(ast[0]!.expr.kind).toBe("boundary");
     }
   });
 
@@ -340,7 +340,7 @@ describe("PlazaQL Parser", () => {
 
   it("parses nested method chain on variable", () => {
     const { ast, errors } = parse(
-      '$b = area(name: "Berlin");\n$$ =search(node, amenity: "cafe").within($b);'
+      '$b = boundary(name: "Berlin");\n$$ =search(node, amenity: "cafe").within($b);'
     );
     expect(errors).toHaveLength(0);
     expect(ast).toHaveLength(2);
@@ -351,7 +351,7 @@ describe("PlazaQL Parser", () => {
   it("parses multiple statements", () => {
     const source = [
       '[timeout: 30]',
-      '$berlin = area(name: "Berlin");',
+      '$berlin = boundary(name: "Berlin");',
       '$cafes = search(node, amenity: "cafe").within($berlin);',
       "$$ =$cafes.limit(20);",
     ].join("\n");
@@ -386,10 +386,10 @@ describe("PlazaQL Parser", () => {
 
   // ── Area ───────────────────────────────────────────────────────
 
-  it("parses area with filters", () => {
-    const { ast, errors } = parse('$b = area(name: "Berlin", admin_level: "4");');
+  it("parses boundary with filters", () => {
+    const { ast, errors } = parse('$b = boundary(name: "Berlin", admin_level: "4");');
     expect(errors).toHaveLength(0);
-    if (ast[0]!.kind === "var_assign" && ast[0]!.expr.kind === "area") {
+    if (ast[0]!.kind === "var_assign" && ast[0]!.expr.kind === "boundary") {
       expect(ast[0]!.expr.filters).toHaveLength(2);
     }
   });

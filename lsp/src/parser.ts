@@ -20,7 +20,7 @@ import type {
   BboxNode,
   GeometryNode,
   ComputationNode,
-  AreaNode,
+  BoundaryNode,
   ChainNode,
   UnionNode,
   DifferenceNode,
@@ -657,13 +657,13 @@ class Parser {
       return this.parseSearch(pos);
     }
 
-    // Check if it's area()
-    if (name === "area") {
+    // Check if it's boundary()
+    if (name === "boundary") {
       this.skipWs();
       if (this.peek() === "(") {
-        return this.parseArea(pos);
+        return this.parseBoundary(pos);
       }
-      // bare 'area' identifier
+      // bare 'boundary' identifier
       return { kind: "identifier", name, pos } as IdentifierNode;
     }
 
@@ -728,9 +728,9 @@ class Parser {
     return { kind: "search", elementType, filters, methods: [], pos };
   }
 
-  // ── Area ─────────────────────────────────────────────────────────
+  // ── Boundary ─────────────────────────────────────────────────────
 
-  private parseArea(pos: Pos): AreaNode {
+  private parseBoundary(pos: Pos): BoundaryNode {
     this.advance(); // skip (
     this.skipWs();
     const filters: TagFilter[] = [];
@@ -739,7 +739,7 @@ class Parser {
     }
     this.skipWs();
     if (this.peek() === ")") this.advance();
-    return { kind: "area", filters, pos };
+    return { kind: "boundary", filters, pos };
   }
 
   // ── Computation ──────────────────────────────────────────────────

@@ -26,14 +26,14 @@ search(node, amenity: "restaurant")
   .limit(15);
 
 // Area variables for complex spatial queries
-$brooklyn = area(name: "Brooklyn, New York");
-$prospect_park = area(name: "Prospect Park, Brooklyn");
+$brooklyn = boundary(name: "Brooklyn, New York");
+$prospect_park = boundary(name: "Prospect Park, Brooklyn");
 
 // Search within Brooklyn but outside Prospect Park
 search(node, amenity: "bar")
   .within($brooklyn)
   .not_within($prospect_park)
-  .sort("name")
+  .sort(t["name"])
   .limit(25);
 
 // ── Set Operations ────────────────────────────────────────────

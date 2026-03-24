@@ -4,56 +4,56 @@
 
 // Count cafes in Paris
 search(node, amenity: "cafe")
-  .within(area(name: "Paris, France"))
+  .within(boundary(name: "Paris, France"))
   .count();
 
 // Total length of cycleways in Amsterdam (meters)
 search(way, highway: "cycleway")
-  .within(area(name: "Amsterdam, Netherlands"))
+  .within(boundary(name: "Amsterdam, Netherlands"))
   .sum(length());
 
 // Average building height in Manhattan
 search(way, building: "yes")
-  .within(area(name: "Manhattan, New York"))
+  .within(boundary(name: "Manhattan, New York"))
   .filter(is_number(t["height"]))
   .avg(number(t["height"]));
 
 // Tallest building
 search(way, building: "yes")
-  .within(area(name: "Dubai"))
+  .within(boundary(name: "Dubai"))
   .filter(is_number(t["height"]))
   .max(number(t["height"]));
 
 // Shortest road segment
 search(way, highway: "residential")
-  .within(area(name: "London, United Kingdom"))
+  .within(boundary(name: "London, United Kingdom"))
   .min(length());
 
 // ── Group By ───────────────────────────────────────────────────
 
 // Count restaurants by cuisine type
 search(node, amenity: "restaurant", cuisine: *)
-  .within(area(name: "Tokyo, Japan"))
+  .within(boundary(name: "Tokyo, Japan"))
   .group_by(t["cuisine"])
   .count();
 
 // Average building height by type
 search(way, building: *)
-  .within(area(name: "Singapore"))
+  .within(boundary(name: "Singapore"))
   .filter(is_number(t["height"]))
   .group_by(t["building"])
   .avg(number(t["height"]));
 
 // Total road length by highway classification
 search(way, highway: *)
-  .within(area(name: "Berlin, Germany"))
+  .within(boundary(name: "Berlin, Germany"))
   .group_by(t["highway"])
   .sum(length());
 
 // ── Combined with Other Features ───────────────────────────────
 
 // Count accessible restaurants by cuisine (using directive for scoping)
-#within(geometry: area(name: "Barcelona, Spain"));
+#within(geometry: boundary(name: "Barcelona, Spain"));
 #filter(wheelchair: "yes");
 
 search(node, amenity: "restaurant", cuisine: *)

@@ -4,10 +4,10 @@ A LINQ-style query language for geospatial data. PlazaQL provides a composable, 
 
 ```
 search(node, amenity: "cafe")
-  .within(area(name: "Manhattan, New York"))
+  .within(boundary(name: "Manhattan, New York"))
   .around(200, point(40.7484, -73.9856))
   .fields("name", "cuisine", "opening_hours")
-  .sort("name")
+  .sort(t["name"])
   .limit(10);
 ```
 
@@ -35,14 +35,14 @@ $$.parks = search(way, leisure: "park").within($$.area);
 $home = geocode("350 Fifth Avenue, New York");
 search(node, shop: "supermarket")
   .around(500, $home)
-  .sort("distance")
+  .sort(distance($home))
   .limit(5);
 ```
 
 **Expression filter and aggregation:**
 ```
 search(way, building: "yes")
-  .within(area(name: "Manhattan, New York"))
+  .within(boundary(name: "Manhattan, New York"))
   .filter(is_number(t["height"]) && number(t["height"]) > 50)
   .group_by(t["building"])
   .count();
@@ -50,7 +50,7 @@ search(way, building: "yes")
 
 **Global directive scoping:**
 ```
-#within(geometry: area(name: "Berlin"));
+#within(geometry: boundary(name: "Berlin"));
 #filter(wheelchair: "yes");
 
 $$.cafes = search(node, amenity: "cafe").limit(10);
@@ -95,7 +95,7 @@ Expressions are built from **functions** (which produce values), **methods** (wh
 
 ```
 // Variable — stores a value for reuse
-$area = area(name: "Berlin, Germany");
+$area = boundary(name: "Berlin, Germany");
 
 // Bare expression — implicitly becomes the output
 search(node, amenity: "cafe")
@@ -142,7 +142,7 @@ Variables store intermediate values for reuse. Names start with `$` followed by 
 ```
 $center = point(40.7128, -74.0060);
 $radius = 500;
-$nyc = area(name: "New York City");
+$nyc = boundary(name: "New York City");
 
 // Use in subsequent expressions
 search(node, amenity: "cafe")
@@ -224,7 +224,7 @@ Result sets returned by search and computation functions.
 |-------------|----------------------------|--------------------------------------|---------------------|
 | `Route`     | Line + steps/duration      | `route()`, `map_match()`, `optimize()` | Yes                |
 | `Isochrone` | Travel-time polygon(s)     | `isochrone()`                        | Yes                 |
-| `Area`      | Admin/named boundary       | `area()`                             | Yes                 |
+| `Boundary`  | Admin/named boundary       | `boundary()`                         | Yes                 |
 | `Matrix`    | Distance/duration table    | `matrix()`                           | No (terminal)       |
 | `Elevation` | Elevation data             | `elevation()`, `elevation_profile()` | No (terminal)       |
 | `Scalar`    | Single numeric value       | `.count()`, `.sum()`, `.min()`, `.max()`, `.avg()` | No (terminal)       |
@@ -238,7 +238,7 @@ Geometry (usable as spatial argument)
 ├── Polygon
 ├── Route        (geometry + result)
 ├── Isochrone    (geometry + result)
-└── Area         (geometry + result)
+└── Boundary     (geometry + result)
 
 GeoSet (chainable result sets)
 ├── PointSet
@@ -267,7 +267,7 @@ search(relation, ...)  → GeoSet
 search(...)            → GeoSet          // no type = all
 
 // Computations
-area(...)              → Area
+boundary(...)          → Boundary
 route(...)             → Route
 isochrone(...)         → Isochrone
 geocode(...)           → PointSet
@@ -319,17 +319,17 @@ search(amenity: "cafe")                    // same as nwr (all types)
 
 **Element types:** `node`, `way`, `relation`, `nwr` (all)
 
-### `area(name:)`
+### `boundary(name:)`
 
 Resolve a named administrative boundary or place.
 
 ```
-$nyc = area(name: "New York City");
-$france = area(name: "France");
-$park = area(name: "Central Park, New York");
+$nyc = boundary(name: "New York City");
+$france = boundary(name: "France");
+$park = boundary(name: "Central Park, New York");
 ```
 
-Returns an `Area` which can be used as a geometry argument to `.within()`, `.intersects()`, etc.
+Returns a `Boundary` which can be used as a geometry argument to `.within()`, `.intersects()`, etc.
 
 ### `route(origin:, destination:, mode:)`
 
@@ -517,7 +517,7 @@ Methods are chained onto expressions with `.method()` syntax. They are organized
 
 ```
 search(node, amenity: "cafe")
-  .within(area(name: "Manhattan"))
+  .within(boundary(name: "Manhattan"))
   .around(200, point(40.74, -73.98));
 ```
 
@@ -556,8 +556,8 @@ search(way, building: "yes").centroid();      // building center points
 | `.length()` | `GeoSet → GeoSet` | Compute length of linear features |
 
 ```
-search(node, natural: "peak").elevation().sort("elevation");
-search(node, amenity: "hospital").distance(point(40.71, -74.00)).sort("distance");
+search(node, natural: "peak").elevation().sort(elevation());
+search(node, amenity: "hospital").distance(point(40.71, -74.00)).sort(distance(point(40.71, -74.00)));
 ```
 
 ### Output Shape (Phase 6)
@@ -578,7 +578,7 @@ search(node, amenity: *).precision(4);
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `.sort(field)` | `GeoSet → GeoSet` | Sort results by field |
+| `.sort(expr, order?: :asc \| :desc)` | `GeoSet → GeoSet` | Sort by expression (`t["name"]`, `distance(point(...))`, `area()`, `length()`, `elevation()`) |
 | `.limit(n)` | `GeoSet → GeoSet` | Maximum number of results |
 | `.offset(n)` | `GeoSet → GeoSet` | Skip first n results |
 
@@ -597,9 +597,9 @@ search(node, amenity: "cafe").sort("name").limit(10).offset(20);
 | `.geom()` | `GeoSet → GeoSet` | Full geometry, no tags |
 
 ```
-search(node, amenity: "cafe").within(area(name: "Paris")).count();
+search(node, amenity: "cafe").within(boundary(name: "Paris")).count();
 search(node, shop: *).ids();
-search(way, building: "yes").within(area(name: "Manhattan")).geom();
+search(way, building: "yes").within(boundary(name: "Manhattan")).geom();
 ```
 
 Only one output mode per chain. These are terminal — no further chaining allowed.
@@ -610,12 +610,12 @@ Sort results by quadtile index for optimal spatial locality — features near ea
 
 ```
 search(node, amenity: "cafe")
-  .within(area(name: "Berlin, Germany"))
+  .within(boundary(name: "Berlin, Germany"))
   .sort(by: :qt)
   .limit(100);
 ```
 
-The `:qt` atom is a special sort mode, not a field name. It's distinct from `.sort("name")` which sorts by a tag value.
+The `:qt` atom is a special sort mode, not an expression. It's distinct from `.sort(t["name"])` which sorts by a tag value.
 
 ### Structural Joins (Phase 3)
 
@@ -818,7 +818,7 @@ Type rules for set operations:
 Global directives apply a method to **all subsequent queries** in the program. They use `#method(args);` syntax — the same method names as chain methods, but prefixed with `#` and written as standalone statements.
 
 ```
-#within(geometry: area(name: "Berlin"));
+#within(geometry: boundary(name: "Berlin"));
 #filter(name: *);
 #limit(count: 10);
 
@@ -830,7 +830,7 @@ $$.parks = search(way, leisure: "park");
 ### Spatial Directives
 
 ```
-#within(geometry: area(name: "Paris"));        // scope to area
+#within(geometry: boundary(name: "Paris"));     // scope to boundary
 #bbox(south: 47.0, west: 10.0, north: 48.0, east: 11.0);  // scope to bbox
 #around(distance: 500, geometry: point(lat: 48.85, lng: 2.35));  // scope to radius
 ```
@@ -860,7 +860,7 @@ $$.parks = search(way, leisure: "park");
 Directives accumulate — each new one adds a constraint (AND semantics):
 
 ```
-#within(geometry: area(name: "Tokyo"));
+#within(geometry: boundary(name: "Tokyo"));
 #filter(wheelchair: "yes");
 #limit(count: 20);
 
@@ -898,7 +898,7 @@ Access feature metadata (not tags):
 
 ```
 search(node, amenity: "restaurant")
-  .within(area(name: "Rome"))
+  .within(boundary(name: "Rome"))
   .filter(lat() < 41.89)
   .limit(10);
 ```
@@ -1010,18 +1010,18 @@ The expression argument uses the same [expression language](#expression-language
 ```
 // Total cycleway length in Amsterdam
 search(way, highway: "cycleway")
-  .within(area(name: "Amsterdam"))
+  .within(boundary(name: "Amsterdam"))
   .sum(length());
 
 // Tallest building in Dubai
 search(way, building: "yes")
-  .within(area(name: "Dubai"))
+  .within(boundary(name: "Dubai"))
   .filter(is_number(t["height"]))
   .max(number(t["height"]));
 
 // Average road segment length
 search(way, highway: "residential")
-  .within(area(name: "London"))
+  .within(boundary(name: "London"))
   .avg(length());
 ```
 
@@ -1032,19 +1032,19 @@ search(way, highway: "residential")
 ```
 // Count restaurants by cuisine
 search(node, amenity: "restaurant", cuisine: *)
-  .within(area(name: "Tokyo"))
+  .within(boundary(name: "Tokyo"))
   .group_by(t["cuisine"])
   .count();
 
 // Total road length by highway type
 search(way, highway: *)
-  .within(area(name: "Berlin"))
+  .within(boundary(name: "Berlin"))
   .group_by(t["highway"])
   .sum(length());
 
 // Average building height by building type
 search(way, building: *)
-  .within(area(name: "Singapore"))
+  .within(boundary(name: "Singapore"))
   .filter(is_number(t["height"]))
   .group_by(t["building"])
   .avg(number(t["height"]));
@@ -1059,7 +1059,7 @@ search(way, building: *)
 Methods must follow a specific phase order. Methods within the same phase can appear in any order, but later phases cannot precede earlier phases.
 
 ```
-Phase 1: Source        search() | area() | route() | isochrone() | ...
+Phase 1: Source        search() | boundary() | route() | isochrone() | ...
 Phase 2: Set ops       + | - | &
 Phase 3: Spatial       .within() | .around() | .bbox() | .h3() |
                        .intersects() | .contains() | .crosses() | .touches() |
@@ -1067,7 +1067,7 @@ Phase 3: Spatial       .within() | .around() | .bbox() | .h3() |
                        .member_of() | .has_member()
 Phase 3b: Tag filter   .filter(key: value) | .filter(expression)
 Phase 4: Transforms    .buffer() | .simplify() | .centroid()
-Phase 5: Enrichments   .elevation() | .distance() | .area() | .length()
+Phase 5: Computed      .elevation() | .distance() | .area() | .length()
 Phase 6: Output shape  .fields() | .include() | .precision() | .expand()
 Phase 7: Ordering      .sort() | .limit() | .offset()
 Phase 7b: Narrowing    .first() | .last() | .index()
@@ -1125,7 +1125,7 @@ error: method .within() requires a geometry argument, got Scalar
   --> query:5:3
    |
  5 |   .within(42)
-   |           ^^ expected Point, LineString, Polygon, Area, Route, or Isochrone
+   |           ^^ expected Point, LineString, Polygon, Boundary, Route, or Isochrone
    |
    = hint: use a geometry constructor: .within(point(40.71, -74.00))
 ```
@@ -1153,7 +1153,7 @@ error: undefined variable $downtown
  4 |   .within($downtown)
    |           ^^^^^^^^^ not defined
    |
-   = hint: assign it first: $downtown = area(name: "Downtown");
+   = hint: assign it first: $downtown = boundary(name: "Downtown");
 ```
 
 ### Undefined Output Variable
@@ -1165,7 +1165,7 @@ error: undefined output variable $$.boundary
  3 |   .within($$.boundary)
    |           ^^^^^^^^^^^^ not defined
    |
-   = hint: assign it first: $$.boundary = area(name: "Berlin, Germany");
+   = hint: assign it first: $$.boundary = boundary(name: "Berlin, Germany");
 ```
 
 ---
@@ -1190,7 +1190,7 @@ expression     = set_expr ;
 set_expr       = unary_expr (("+" | "-" | "&") unary_expr)* ;
 unary_expr     = primary method_chain? ;
 
-primary        = search | area_call | route_call | isochrone_call
+primary        = search | boundary_call | route_call | isochrone_call
                | geocode_call | reverse_geocode_call | autocomplete_call
                | text_search_call | matrix_call | map_match_call
                | optimize_call | ev_route_call | elevation_call
@@ -1199,7 +1199,7 @@ primary        = search | area_call | route_call | isochrone_call
 
 search         = "search" "(" (element_type ",")? (tag_filters | id_filter) ")" ;
 id_filter      = "id" ":" (NUMBER | "[" NUMBER ("," NUMBER)* "]") ;
-area_call      = "area" "(" tag_filters ")" ;
+boundary_call  = "boundary" "(" tag_filters ")" ;
 route_call     = "route" "(" arg_list ")" ;
 isochrone_call = "isochrone" "(" arg_list ")" ;
 geocode_call   = "geocode" "(" STRING ")" ;

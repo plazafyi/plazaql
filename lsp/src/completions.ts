@@ -413,7 +413,27 @@ function getParamValueCompletions(functionName: string, paramName: string): Comp
   }));
 }
 
+function getSortExpressionCompletions(): CompletionItem[] {
+  return [
+    { label: 't["', kind: "value", detail: "Tag value", insertText: 't["', sortText: "a1" },
+    { label: "distance(", kind: "function", detail: "Distance from point", insertText: "distance(", sortText: "a2" },
+    { label: "area()", kind: "function", detail: "Geometry area", insertText: "area()", sortText: "a3" },
+    { label: "length()", kind: "function", detail: "Geometry length", insertText: "length()", sortText: "a4" },
+    { label: "elevation()", kind: "function", detail: "Elevation at point", insertText: "elevation()", sortText: "a5" },
+    { label: "number(", kind: "function", detail: "Numeric coercion", insertText: "number(", sortText: "a6" },
+    { label: "id()", kind: "function", detail: "OSM ID", insertText: "id()", sortText: "a7" },
+  ];
+}
+
 function getMethodParamCompletions(methodName: string): CompletionItem[] {
+  if (methodName === "sort") {
+    return [
+      ...getSortExpressionCompletions(),
+      { label: "by", kind: "param", detail: "expr", insertText: "by: ", sortText: "b1" },
+      { label: "order", kind: "param", detail: ":asc | :desc", insertText: "order: ", sortText: "b2" },
+    ];
+  }
+
   const method = METHOD_CATALOG.find((m) => m.name === methodName);
   if (!method) return [];
 
@@ -436,6 +456,10 @@ function getMethodParamCompletions(methodName: string): CompletionItem[] {
 }
 
 function getMethodParamValueCompletions(methodName: string, paramName: string): CompletionItem[] {
+  if (methodName === "sort" && paramName === "by") {
+    return getSortExpressionCompletions();
+  }
+
   const paramValues = METHOD_PARAM_VALUES[methodName];
   if (!paramValues) return getMethodParamCompletions(methodName);
   const values = paramValues[paramName];

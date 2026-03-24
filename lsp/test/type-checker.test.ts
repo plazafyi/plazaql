@@ -28,7 +28,7 @@ describe("PlazaQL Type Checker", () => {
 
   it("accepts spatial after transform (relaxed ordering)", () => {
     const result = check(
-      '$$ =search().buffer(100).within(area(name: "Berlin"));'
+      '$$ =search().buffer(100).within(boundary(name: "Berlin"));'
     );
     expect(result.errors).toHaveLength(0);
   });
@@ -57,7 +57,7 @@ describe("PlazaQL Type Checker", () => {
 
   it("accepts .within() with area variable", () => {
     const result = check(
-      '$b = area(name: "Berlin");\n$$ =search().within($b);'
+      '$b = boundary(name: "Berlin");\n$$ =search().within($b);'
     );
     expect(result.errors).toHaveLength(0);
   });
@@ -82,12 +82,11 @@ describe("PlazaQL Type Checker", () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  // ── .sort(distance) requires .around() ─────────────────────────
+  // ── .sort() accepts any expression ─────────────────────────
 
-  it("rejects .sort(by: :distance) without .around()", () => {
-    const result = check("$$ =search().sort(by: :distance);");
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some((e) => e.message.includes("spatial reference"))).toBe(true);
+  it("accepts .sort(distance) without .around()", () => {
+    const result = check("$$ =search().sort(distance);");
+    expect(result.errors).toHaveLength(0);
   });
 
   it("accepts .sort(by: :distance) with .around()", () => {
@@ -205,10 +204,10 @@ describe("PlazaQL Type Checker", () => {
 
   // ── Area type inference ────────────────────────────────────────
 
-  it("infers Area type for area()", () => {
-    const result = check('$b = area(name: "Berlin");\n$$ =search().within($b);');
+  it("infers Boundary type for boundary()", () => {
+    const result = check('$b = boundary(name: "Berlin");\n$$ =search().within($b);');
     expect(result.errors).toHaveLength(0);
-    expect(result.scope.get("$b")?.type).toBe("Area");
+    expect(result.scope.get("$b")?.type).toBe("Boundary");
   });
 
   // ── Computation type inference ─────────────────────────────────
@@ -289,7 +288,7 @@ describe("PlazaQL Type Checker", () => {
   });
 
   it("rejects spatial after ordering", () => {
-    const result = check('$$ =search().limit(10).within(area(name: "Berlin"));');
+    const result = check('$$ =search().limit(10).within(boundary(name: "Berlin"));');
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors.some((e) => e.message.includes("cannot follow"))).toBe(true);
   });

@@ -12,7 +12,7 @@ export type PqlType =
   | "GeoSet"
   | "Route"
   | "Isochrone"
-  | "Area"
+  | "Boundary"
   | "Matrix"
   | "Elevation"
   | "Scalar";
@@ -23,7 +23,7 @@ const GEOMETRY_TYPES: PqlType[] = [
   "Polygon",
   "Route",
   "Isochrone",
-  "Area",
+  "Boundary",
 ];
 const GEO_SET_TYPES: PqlType[] = [
   "PointSet",
@@ -35,7 +35,7 @@ const CHAINABLE_TYPES: PqlType[] = [
   ...GEO_SET_TYPES,
   "Route",
   "Isochrone",
-  "Area",
+  "Boundary",
 ];
 const TERMINAL_TYPES: PqlType[] = ["Matrix", "Elevation", "Scalar"];
 
@@ -160,8 +160,8 @@ export interface SearchNode {
   pos: Pos;
 }
 
-export interface AreaNode {
-  kind: "area";
+export interface BoundaryNode {
+  kind: "boundary";
   filters: TagFilter[];
   pos: Pos;
 }
@@ -264,7 +264,7 @@ export type Expr =
   | BboxNode
   | GeometryNode
   | SearchNode
-  | AreaNode
+  | BoundaryNode
   | ComputationNode
   | ChainNode
   | UnionNode
@@ -298,7 +298,7 @@ const SPATIAL_METHODS = [
   "has_member",
 ];
 const TRANSFORM_METHODS = ["buffer", "simplify", "centroid"];
-const ENRICHMENT_METHODS = ["elevation", "distance", "area", "length"];
+const COMPUTED_METHODS = ["elevation", "distance", "area", "length"];
 const OUTPUT_SHAPE_METHODS = ["fields", "include", "precision", "expand"];
 const ORDERING_METHODS = ["sort", "limit", "offset"];
 const OUTPUT_MODE_METHODS = ["count", "ids", "tags", "skel"];
@@ -308,7 +308,7 @@ export const ALL_METHODS = [
   ...SPATIAL_METHODS,
   "filter",
   ...TRANSFORM_METHODS,
-  ...ENRICHMENT_METHODS,
+  ...COMPUTED_METHODS,
   ...OUTPUT_SHAPE_METHODS,
   ...ORDERING_METHODS,
   ...OUTPUT_MODE_METHODS,
@@ -322,7 +322,7 @@ export function methodPhase(method: string): MethodPhase {
     return { ordinal: 3.5, label: "tag filter (phase 3b)" };
   if (TRANSFORM_METHODS.includes(method))
     return { ordinal: 4, label: "transform (phase 4)" };
-  if (ENRICHMENT_METHODS.includes(method))
+  if (COMPUTED_METHODS.includes(method))
     return { ordinal: 5, label: "enrichment (phase 5)" };
   if (OUTPUT_SHAPE_METHODS.includes(method))
     return { ordinal: 6, label: "output shape (phase 6)" };
@@ -348,7 +348,7 @@ export function methodCategory(method: string): string {
   if (SPATIAL_METHODS.includes(method)) return "spatial";
   if (method === "filter") return "filter";
   if (TRANSFORM_METHODS.includes(method)) return "transform";
-  if (ENRICHMENT_METHODS.includes(method)) return "enrichment";
+  if (COMPUTED_METHODS.includes(method)) return "enrichment";
   if (OUTPUT_SHAPE_METHODS.includes(method)) return "output shape";
   if (ORDERING_METHODS.includes(method)) return "ordering";
   if (OUTPUT_MODE_METHODS.includes(method)) return "output mode";
@@ -392,7 +392,7 @@ export function methodOutputType(
 }
 
 const CONTAINMENT_TYPES: PqlType[] = [
-  "Area",
+  "Boundary",
   "Isochrone",
   "Polygon",
   "PolygonSet",
@@ -444,9 +444,9 @@ export interface MethodInfo {
 
 export const METHOD_CATALOG: MethodInfo[] = [
   // Spatial
-  { name: "within", signature: ".within(geometry: Area | Polygon | Isochrone)", description: "Filter to features fully inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "not_within", signature: ".not_within(geometry: Area | Polygon | Isochrone)", description: "Exclude features inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "around", signature: ".around(distance: number, geometry?: Point | Area)", description: "Filter to features within distance (meters) of a point or geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "within", signature: ".within(geometry: Boundary | Polygon | Isochrone)", description: "Filter to features fully inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "not_within", signature: ".not_within(geometry: Boundary | Polygon | Isochrone)", description: "Exclude features inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  { name: "around", signature: ".around(distance: number, geometry?: Point | Boundary)", description: "Filter to features within distance (meters) of a point or geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
   { name: "bbox", signature: ".bbox(s: number, w: number, n: number, e: number)", description: "Filter to features within a bounding box.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
   { name: "h3", signature: ".h3(cell: string)", description: "Filter to features within an H3 cell.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
   { name: "intersects", signature: ".intersects(geometry: Geometry)", description: "Filter to features that intersect the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
@@ -462,17 +462,17 @@ export const METHOD_CATALOG: MethodInfo[] = [
   { name: "simplify", signature: ".simplify(tolerance: number)", description: "Simplify geometries by reducing coordinate precision.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
   { name: "centroid", signature: ".centroid()", description: "Replace geometries with their centroids. Result type becomes PointSet.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
   // Enrichment
-  { name: "elevation", signature: ".elevation()", description: "Add elevation data to features.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
-  { name: "distance", signature: ".distance(geometry: Point)", description: "Add distance from a reference point to each feature.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
-  { name: "area", signature: ".area()", description: "Add area calculation to polygon features.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
-  { name: "length", signature: ".length()", description: "Add length calculation to line features.", phase: "Enrichment", ordinal: 5, group: "freely_orderable" },
+  { name: "elevation", signature: ".elevation()", description: "Add elevation as a computed column on each feature.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
+  { name: "distance", signature: ".distance(geometry: Point)", description: "Add distance from a reference point as a computed column on each feature.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
+  { name: "area", signature: ".area()", description: "Add geometry area as a computed column on polygon features.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
+  { name: "length", signature: ".length()", description: "Add geometry length as a computed column on line features.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
   // Output shape
   { name: "fields", signature: ".fields(field1, field2, ...)", description: "Select specific tag fields to include in output.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
   { name: "include", signature: ".include(extra1, extra2, ...)", description: "Include additional data (e.g., geometry, metadata).", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
   { name: "precision", signature: ".precision(digits: number)", description: "Set coordinate precision for output.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
   { name: "expand", signature: ".expand(direction: :down | :up)", description: "Expand relations to their members or ways to their nodes.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
   // Ordering
-  { name: "sort", signature: ".sort(by: field, order?: :asc | :desc)", description: "Sort results by a field. Use `distance` with prior `.around()`.", phase: "Ordering", ordinal: 7, group: "late_chain" },
+  { name: "sort", signature: ".sort(expr, order?: :asc | :desc)", description: "Sort results by an expression (e.g., `t[\"name\"]`, `distance()`, `area()`).", phase: "Ordering", ordinal: 7, group: "late_chain" },
   { name: "limit", signature: ".limit(n: number)", description: "Limit the number of results.", phase: "Ordering", ordinal: 7, group: "late_chain" },
   { name: "offset", signature: ".offset(n: number)", description: "Skip the first n results. Requires `.limit()` first.", phase: "Ordering", ordinal: 7, group: "late_chain" },
   // Output mode
@@ -516,12 +516,12 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     returnType: "GeoSet",
     description: "Search for OSM features matching tag filters.",
   },
-  area: {
-    name: "area",
+  boundary: {
+    name: "boundary",
     params: [
-      { name: "...filters", type: "TagFilter", description: "Tag filters to identify the area (e.g., name: \"Berlin\")" },
+      { name: "...filters", type: "TagFilter", description: "Tag filters to identify the boundary (e.g., name: \"Berlin\")" },
     ],
-    returnType: "Area",
+    returnType: "Boundary",
     description: "Look up a named administrative boundary or area.",
   },
   point: {
@@ -682,11 +682,6 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
 
 export const METHOD_PARAM_VALUES: Record<string, Record<string, Array<{ value: string; description?: string }>>> = {
   sort: {
-    by: [
-      { value: ":distance", description: "Sort by distance from reference point (requires .around())" },
-      { value: ":name", description: "Sort alphabetically by name tag" },
-      { value: ":osm_id", description: "Sort by OSM element ID" },
-    ],
     order: [
       { value: ":asc", description: "Ascending order" },
       { value: ":desc", description: "Descending order" },

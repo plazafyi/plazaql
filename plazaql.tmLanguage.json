@@ -190,7 +190,7 @@
       "patterns": [
         {
           "name": "entity.name.function.plazaql",
-          "match": "\\b(search|area|route|isochrone|geocode|reverse_geocode|autocomplete|text_search|matrix|map_match|optimize|ev_route|elevation|elevation_profile|nearest)\\s*(?=\\()"
+          "match": "\\b(search|boundary|route|isochrone|geocode|reverse_geocode|autocomplete|text_search|matrix|map_match|optimize|ev_route|elevation|elevation_profile|nearest)\\s*(?=\\()"
         }
       ]
     },
@@ -224,7 +224,7 @@
       "patterns": [
         {
           "name": "keyword.control.plazaql",
-          "match": "\\b(search|area)\\b(?!\\s*[.(])"
+          "match": "\\b(search|boundary)\\b(?!\\s*[.(])"
         },
         {
           "name": "keyword.other.modifier.plazaql",

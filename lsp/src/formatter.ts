@@ -9,8 +9,7 @@ import type {
   MethodNode,
   ChainNode,
 } from "./types.js";
-
-const MAX_LINE_LENGTH = 80;
+import { MAX_LINE_LENGTH } from "./constants.js";
 
 export function formatDocument(source: string): string | null {
   const { ast, errors } = parse(source);
@@ -59,8 +58,8 @@ function formatExpr(expr: Expr): string {
       if (isSetOp(base)) baseStr = `(${baseStr})`;
       return formatWithMethods(baseStr, methods);
     }
-    case "area":
-      return `area(${expr.filters.map(formatTagFilter).join(", ")})`;
+    case "boundary":
+      return `boundary(${expr.filters.map(formatTagFilter).join(", ")})`;
     case "computation":
       return `${expr.name}(${formatArgList(expr.args)})`;
     case "point":

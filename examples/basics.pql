@@ -49,7 +49,7 @@ search(node, ~"^name:": *);
 search(node, amenity: "cafe").limit(10);
 
 // Limit with offset for pagination
-search(node, amenity: "cafe").sort("name").limit(10).offset(20);
+search(node, amenity: "cafe").sort(t["name"]).limit(10).offset(20);
 
 // Count matching features
 search(node, amenity: "cafe").count();
@@ -65,7 +65,7 @@ search(way, highway: "primary").skel();
 
 // Full geometry output mode
 search(way, building: "yes")
-  .within(area(name: "Manhattan, New York"))
+  .within(boundary(name: "Manhattan, New York"))
   .geom();
 
 // Select specific fields
@@ -75,7 +75,7 @@ search(node, amenity: "cafe")
 
 // Quadtile sort — optimal for spatial locality
 search(node, amenity: "cafe")
-  .within(area(name: "Berlin, Germany"))
+  .within(boundary(name: "Berlin, Germany"))
   .sort(by: :qt)
   .limit(100);
 

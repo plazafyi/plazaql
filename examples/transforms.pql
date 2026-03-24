@@ -1,20 +1,20 @@
-// Transform queries — buffer, simplify, centroid, precision, enrichments
+// Transform queries — buffer, simplify, centroid, precision, computed columns
 
 // Buffer — expand geometries by distance (meters)
 search(way, leisure: "park")
-  .within(area(name: "Berlin, Germany"))
+  .within(boundary(name: "Berlin, Germany"))
   .buffer(100)
   .limit(10);
 
 // Simplify — reduce geometry complexity (tolerance in meters)
 search(way, boundary: "administrative")
-  .within(area(name: "France"))
+  .within(boundary(name: "France"))
   .simplify(1000)
   .limit(5);
 
 // Centroid — convert polygons to their center points
 search(way, building: "yes")
-  .within(area(name: "Manhattan, New York"))
+  .within(boundary(name: "Manhattan, New York"))
   .centroid()
   .limit(50);
 
@@ -24,46 +24,52 @@ search(node, amenity: "cafe")
   .precision(4)
   .limit(20);
 
-// Elevation enrichment — add elevation data to features
+// Elevation — add elevation data and sort by it
 search(node, natural: "peak")
-  .within(area(name: "Colorado, United States"))
+  .within(boundary(name: "Colorado, United States"))
   .elevation()
-  .sort("elevation")
+  .sort(elevation())
   .limit(10);
 
-// Distance enrichment — add distance from a reference point
+// Distance — sort by distance from a reference point
 search(node, amenity: "hospital")
   .around(5000, point(40.7128, -74.0060))
   .distance(point(40.7128, -74.0060))
-  .sort("distance")
+  .sort(distance(point(40.7128, -74.0060)))
   .limit(5);
 
-// Area enrichment — compute area of polygon features
+// Area — compute area and sort largest first
 search(way, leisure: "park")
-  .within(area(name: "London, United Kingdom"))
+  .within(boundary(name: "London, United Kingdom"))
   .area()
-  .sort("area")
+  .sort(area(), order: :desc)
   .limit(10);
 
-// Length enrichment — compute length of linear features
+// Length — compute length and sort longest first
 search(way, highway: "cycleway")
-  .within(area(name: "Amsterdam, Netherlands"))
+  .within(boundary(name: "Amsterdam, Netherlands"))
   .length()
-  .sort("length")
+  .sort(length(), order: :desc)
   .limit(10);
 
-// Combine multiple transforms
+// Sort by tag value
 search(way, building: "university")
-  .within(area(name: "Cambridge, Massachusetts"))
+  .within(boundary(name: "Cambridge, Massachusetts"))
   .simplify(10)
   .precision(5)
   .fields("name", "operator")
-  .sort("name")
+  .sort(t["name"])
+  .limit(20);
+
+// Sort by numeric tag value descending
+search(node, amenity: "restaurant")
+  .within(boundary(name: "Berlin, Germany"))
+  .sort(number(t["capacity"]), order: :desc)
   .limit(20);
 
 // Include related geometry data
 search(way, highway: "motorway")
-  .within(area(name: "California, United States"))
+  .within(boundary(name: "California, United States"))
   .include("nodes")
   .simplify(500)
   .limit(10);

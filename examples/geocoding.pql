@@ -22,7 +22,7 @@ nearest(
 $$.location = geocode("350 Fifth Avenue, New York");
 $$.groceries = search(node, shop: "supermarket")
   .around(500, $$.location)
-  .sort("distance")
+  .sort(distance($$.location))
   .limit(5);
 
 // Reverse geocode with context search
