@@ -1,7 +1,7 @@
 {
   "name": "@plazafyi/plazaql",
   "version": "0.1.0",
-  "description": "PlazaQL language specification, tree-sitter parser, TextMate grammar, and examples",
+  "description": "PlazaQL language specification, tree-sitter parser, and examples",
   "main": "grammar.js",
   "repository": {
     "type": "git",
@@ -20,10 +20,16 @@
     "src/",
     "queries/",
     "tree-sitter.json",
-    "plazaql.tmLanguage.json",
+    "tree-sitter-plazaql.wasm",
     "language-configuration.json",
     "examples/"
   ],
+  "exports": {
+    ".": "./grammar.js",
+    "./wasm": "./tree-sitter-plazaql.wasm",
+    "./highlights": "./queries/highlights.scm",
+    "./language-configuration": "./language-configuration.json"
+  },
   "tree-sitter": [
     {
       "scope": "source.plazaql",

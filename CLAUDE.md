@@ -43,21 +43,55 @@ grammar.js                    ← tree-sitter grammar (THE canonical syntax defi
 │   ├── src/diagnostics.ts    ← error reporting
 │   └── src/server.ts         ← LSP server entry point
 │
-├── plazaql.tmLanguage.json   ← TextMate grammar (for editors without tree-sitter)
+├── tree-sitter-plazaql.wasm  ← compiled WASM parser (shipped in npm package)
 ├── language-configuration.json
 └── examples/*.pql            ← canonical example files
 ```
+
+## Compiler Architecture
+
+The Elixir package includes a full compiler pipeline that turns PlazaQL source into parameterized SQL:
+
+```
+source string
+  → Parser.parse/1           (AST tuples)
+  → TypeChecker.check/1      (validated AST)
+  → Compiler.compile/2       (Plan IR structs)
+  → SQL.to_sql/2             (parameterized SQL + params)
+```
+
+### Key Modules
+
+| Module | Purpose |
+|--------|---------|
+| `PlazaQL.Compiler` | AST → `Plan` IR. Walks top-level nodes (outputs, variables, directives) and compiles expressions into Plans. |
+| `PlazaQL.Plan` | The intermediate representation. A struct capturing element types, tag filters, spatial filters, set operations, output mode, computed columns, etc. |
+| `PlazaQL.Plan.OutputOptions` | Geometry transforms (simplify, buffer, centroid) and result formatting (fields, sort, precision). |
+| `PlazaQL.Schema` | Configurable target database schema — table names, column names, SRID, extensions. Defaults to standard OSM. |
+| `PlazaQL.SQL` | Top-level SQL generation. Routes plans to UNION ALL (multi-type), aggregation wrappers, or CTE-based set operations. |
+| `PlazaQL.SQL.Builder` | Internal. Assembles a complete SELECT for one element type — columns, WHERE, GROUP BY, ORDER BY, LIMIT/OFFSET. |
+| `PlazaQL.SQL.Where` | Internal. Builds WHERE clause from spatial filters, tag filters, metadata filters, H3 tiles, and expression filters. |
+| `PlazaQL.SQL.Expression` | Internal. Converts expression AST nodes (binary ops, tag access, geometry functions, literals) to SQL fragments. |
+| `PlazaQL.Query` | Result struct — holds `sql`, `params`, and optional `plan` reference. |
+| `PlazaQL.NotCompilable` | Error for computation plans (route, isochrone, etc.) that can't become SQL and need a service backend. |
+
+### SQL Generation Patterns
+
+- **UNION ALL**: Multi-type queries (e.g. `nwr`) generate one SELECT per element type joined with UNION ALL.
+- **CTEs for set ops**: Union (`+`), difference (`-`), intersection (`&`) use `WITH` clauses — `base` CTE plus one CTE per operand.
+- **Aggregation wrappers**: Cross-type aggregations (count, sum, avg, etc.) wrap the UNION ALL in an outer SELECT that merges per-type results.
+- **Accumulator pattern**: All SQL modules thread `{sql, params, next_idx}` through every build step, ensuring correct `$N` parameter numbering without mutation.
 
 ## How It's Consumed
 
 | Consumer | Mechanism | What it uses |
 |----------|-----------|-------------|
 | **plaza** (backend) | `{:plazaql, path: "../plazaql"}` mix dep | Elixir parser, type-checker, types, formatter, error |
-| **plaza** (frontend) | `@plazafyi/plazaql` npm dep | `plazaql.tmLanguage.json` for Monaco editor |
-| **plaza-docs** | `@plazafyi/plazaql` npm dep | `plazaql.tmLanguage.json` for Shiki code blocks |
-| **VS Code** | LSP server (`plazaql-lsp`) | Full LSP + tmLanguage |
+| **plaza** (frontend) | `@plazafyi/plazaql` npm dep | `tree-sitter-plazaql.wasm` + `highlights.scm` via `monaco-tree-sitter` |
+| **plaza-docs** | `@plazafyi/plazaql` npm dep | Shiki/ExpressiveCode (PlazaQL renders as plain text pending tree-sitter integration) |
+| **VS Code** | LSP server (`plazaql-lsp`) | Full LSP (tree-sitter WASM) |
 
-The plaza backend's **compiler** (`Plaza.PlazaQL.Compiler`) stays in the plaza repo — it translates AST into PostGIS query plans and is tightly coupled to Ecto/PostGIS.
+The compiler pipeline lives in this repo under `lib/plazaql/` — it translates AST into parameterized PostGIS SQL.
 
 ## Tree-sitter Grammar
 
@@ -142,7 +176,7 @@ This repo must be cloned alongside:
 
 Published as `@plazafyi/plazaql`. The `files` field in `package.json` controls what ships:
 
-**Included**: `grammar.js`, `src/`, `queries/`, `tree-sitter.json`, `plazaql.tmLanguage.json`, `language-configuration.json`, `examples/`
+**Included**: `grammar.js`, `src/`, `queries/`, `tree-sitter.json`, `tree-sitter-plazaql.wasm`, `language-configuration.json`, `examples/`
 **Excluded**: `lib/`, `test/`, `_build/`, `deps/`, `mix.exs`, `lsp/`
 
 ## Universal Rules
