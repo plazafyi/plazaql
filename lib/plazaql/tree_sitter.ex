@@ -282,18 +282,23 @@ defmodule PlazaQL.TreeSitter do
   end
 
   defp transform_directive_args(children) do
-    children
-    |> Enum.flat_map(fn child ->
+    Enum.flat_map(children, fn child ->
       case elem_name(child) do
-        :tag_filter_list ->
-          transform_tag_filter_list(child)
-
-        :filter_expression ->
-          [transform_filter_expression(child)]
-
-        _ ->
-          [transform_to_arg(child)]
+        :tag_filter_list -> wrap_tag_filters_as_args(child)
+        _ -> [transform_to_arg(child)]
       end
+    end)
+  end
+
+  defp wrap_tag_filters_as_args(child) do
+    pos = make_pos(child)
+
+    child
+    |> transform_tag_filter_list()
+    |> Enum.map(fn
+      {:eq, key, val} -> {:kwarg, key, {:string, val, pos}}
+      {:exists, key} -> {:kwarg, key, {:atom, :exists, pos}}
+      filter -> {:posarg, filter}
     end)
   end
 

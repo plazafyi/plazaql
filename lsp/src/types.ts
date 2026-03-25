@@ -16,6 +16,8 @@ export type PqlType =
   | "Matrix"
   | "Elevation"
   | "Scalar"
+  | "GeoElement"
+  | "GroupedSet"
 
 const GEOMETRY_TYPES: PqlType[] = [
   "Point",
@@ -213,6 +215,13 @@ export interface DifferenceNode {
   pos: Pos
 }
 
+export interface IntersectionNode {
+  kind: "intersection"
+  left: Expr
+  right: Expr
+  pos: Pos
+}
+
 export interface ListNode {
   kind: "list"
   items: Expr[]
@@ -266,6 +275,7 @@ export type Expr =
   | ChainNode
   | UnionNode
   | DifferenceNode
+  | IntersectionNode
   | ListNode
 
 export type Statement =
@@ -302,8 +312,19 @@ const TRANSFORM_METHODS = ["buffer", "simplify", "centroid"]
 const COMPUTED_METHODS = ["elevation", "distance", "area", "length"]
 const OUTPUT_SHAPE_METHODS = ["fields", "include", "precision", "expand"]
 const ORDERING_METHODS = ["sort", "limit", "offset"]
-const OUTPUT_MODE_METHODS = ["count", "ids", "tags", "skel"]
+const OUTPUT_MODE_METHODS = [
+  "count",
+  "ids",
+  "tags",
+  "skel",
+  "geom",
+  "sum",
+  "min",
+  "max",
+  "avg",
+]
 const NARROWING_METHODS = ["first", "last", "index"]
+const GROUP_BY_METHODS = ["group_by"]
 
 export const ALL_METHODS = [
   ...SPATIAL_METHODS,
@@ -314,6 +335,7 @@ export const ALL_METHODS = [
   ...ORDERING_METHODS,
   ...OUTPUT_MODE_METHODS,
   ...NARROWING_METHODS,
+  ...GROUP_BY_METHODS,
 ]
 
 export function methodPhase(method: string): MethodPhase {
@@ -341,6 +363,9 @@ export function methodPhase(method: string): MethodPhase {
   if (NARROWING_METHODS.includes(method)) {
     return { ordinal: 7.5, label: "narrowing (phase 7b)" }
   }
+  if (GROUP_BY_METHODS.includes(method)) {
+    return { ordinal: 7.5, label: "group by (phase 7b)" }
+  }
   return { ordinal: 0, label: "unknown" }
 }
 
@@ -355,6 +380,9 @@ export function methodGroup(method: string): MethodGroup {
     return "late_chain"
   }
   if (NARROWING_METHODS.includes(method)) {
+    return "late_chain"
+  }
+  if (GROUP_BY_METHODS.includes(method)) {
     return "late_chain"
   }
   if (OUTPUT_MODE_METHODS.includes(method)) {
@@ -388,6 +416,9 @@ export function methodCategory(method: string): string {
   if (NARROWING_METHODS.includes(method)) {
     return "narrowing"
   }
+  if (GROUP_BY_METHODS.includes(method)) {
+    return "group by"
+  }
   return "unknown"
 }
 
@@ -399,24 +430,37 @@ export function isSpatialMethod(method: string): boolean {
   return SPATIAL_METHODS.includes(method)
 }
 
+const METHOD_OUTPUT_OVERRIDES: Record<string, PqlType> = {
+  centroid: "PointSet",
+  buffer: "PolygonSet",
+  count: "Scalar",
+  ids: "Scalar",
+  tags: "Scalar",
+  skel: "Scalar",
+  geom: "Scalar",
+  first: "GeoElement",
+  last: "GeoElement",
+  index: "GeoElement",
+  sum: "Scalar",
+  min: "Scalar",
+  max: "Scalar",
+  avg: "Scalar",
+  group_by: "GroupedSet",
+}
+
+const AGGREGATION_METHODS = ["sum", "min", "max", "avg"]
+
 export function methodOutputType(
   method: string,
   inputType: PqlType,
 ): { ok: true; type: PqlType } | { ok: false; error: string } {
-  if (method === "centroid" && isChainable(inputType)) {
-    return { ok: true, type: "PointSet" }
-  }
-  if (method === "buffer" && isChainable(inputType)) {
-    return { ok: true, type: "PolygonSet" }
-  }
-  if (method === "count" && isChainable(inputType)) {
-    return { ok: true, type: "Scalar" }
-  }
-  if (
-    (method === "ids" || method === "tags" || method === "skel") &&
-    isChainable(inputType)
-  ) {
-    return { ok: true, type: "Scalar" }
+  const override = METHOD_OUTPUT_OVERRIDES[method]
+  if (override) {
+    const allowGroupedSet =
+      AGGREGATION_METHODS.includes(method) && inputType === "GroupedSet"
+    if (isChainable(inputType) || allowGroupedSet) {
+      return { ok: true, type: override }
+    }
   }
   if (isChainable(inputType)) {
     if (ALL_METHODS.includes(method)) {
@@ -750,6 +794,57 @@ export const METHOD_CATALOG: MethodInfo[] = [
     phase: "Output Mode",
     ordinal: 8,
     group: "terminal",
+  },
+  {
+    name: "geom",
+    signature: ".geom()",
+    description: "Full geometry, no tags",
+    phase: "Output Mode",
+    ordinal: 8,
+    group: "terminal",
+  },
+  // Aggregation
+  {
+    name: "sum",
+    signature: ".sum(expr)",
+    description: "Sum of expression values. Result type becomes Scalar",
+    phase: "Aggregation",
+    ordinal: 8,
+    group: "terminal",
+  },
+  {
+    name: "min",
+    signature: ".min(expr)",
+    description: "Minimum expression value. Result type becomes Scalar",
+    phase: "Aggregation",
+    ordinal: 8,
+    group: "terminal",
+  },
+  {
+    name: "max",
+    signature: ".max(expr)",
+    description: "Maximum expression value. Result type becomes Scalar",
+    phase: "Aggregation",
+    ordinal: 8,
+    group: "terminal",
+  },
+  {
+    name: "avg",
+    signature: ".avg(expr)",
+    description: "Average expression value. Result type becomes Scalar",
+    phase: "Aggregation",
+    ordinal: 8,
+    group: "terminal",
+  },
+  // Group By
+  {
+    name: "group_by",
+    signature: ".group_by(expr)",
+    description:
+      "Partition results by expression, then apply aggregation. Result type becomes GroupedSet",
+    phase: "Group By",
+    ordinal: 7.5,
+    group: "late_chain",
   },
   // Structural joins
   {

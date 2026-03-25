@@ -96,6 +96,8 @@ function formatExpr(expr: Expr): string {
       return `${formatExpr(expr.left)} + ${formatExpr(expr.right)}`
     case "difference":
       return `${formatExpr(expr.left)} - ${formatExpr(expr.right)}`
+    case "intersection":
+      return `${formatExpr(expr.left)} & ${formatExpr(expr.right)}`
     case "var_ref":
       return expr.name
     case "number":

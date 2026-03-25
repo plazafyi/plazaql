@@ -22,6 +22,7 @@ import type {
   Expr,
   GeometryNode,
   IdentifierNode,
+  IntersectionNode,
   ListNode,
   MethodNode,
   NumberNode,
@@ -533,7 +534,7 @@ function transformExpr(node: SyntaxNode): Expr | null {
     case "difference_expression":
       return transformDifference(node)
     case "intersection_expression":
-      return transformDifference(node) // intersection maps to difference in old parser? No.
+      return transformIntersection(node)
     case "list_literal":
       return transformList(node)
     case "parenthesized_expression":
@@ -856,6 +857,20 @@ function transformDifference(node: SyntaxNode): DifferenceNode | null {
     return null
   }
   return { kind: "difference", left, right, pos: pos(leftNode) }
+}
+
+function transformIntersection(node: SyntaxNode): IntersectionNode | null {
+  const leftNode = node.childForFieldName("left")
+  const rightNode = node.childForFieldName("right")
+  if (!leftNode || !rightNode) {
+    return null
+  }
+  const left = transformExpr(leftNode)
+  const right = transformExpr(rightNode)
+  if (!left || !right) {
+    return null
+  }
+  return { kind: "intersection", left, right, pos: pos(leftNode) }
 }
 
 function transformList(node: SyntaxNode): ListNode {

@@ -208,6 +208,10 @@ defmodule PlazaQL.Formatter do
     "#{name}(#{format_expr(expr)})"
   end
 
+  defp format_method({:method, :sort_expr, expr, order, _pos}) do
+    "sort(#{format_expr(expr)}, order: :#{order})"
+  end
+
   defp format_method({:method, :filter_expr, expr, _pos}) do
     "filter(#{format_expr(expr)})"
   end

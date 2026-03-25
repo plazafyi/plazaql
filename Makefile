@@ -12,6 +12,7 @@ compile:
 
 # Run all tests
 test:
+	tree-sitter test
 	mix test
 	cd lsp && bunx vitest run
 

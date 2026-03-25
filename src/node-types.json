@@ -264,6 +264,22 @@
     }
   },
   {
+    "type": "block_comment",
+    "named": true,
+    "extra": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "block_comment",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "boolean",
     "named": true,
     "fields": {}
@@ -4269,6 +4285,10 @@
     "named": false
   },
   {
+    "type": "*/",
+    "named": false
+  },
+  {
     "type": "+",
     "named": false
   },
@@ -4286,6 +4306,10 @@
   },
   {
     "type": "/",
+    "named": false
+  },
+  {
+    "type": "/*",
     "named": false
   },
   {
@@ -4339,11 +4363,6 @@
   {
     "type": "bbox",
     "named": false
-  },
-  {
-    "type": "block_comment",
-    "named": true,
-    "extra": true
   },
   {
     "type": "boundary",

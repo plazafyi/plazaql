@@ -33,6 +33,22 @@ search(node);
       type: (element_type))))
 
 ================
+Nested block comment
+================
+
+/* outer /* inner */ still outer */
+search(node);
+
+---
+
+(program
+  (block_comment
+    (block_comment))
+  (bare_statement
+    (search_expression
+      type: (element_type))))
+
+================
 Simple search with element type
 ================
 

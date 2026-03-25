@@ -2,7 +2,7 @@
 
 A LINQ-style query language for geospatial data. PlazaQL provides a composable, chainable syntax for searching, filtering, routing, geocoding, and transforming OpenStreetMap data through the [Plaza API](https://plaza.fyi).
 
-```
+```plazaql
 search(node, amenity: "cafe")
   .within(boundary(name: "Manhattan, New York"))
   .around(200, point(40.7484, -73.9856))
@@ -18,20 +18,20 @@ search(node, amenity: "cafe")
 ## Quick Examples
 
 **Find restaurants near a point:**
-```
+```plazaql
 search(node, amenity: "restaurant")
   .around(500, point(48.8566, 2.3522))
   .limit(20);
 ```
 
 **Walking isochrone with nearby parks:**
-```
-$$.area = isochrone(center: point(40.71, -74.00), time: 15, mode: "walk");
+```plazaql
+$$.area = isochrone(center: point(40.71, -74.00), time: 900, mode: "foot");
 $$.parks = search(way, leisure: "park").within($$.area);
 ```
 
 **Geocode and search nearby:**
-```
+```plazaql
 $home = geocode("350 Fifth Avenue, New York");
 search(node, shop: "supermarket")
   .around(500, $home)
@@ -40,7 +40,7 @@ search(node, shop: "supermarket")
 ```
 
 **Expression filter and aggregation:**
-```
+```plazaql
 search(way, building: "yes")
   .within(boundary(name: "Manhattan, New York"))
   .filter(is_number(t["height"]) && number(t["height"]) > 50)
@@ -49,7 +49,7 @@ search(way, building: "yes")
 ```
 
 **Global directive scoping:**
-```
+```plazaql
 #within(geometry: boundary(name: "Berlin"));
 #filter(wheelchair: "yes");
 
@@ -63,7 +63,6 @@ $$.restaurants = search(node, amenity: "restaurant").limit(10);
 
 - [Syntax Overview](#syntax-overview)
 - [Comments](#comments)
-- [Settings](#settings)
 - [Variables](#variables)
 - [Output Assignment](#output-assignment)
 - [Type System](#type-system)
@@ -93,7 +92,7 @@ A PlazaQL query is a sequence of **statements**, each terminated by `;`. Stateme
 
 Expressions are built from **functions** (which produce values), **methods** (which transform values via chaining), and **operators** (union `+`, difference `-`, intersection `&`).
 
-```
+```plazaql
 // Variable — stores a value for reuse
 $area = boundary(name: "Berlin, Germany");
 
@@ -103,35 +102,20 @@ search(node, amenity: "cafe")
   .limit(10);
 ```
 
-An optional **settings block** `[key: value, ...]` can appear before all statements.
-
 ---
 
 ## Comments
 
-```
+```plazaql
 // Line comment — everything after // is ignored
 
 /* Block comment —
    can span multiple lines */
+
+/* Nested comments are supported —
+   /* inner comment */
+   still inside the outer comment */
 ```
-
----
-
-## Settings
-
-An optional settings block at the top of the query controls execution parameters:
-
-```
-[timeout: 30, format: "geojson"]
-```
-
-| Setting   | Type     | Description                              |
-|-----------|----------|------------------------------------------|
-| `timeout` | integer  | Query timeout in seconds                 |
-| `dataset` | string   | Dataset identifier                       |
-| `format`  | string   | Output format: `"geojson"`, `"csv"`, `"xml"` |
-| `maxsize` | integer  | Maximum response size in bytes           |
 
 ---
 
@@ -139,7 +123,7 @@ An optional settings block at the top of the query controls execution parameters
 
 Variables store intermediate values for reuse. Names start with `$` followed by a letter or underscore.
 
-```
+```plazaql
 $center = point(40.7128, -74.0060);
 $radius = 500;
 $nyc = boundary(name: "New York City");
@@ -161,30 +145,30 @@ Named output variables (`$$.name`) can also be used as values in later expressio
 Every query must produce at least one output. This defines what gets returned.
 
 **Single output** — bare expression (preferred):
-```
+```plazaql
 search(node, amenity: "cafe").limit(10);
 ```
 
 A bare expression statement is equivalent to `$$ = expression;`. The explicit `$$ =` prefix is supported but optional for single-output queries:
-```
+```plazaql
 $$ = search(node, amenity: "cafe").limit(10);
 ```
 
 **Named outputs** — return multiple result sets:
-```
+```plazaql
 $$.cafes = search(node, amenity: "cafe").limit(5);
 $$.parks = search(way, leisure: "park").limit(5);
 $$.route = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98));
 ```
 
 **Named output references** — `$$.name` values can be referenced in later statements, eliminating the need for intermediate variables:
-```
+```plazaql
 $$.route = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98));
 $$.stops = search(node, amenity: "cafe").around(200, $$.route);
 ```
 
 This is equivalent to the more verbose:
-```
+```plazaql
 $r = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98));
 $$.route = $r;
 $$.stops = search(node, amenity: "cafe").around(200, $r);
@@ -229,6 +213,14 @@ Result sets returned by search and computation functions.
 | `Elevation` | Elevation data             | `elevation()`, `elevation_profile()` | No (terminal)       |
 | `Scalar`    | Single numeric value       | `.count()`, `.sum()`, `.min()`, `.max()`, `.avg()` | No (terminal)       |
 
+### Special Types
+
+| Type         | Description                          | Produced by                          |
+|--------------|--------------------------------------|--------------------------------------|
+| `GeoElement` | Single element from a set            | `.first()`, `.last()`, `.index(n)` — usable as geometry |
+| `ValueSet`   | Tag values from a set (ANY semantics) | `$set[attr]` — bracket ref on a GeoSet |
+| `GroupedSet` | Partitioned set awaiting aggregation | `.group_by(expr)` — only aggregation methods allowed after |
+
 ### Type Hierarchy
 
 ```
@@ -238,12 +230,17 @@ Geometry (usable as spatial argument)
 ├── Polygon
 ├── Route        (geometry + result)
 ├── Isochrone    (geometry + result)
-└── Boundary     (geometry + result)
+├── Boundary     (geometry + result)
+└── GeoElement   (single element from a set)
 
 GeoSet (chainable result sets)
 ├── PointSet
 ├── LineSet
 └── PolygonSet
+
+Derived
+├── ValueSet     (tag values from bracket ref)
+└── GroupedSet   (partitioned set, accepts only aggregation)
 
 Terminal (not chainable)
 ├── Matrix
@@ -273,7 +270,6 @@ isochrone(...)         → Isochrone
 geocode(...)           → PointSet
 reverse_geocode(...)   → PointSet
 autocomplete(...)      → PointSet
-text_search(...)       → PointSet
 matrix(...)            → Matrix
 map_match(...)         → Route
 optimize(...)          → Route
@@ -281,16 +277,24 @@ ev_route(...)          → Route
 elevation(...)         → Elevation
 elevation_profile(...) → Elevation
 nearest(...)           → PointSet
+dataset(...)           → (search source, not a standalone type)
 
 // Transforms that change type
 .centroid()            :: GeoSet → PointSet
 .buffer(n)             :: GeoSet → PolygonSet
-.count()               :: GeoSet → Scalar
-.sum(expr)             :: GeoSet → Scalar
-.min(expr)             :: GeoSet → Scalar
-.max(expr)             :: GeoSet → Scalar
-.avg(expr)             :: GeoSet → Scalar
-.group_by(expr).agg()  :: GeoSet → Scalar (map)
+.first()               :: GeoSet → GeoElement
+.last()                :: GeoSet → GeoElement
+.index(n)              :: GeoSet → GeoElement
+.group_by(expr)        :: GeoSet → GroupedSet
+.count()               :: GeoSet | GroupedSet → Scalar
+.sum(expr)             :: GeoSet | GroupedSet → Scalar
+.min(expr)             :: GeoSet | GroupedSet → Scalar
+.max(expr)             :: GeoSet | GroupedSet → Scalar
+.avg(expr)             :: GeoSet | GroupedSet → Scalar
+
+// Bracket refs
+$element[attr]         :: GeoElement → scalar value (equality match)
+$set[attr]             :: GeoSet → ValueSet (ANY semantics)
 
 // Set operations
 PointSet + PointSet       → PointSet
@@ -298,7 +302,8 @@ LineSet + LineSet         → LineSet
 PolygonSet + PolygonSet   → PolygonSet
 mixed + anything          → GeoSet
 difference preserves left operand type
-intersection preserves left operand type
+same & same               → same type
+mixed & mixed             → GeoSet
 ```
 
 ---
@@ -309,7 +314,7 @@ intersection preserves left operand type
 
 Search for OpenStreetMap features by element type and tag filters.
 
-```
+```plazaql
 search(node, amenity: "cafe")              // nodes with amenity=cafe
 search(way, highway: "primary")            // ways with highway=primary
 search(relation, boundary: "administrative") // relations
@@ -323,7 +328,7 @@ search(amenity: "cafe")                    // same as nwr (all types)
 
 Resolve a named administrative boundary or place.
 
-```
+```plazaql
 $nyc = boundary(name: "New York City");
 $france = boundary(name: "France");
 $park = boundary(name: "Central Park, New York");
@@ -335,36 +340,35 @@ Returns a `Boundary` which can be used as a geometry argument to `.within()`, `.
 
 Compute a route between points.
 
-```
+```plazaql
 // Keyword (preferred)
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98))
 
 // With mode
-route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "walk")
-
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "foot")
 ```
 
-**Modes:** `"drive"`, `"walk"`, `"bike"`
+**Modes:** `"auto"`, `"foot"`, `"bicycle"`
 
 ### `isochrone(center:, time:, mode:)`
 
 Compute a travel-time polygon.
 
-```
-isochrone(center: point(40.71, -74.00), time: 15, mode: "walk")
+```plazaql
+isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 ```
 
 | Parameter | Type    | Description                    |
 |-----------|---------|--------------------------------|
 | `center`  | Point   | Origin point                   |
-| `time`    | integer | Travel time in minutes         |
-| `mode`    | string  | `"drive"`, `"walk"`, `"bike"` |
+| `time`    | integer | Travel time in seconds         |
+| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"` |
 
 ### `geocode(address)`
 
 Forward geocode — address string to point features.
 
-```
+```plazaql
 geocode("1600 Pennsylvania Avenue, Washington DC")
 ```
 
@@ -372,7 +376,7 @@ geocode("1600 Pennsylvania Avenue, Washington DC")
 
 Reverse geocode — coordinates to address.
 
-```
+```plazaql
 reverse_geocode(point(38.8977, -77.0365))
 ```
 
@@ -380,63 +384,75 @@ reverse_geocode(point(38.8977, -77.0365))
 
 Autocomplete partial place names.
 
-```
+```plazaql
 autocomplete("Eiffel Tow")
 ```
 
-### `text_search(query)`
-
-Full-text search across place names and addresses.
-
-```
-text_search("pizza near Times Square")
-```
-
-### `nearest(point, tag_filters...)`
+### `nearest(point:, radius:?, type:?)`
 
 Find the nearest features to a point.
 
-```
-nearest(point(40.71, -74.00), amenity: "hospital")
-```
-
-### `matrix(points...)`
-
-Compute a distance/duration matrix between multiple points.
-
-```
-matrix(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98))
+```plazaql
+nearest(point: point(40.71, -74.00))
 ```
 
-### `map_match(linestring, mode:)`
+| Parameter | Type    | Description                    |
+|-----------|---------|--------------------------------|
+| `point`   | Point   | Reference point                |
+| `radius`  | number  | Search radius in meters (optional) |
+| `type`    | string  | Element type filter (optional) |
+
+### `matrix(sources:, destinations:, mode:?)`
+
+Compute a distance/duration matrix between sets of points.
+
+```plazaql
+matrix(sources: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [point(40.75, -73.98)])
+```
+
+| Parameter      | Type     | Description                    |
+|----------------|----------|--------------------------------|
+| `sources`      | Point[]  | Origin points                  |
+| `destinations` | Point[]  | Destination points             |
+| `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"` (optional) |
+
+### `map_match(points:, mode:)`
 
 Snap a GPS trace to the road network.
 
-```
-map_match(linestring(point(40.71, -74.00), point(40.72, -73.99)), mode: "drive")
+```plazaql
+map_match(points: [point(40.71, -74.00), point(40.72, -73.99)], mode: "auto")
 ```
 
 ### `optimize(points..., mode:)`
 
 Solve the traveling salesman problem — optimal visit order.
 
-```
-optimize(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98), mode: "drive")
+```plazaql
+optimize(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98), mode: "auto")
 ```
 
-### `ev_route(origin:, destination:, mode:)`
+### `ev_route(origin:, destination:, battery:)`
 
 EV-aware routing with charge stop planning.
 
+```plazaql
+ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000)
 ```
-ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), mode: "drive")
-```
+
+| Parameter            | Type    | Description                              |
+|----------------------|---------|------------------------------------------|
+| `origin`             | Point   | Start point                              |
+| `destination`        | Point   | End point                                |
+| `battery`            | number  | Battery capacity in watt-hours (required) |
+| `initial_charge_pct` | number  | Initial charge percentage (optional)     |
+| `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
 
 ### `elevation(point)`
 
 Look up elevation at a single point.
 
-```
+```plazaql
 elevation(point(27.9881, 86.9250))
 ```
 
@@ -444,8 +460,16 @@ elevation(point(27.9881, 86.9250))
 
 Get elevation profile along a linestring.
 
-```
+```plazaql
 elevation_profile(linestring(point(46.5, 6.6), point(46.0, 7.6)))
+```
+
+### `dataset(slug)`
+
+Reference a named dataset as a search source.
+
+```plazaql
+search(dataset("my_data"), name: *)
 ```
 
 ---
@@ -454,7 +478,7 @@ elevation_profile(linestring(point(46.5, 6.6), point(46.0, 7.6)))
 
 ### `point(lat, lng)` / `point(lat:, lng:)`
 
-```
+```plazaql
 point(40.7128, -74.0060)
 point(lat: 40.7128, lng: -74.0060)
 ```
@@ -463,7 +487,7 @@ Note: PlazaQL uses `lat, lng` order (human convention). Internally converted to 
 
 ### `linestring(p1, p2, ...)`
 
-```
+```plazaql
 linestring(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98))
 ```
 
@@ -471,7 +495,7 @@ Minimum 2 points.
 
 ### `polygon(p1, p2, p3, ...)`
 
-```
+```plazaql
 polygon(point(40.71, -74.01), point(40.71, -73.99), point(40.73, -73.99), point(40.73, -74.01))
 ```
 
@@ -481,13 +505,13 @@ Minimum 3 points. Automatically closed (first point repeated).
 
 Shorthand for a rectangular polygon from bounding box coordinates.
 
-```
+```plazaql
 bbox(40.70, -74.02, 40.75, -73.97)
 ```
 
 ### `circle(center, radius)`
 
-```
+```plazaql
 circle(point(40.71, -74.00), 500)  // 500 meter radius
 ```
 
@@ -501,7 +525,7 @@ Methods are chained onto expressions with `.method()` syntax. They are organized
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `.within(geom)` | `GeoSet → GeoSet` | Features inside a geometry |
+| `.within(geom)` | `GeoSet → GeoSet` | Features inside a geometry (`Boundary`, `Isochrone`, `Polygon`, or `PolygonSet` only) |
 | `.around(distance, geom)` | `GeoSet → GeoSet` | Features within distance (meters) of a geometry |
 | `.bbox(s, w, n, e)` | `GeoSet → GeoSet` | Features in bounding box |
 | `.h3(cell)` | `GeoSet → GeoSet` | Features in H3 cell |
@@ -509,13 +533,13 @@ Methods are chained onto expressions with `.method()` syntax. They are organized
 | `.contains(geom)` | `GeoSet → GeoSet` | Features that fully contain a geometry |
 | `.crosses(geom)` | `GeoSet → GeoSet` | Features that cross a geometry |
 | `.touches(geom)` | `GeoSet → GeoSet` | Features that touch a geometry |
-| `.not_within(geom)` | `GeoSet → GeoSet` | Features NOT inside a geometry |
+| `.not_within(geom)` | `GeoSet → GeoSet` | Features NOT inside a geometry (`Boundary`, `Isochrone`, `Polygon`, or `PolygonSet` only) |
 | `.not_intersects(geom)` | `GeoSet → GeoSet` | Features NOT intersecting a geometry |
 | `.not_contains(geom)` | `GeoSet → GeoSet` | Features NOT containing a geometry |
 | `.member_of(source, role?)` | `GeoSet → GeoSet` | Features that are members of the source set |
 | `.has_member(source, role?)` | `GeoSet → GeoSet` | Features that contain source elements as members |
 
-```
+```plazaql
 search(node, amenity: "cafe")
   .within(boundary(name: "Manhattan"))
   .around(200, point(40.74, -73.98));
@@ -527,7 +551,7 @@ search(node, amenity: "cafe")
 |--------|-----------|-------------|
 | `.filter(tag_filters...)` | `GeoSet → GeoSet` | Apply tag filters post-search or post-union |
 
-```
+```plazaql
 $combined = search(node, amenity: "cafe") + search(node, amenity: "restaurant");
 $combined.filter(wheelchair: "yes", outdoor_seating: "yes");
 ```
@@ -540,7 +564,7 @@ $combined.filter(wheelchair: "yes", outdoor_seating: "yes");
 | `.simplify(meters)` | `GeoSet → GeoSet` | Reduce geometry complexity |
 | `.centroid()` | `GeoSet → PointSet` | Convert to center points |
 
-```
+```plazaql
 search(way, leisure: "park").buffer(100);    // 100m buffer around parks
 search(way, boundary: *).simplify(1000);     // simplify to 1km tolerance
 search(way, building: "yes").centroid();      // building center points
@@ -555,7 +579,7 @@ search(way, building: "yes").centroid();      // building center points
 | `.area()` | `GeoSet → GeoSet` | Compute area of polygon features |
 | `.length()` | `GeoSet → GeoSet` | Compute length of linear features |
 
-```
+```plazaql
 search(node, natural: "peak").elevation().sort(elevation());
 search(node, amenity: "hospital").distance(point(40.71, -74.00)).sort(distance(point(40.71, -74.00)));
 ```
@@ -568,7 +592,7 @@ search(node, amenity: "hospital").distance(point(40.71, -74.00)).sort(distance(p
 | `.include(what)` | `GeoSet → GeoSet` | Include related data (`"nodes"`, `"members"`) |
 | `.precision(n)` | `GeoSet → GeoSet` | Coordinate decimal places |
 
-```
+```plazaql
 search(node, amenity: "cafe").fields("name", "cuisine", "opening_hours");
 search(way, highway: "motorway").include("nodes");
 search(node, amenity: *).precision(4);
@@ -582,8 +606,8 @@ search(node, amenity: *).precision(4);
 | `.limit(n)` | `GeoSet → GeoSet` | Maximum number of results |
 | `.offset(n)` | `GeoSet → GeoSet` | Skip first n results |
 
-```
-search(node, amenity: "cafe").sort("name").limit(10).offset(20);
+```plazaql
+search(node, amenity: "cafe").sort(t["name"]).limit(10).offset(20);
 ```
 
 ### Output Mode (Phase 8) — Terminal
@@ -596,7 +620,7 @@ search(node, amenity: "cafe").sort("name").limit(10).offset(20);
 | `.skel()` | `GeoSet → GeoSet` | Minimal geometry, no tags |
 | `.geom()` | `GeoSet → GeoSet` | Full geometry, no tags |
 
-```
+```plazaql
 search(node, amenity: "cafe").within(boundary(name: "Paris")).count();
 search(node, shop: *).ids();
 search(way, building: "yes").within(boundary(name: "Manhattan")).geom();
@@ -608,7 +632,7 @@ Only one output mode per chain. These are terminal — no further chaining allow
 
 Sort results by quadtile index for optimal spatial locality — features near each other geographically appear near each other in the output:
 
-```
+```plazaql
 search(node, amenity: "cafe")
   .within(boundary(name: "Berlin, Germany"))
   .sort(by: :qt)
@@ -626,7 +650,7 @@ The `:qt` atom is a special sort mode, not an expression. It's distinct from `.s
 
 Structural joins let you traverse OSM relationships — relations contain members (ways, nodes, other relations), and ways contain nodes. `.member_of()` finds elements that belong to a source, while `.has_member()` finds containers of a source.
 
-```
+```plazaql
 // Bus stops on route 42
 $route = search(relation, route: "bus", ref: "42");
 search(node, highway: "bus_stop").member_of($route);
@@ -649,7 +673,7 @@ search(relation, route: "bus").has_member($stops);
 
 Narrowing methods reduce a set to a single element. Useful for picking a specific result to use in subsequent expressions.
 
-```
+```plazaql
 // Nearest cafe
 $nearest = search(node, amenity: "cafe")
   .around(1000, point(40.75, -73.99)).first();
@@ -666,7 +690,7 @@ Extract tag values from variables using bracket notation. The behavior depends o
 - **GeoElement** (single element, e.g. from `.first()`): `$var[attr]` returns a scalar value, usable with `=` equality.
 - **GeoSet** (multiple elements): `$var[attr]` returns a value set, matched with `ANY` semantics.
 
-```
+```plazaql
 // Scalar: find stops with the same ref as the nearest stop
 $stop = search(node, highway: "bus_stop")
   .around(500, point(40.75, -73.99)).first();
@@ -675,6 +699,10 @@ search(node, highway: "bus_stop", ref: $stop[ref]);
 // Value set: find routes matching any ref from a set of stops
 $stops = search(node, highway: "bus_stop").bbox(40.7, -74.0, 40.8, -73.9);
 search(relation, route: "bus", ref: $stops[ref]);
+
+// Output bracket ref: access tags on named outputs
+$$.route = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98));
+$$.stops = search(node, highway: "bus_stop", ref: $$.route["ref"]);
 ```
 
 ### Recursion
@@ -682,8 +710,9 @@ search(relation, route: "bus", ref: $stops[ref]);
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `.expand(:down)` | `GeoSet → GeoSet` | Recurse into relation members / way nodes |
+| `.expand(:up)` | `GeoSet → GeoSet` | Recurse up to parent relations |
 
-```
+```plazaql
 search(relation, name: "Central Park").expand(:down);
 ```
 
@@ -697,7 +726,7 @@ Tag filters appear inside `search()` and `.filter()`.
 
 Look up specific OSM elements by ID:
 
-```
+```plazaql
 search(node, id: 12345)           // single element
 search(way, id: [123, 456, 789])  // multiple elements
 ```
@@ -708,7 +737,7 @@ ID filters bypass tag matching entirely — they fetch specific elements by thei
 
 Match tags whose **key** matches a regex pattern, using the `~"pattern"` prefix syntax on the key side:
 
-```
+```plazaql
 search(node, ~"^addr:": ~"^[0-9]")   // addr:* tags with digit values
 search(node, ~"^name:": *)            // any name:* translation tag
 search(way, ~"^highway": "primary")   // keys matching ^highway with exact value
@@ -722,43 +751,43 @@ Nine filter types:
 
 ### Equals
 
-```
+```plazaql
 amenity: "cafe"           // tags->>'amenity' = 'cafe'
 ```
 
 ### Not Equals
 
-```
+```plazaql
 cuisine: !"fast_food"     // tags->>'cuisine' != 'fast_food'
 ```
 
 ### Regex
 
-```
+```plazaql
 name: ~"^Starbucks"       // tags->>'name' ~ '^Starbucks'
 ```
 
 ### Case-Insensitive Regex
 
-```
+```plazaql
 name: ~i"starbucks"       // tags->>'name' ~* 'starbucks'
 ```
 
 ### Negated Regex
 
-```
+```plazaql
 name: !~"McDonald"        // NOT (tags->>'name' ~ 'McDonald')
 ```
 
 ### Exists
 
-```
+```plazaql
 cuisine: *                // tags ? 'cuisine'
 ```
 
 ### Not Exists
 
-```
+```plazaql
 name: !*                  // NOT tags ? 'name'
 ```
 
@@ -766,7 +795,7 @@ name: !*                  // NOT tags ? 'name'
 
 Multiple filters in a single call are combined with AND:
 
-```
+```plazaql
 search(node, amenity: "restaurant", cuisine: "italian", outdoor_seating: "yes")
 // amenity=restaurant AND cuisine=italian AND outdoor_seating=yes
 ```
@@ -779,7 +808,7 @@ search(node, amenity: "restaurant", cuisine: "italian", outdoor_seating: "yes")
 
 Combine two result sets:
 
-```
+```plazaql
 $cafes = search(node, amenity: "cafe").within($area);
 $restaurants = search(node, amenity: "restaurant").within($area);
 $cafes + $restaurants;
@@ -789,7 +818,7 @@ $cafes + $restaurants;
 
 Subtract one result set from another:
 
-```
+```plazaql
 $all = search(node, amenity: ~"cafe|restaurant|fast_food").within($area);
 $fast = search(node, amenity: "fast_food").within($area);
 $all - $fast;
@@ -799,7 +828,7 @@ $all - $fast;
 
 Keep only features that appear in both sets:
 
-```
+```plazaql
 $italian = search(node, cuisine: "italian").within($area);
 $wheelchair = search(node, wheelchair: "yes").within($area);
 $italian & $wheelchair;
@@ -809,7 +838,7 @@ Type rules for set operations:
 - Same types preserve the type: `PointSet + PointSet → PointSet`
 - Mixed types produce `GeoSet`: `PointSet + LineSet → GeoSet`
 - Difference preserves the left operand's type
-- Intersection preserves the left operand's type
+- Intersection: same types preserve the type; mixed types produce `GeoSet`
 
 ---
 
@@ -817,7 +846,7 @@ Type rules for set operations:
 
 Global directives apply a method to **all subsequent queries** in the program. They use `#method(args);` syntax — the same method names as chain methods, but prefixed with `#` and written as standalone statements.
 
-```
+```plazaql
 #within(geometry: boundary(name: "Berlin"));
 #filter(name: *);
 #limit(count: 10);
@@ -829,7 +858,7 @@ $$.parks = search(way, leisure: "park");
 
 ### Spatial Directives
 
-```
+```plazaql
 #within(geometry: boundary(name: "Paris"));     // scope to boundary
 #bbox(south: 47.0, west: 10.0, north: 48.0, east: 11.0);  // scope to bbox
 #around(distance: 500, geometry: point(lat: 48.85, lng: 2.35));  // scope to radius
@@ -837,21 +866,21 @@ $$.parks = search(way, leisure: "park");
 
 ### Tag Filter Directive
 
-```
+```plazaql
 #filter(name: *);                  // require name tag
 #filter(wheelchair: "yes");        // require wheelchair access
 ```
 
 ### Expression Filter Directive
 
-```
+```plazaql
 #filter(number(t["population"]) > 100000);   // only large cities
 #filter(is_number(t["height"]));             // only features with numeric height
 ```
 
 ### Limit Directive
 
-```
+```plazaql
 #limit(count: 5);    // cap all results to 5
 ```
 
@@ -859,7 +888,7 @@ $$.parks = search(way, leisure: "park");
 
 Directives accumulate — each new one adds a constraint (AND semantics):
 
-```
+```plazaql
 #within(geometry: boundary(name: "Tokyo"));
 #filter(wheelchair: "yes");
 #limit(count: 20);
@@ -879,7 +908,7 @@ PlazaQL includes an expression language for complex filtering and aggregation. E
 
 Access tag values by key. Returns the string value of the tag, or null if the tag doesn't exist.
 
-```
+```plazaql
 t["name"]            // → "Starbucks"
 t["population"]      // → "3677000" (string — use number() for arithmetic)
 t["cuisine"]         // → "italian"
@@ -896,7 +925,7 @@ Access feature metadata (not tags):
 | `lat()` | float | Latitude (nodes only) |
 | `lon()` | float | Longitude (nodes only) |
 
-```
+```plazaql
 search(node, amenity: "restaurant")
   .within(boundary(name: "Rome"))
   .filter(lat() < 41.89)
@@ -911,9 +940,10 @@ Compute properties of each feature's geometry:
 |----------|---------|-------------|
 | `length()` | float | Geometry length in meters (lines/ways) |
 | `area()` | float | Geometry area in square meters (polygons) |
+| `elevation()` | float | Elevation in meters |
 | `is_closed()` | boolean | Whether a linestring forms a closed ring |
 
-```
+```plazaql
 // Long cycleways (> 5km)
 search(way, highway: "cycleway")
   .filter(length() > 5000);
@@ -932,7 +962,7 @@ search(way, leisure: "park")
 | `number(expr)` | Convert string to number for arithmetic |
 | `is_number(expr)` | Check if value can be parsed as a number |
 
-```
+```plazaql
 // Guard + convert pattern
 .filter(is_number(t["height"]) && number(t["height"]) > 50)
 ```
@@ -946,7 +976,7 @@ search(way, leisure: "park")
 | `str_contains(expr, str)` | Substring check |
 | `size(expr)` | Character count |
 
-```
+```plazaql
 .filter(starts_with(t["name"], "Via"))
 .filter(size(t["name"]) > 50)
 ```
@@ -964,7 +994,7 @@ search(way, leisure: "park")
 | `\|\|` | Logical OR | Either condition true |
 | `!` | Logical NOT | Negate a condition |
 
-```
+```plazaql
 // Compound: Italian OR Japanese restaurants
 .filter(t["cuisine"] == "italian" || t["cuisine"] == "japanese")
 
@@ -979,7 +1009,7 @@ search(way, leisure: "park")
 
 When `.filter()` receives an expression (rather than tag key-value pairs), it evaluates the expression for each feature:
 
-```
+```plazaql
 // Tag filter syntax (key: value pairs)
 .filter(amenity: "cafe", wheelchair: "yes")
 
@@ -1007,7 +1037,7 @@ Aggregation methods reduce a result set to a single numeric value.
 
 The expression argument uses the same [expression language](#expression-language) — `t["key"]`, `number()`, `length()`, `area()`, etc.
 
-```
+```plazaql
 // Total cycleway length in Amsterdam
 search(way, highway: "cycleway")
   .within(boundary(name: "Amsterdam"))
@@ -1029,7 +1059,7 @@ search(way, highway: "residential")
 
 `.group_by(expr)` partitions results by an expression value, then applies an aggregation to each group. Returns a map of `{group_key → aggregated_value}`.
 
-```
+```plazaql
 // Count restaurants by cuisine
 search(node, amenity: "restaurant", cuisine: *)
   .within(boundary(name: "Tokyo"))
@@ -1050,39 +1080,45 @@ search(way, building: *)
   .avg(number(t["height"]));
 ```
 
-`.group_by()` must be followed by exactly one aggregation method (`.count()`, `.sum()`, `.min()`, `.max()`, `.avg()`). The result type is `Scalar` (a map, not a feature collection).
+`.group_by()` must be followed by exactly one aggregation method (`.count()`, `.sum()`, `.min()`, `.max()`, `.avg()`). The result type is `GroupedSet` → `Scalar` after aggregation.
 
 ---
 
 ## Chain Ordering
 
-Methods must follow a specific phase order. Methods within the same phase can appear in any order, but later phases cannot precede earlier phases.
+Methods are organized into three ordering groups. Methods within the **freely orderable** group can appear in any order relative to each other. **Late chain** methods must come after all freely orderable methods. **Terminal** methods must be last, and only one is allowed per chain.
 
 ```
-Phase 1: Source        search() | boundary() | route() | isochrone() | ...
-Phase 2: Set ops       + | - | &
-Phase 3: Spatial       .within() | .around() | .bbox() | .h3() |
-                       .intersects() | .contains() | .crosses() | .touches() |
-                       .not_within() | .not_intersects() | .not_contains() |
-                       .member_of() | .has_member()
-Phase 3b: Tag filter   .filter(key: value) | .filter(expression)
-Phase 4: Transforms    .buffer() | .simplify() | .centroid()
-Phase 5: Computed      .elevation() | .distance() | .area() | .length()
-Phase 6: Output shape  .fields() | .include() | .precision() | .expand()
-Phase 7: Ordering      .sort() | .limit() | .offset()
-Phase 7b: Narrowing    .first() | .last() | .index()
-Phase 7c: Group by     .group_by(expr)
-Phase 8: Output mode   .count() | .ids() | .tags() | .skel() | .geom() |
-                       .sum(expr) | .min(expr) | .max(expr) | .avg(expr)
+Source             search() | boundary() | route() | isochrone() | ...
+Set ops            + | - | &
+
+Freely orderable (any order among themselves):
+  Spatial          .within() | .around() | .bbox() | .h3() |
+                   .intersects() | .contains() | .crosses() | .touches() |
+                   .not_within() | .not_intersects() | .not_contains() |
+                   .member_of() | .has_member()
+  Tag filter       .filter(key: value) | .filter(expression)
+  Transforms       .buffer() | .simplify() | .centroid()
+  Computed         .elevation() | .distance() | .area() | .length()
+  Output shape     .fields() | .include() | .precision() | .expand()
+
+Late chain (must come after freely orderable):
+  Ordering         .sort() | .limit() | .offset()
+  Narrowing        .first() | .last() | .index()
+  Group by         .group_by(expr)
+
+Terminal (must be last, only one allowed):
+  Output mode      .count() | .ids() | .tags() | .skel() | .geom() |
+                   .sum(expr) | .min(expr) | .max(expr) | .avg(expr)
 ```
 
 **Valid:**
-```
-search(node, amenity: "cafe").within($area).sort("name").limit(10);
+```plazaql
+search(node, amenity: "cafe").within($area).sort(t["name"]).limit(10);
 ```
 
-**Invalid** — `.limit()` (Phase 7) before `.within()` (Phase 3):
-```
+**Invalid** — `.limit()` (late chain) before `.within()` (freely orderable):
+```plazaql
 search(node, amenity: "cafe").limit(10).within($area);  // ERROR
 ```
 
@@ -1092,7 +1128,7 @@ search(node, amenity: "cafe").limit(10).within($area);  // ERROR
 
 All functions and methods support **keyword** and **positional** arguments. You cannot mix styles in a single call.
 
-```
+```plazaql
 // Keyword (self-documenting)
 .around(distance: 500, geometry: point(lat: 40.71, lng: -74.00))
 
@@ -1113,7 +1149,7 @@ error: unexpected token
   --> query:3:15
    |
  3 | $$ = search(node amenity: "cafe");
-   |                   ^^^^^^^ expected ',' between arguments
+   |               ^
    |
    = hint: add a comma: search(node, amenity: "cafe")
 ```
@@ -1121,25 +1157,23 @@ error: unexpected token
 ### Type Error
 
 ```
-error: method .within() requires a geometry argument, got Scalar
+error: `.within()` requires an Area or Polygon variable
   --> query:5:3
    |
  5 |   .within(42)
-   |           ^^ expected Point, LineString, Polygon, Boundary, Route, or Isochrone
+   |           ^
    |
-   = hint: use a geometry constructor: .within(point(40.71, -74.00))
+   = hint: use a geometry constructor: .within(boundary(name: "..."))
 ```
 
 ### Chain Order Error
 
 ```
-error: .limit() (phase 7) cannot appear before .within() (phase 3)
+error: `.limit()` (ordering) cannot follow `.within()` — ordering methods must come after spatial methods
   --> query:2:3
    |
  2 |   .limit(10)
-   |   ^^^^^^^^^^ phase 7: ordering
- 3 |   .within($area)
-   |   -------------- phase 3: spatial (must come first)
+   |   ^
    |
    = hint: move .limit(10) after .within($area)
 ```
@@ -1151,7 +1185,7 @@ error: undefined variable $downtown
   --> query:4:12
    |
  4 |   .within($downtown)
-   |           ^^^^^^^^^ not defined
+   |            ^
    |
    = hint: assign it first: $downtown = boundary(name: "Downtown");
 ```
@@ -1163,7 +1197,7 @@ error: undefined output variable $$.boundary
   --> query:3:12
    |
  3 |   .within($$.boundary)
-   |           ^^^^^^^^^^^^ not defined
+   |            ^
    |
    = hint: assign it first: $$.boundary = boundary(name: "Berlin, Germany");
 ```
@@ -1175,9 +1209,7 @@ error: undefined output variable $$.boundary
 ### EBNF
 
 ```ebnf
-program        = settings? (directive | statement)+ ;
-settings       = "[" setting ("," setting)* "]" ;
-setting        = IDENT ":" value ;
+program        = (directive | statement)+ ;
 
 directive      = "#" IDENT "(" (tag_filters | filter_expr | arg_list) ")" ";" ;
 
@@ -1192,17 +1224,22 @@ unary_expr     = primary method_chain? ;
 
 primary        = search | boundary_call | route_call | isochrone_call
                | geocode_call | reverse_geocode_call | autocomplete_call
-               | text_search_call | matrix_call | map_match_call
+               | matrix_call | map_match_call
                | optimize_call | ev_route_call | elevation_call
-               | elevation_profile_call | nearest_call
-               | constructor | variable | "(" expression ")" ;
+               | elevation_profile_call | nearest_call | dataset_call
+               | constructor | variable | output_ref | output_named_ref
+               | list_literal | "(" expression ")" ;
 
-search         = "search" "(" (element_type ",")? (tag_filters | id_filter) ")" ;
+search         = "search" "(" search_args? ")" ;
+search_args    = element_type ("," tag_filters)?
+               | dataset_call ("," tag_filters)?
+               | tag_filters | id_filter ;
 id_filter      = "id" ":" (NUMBER | "[" NUMBER ("," NUMBER)* "]") ;
-boundary_call  = "boundary" "(" tag_filters ")" ;
+boundary_call  = "boundary" "(" tag_filters? ")" ;
 route_call     = "route" "(" arg_list ")" ;
 isochrone_call = "isochrone" "(" arg_list ")" ;
 geocode_call   = "geocode" "(" STRING ")" ;
+dataset_call   = "dataset" "(" STRING ")" ;
 /* ... other function calls follow the same pattern */
 
 constructor    = point | linestring | polygon | bbox | circle ;
@@ -1213,7 +1250,7 @@ bbox           = "bbox" "(" NUMBER "," NUMBER "," NUMBER "," NUMBER ")" ;
 circle         = "circle" "(" arg_list ")" ;
 
 method_chain   = ("." method_call)+ ;
-method_call    = IDENT "(" (arg_list | filter_expr)? ")" ;
+method_call    = IDENT ("(" (arg_list | filter_expr)? ")")? ;
 
 arg_list       = keyword_args | positional_args ;
 keyword_args   = keyword_arg ("," keyword_arg)* ;
@@ -1226,41 +1263,53 @@ regex_key      = "~" STRING ;
 tag_value      = STRING | "!" STRING | "~" STRING | "~i" STRING
                | "!~" STRING | "*" | "!*" | NUMBER | id_list ;
 id_list        = "[" NUMBER ("," NUMBER)* "]" ;
+list_literal   = "[" value ("," value)* "]" ;
 
 /* Expression language (used in .filter(expr), .sum(expr), etc.) */
 filter_expr    = or_expr ;
 or_expr        = and_expr ("||" and_expr)* ;
-and_expr       = comparison ("&&" comparison)* ;
-comparison     = add_expr (comp_op add_expr)? ;
-comp_op        = ">" | "<" | ">=" | "<=" | "==" | "!=" ;
+and_expr       = equality ("&&" equality)* ;
+equality       = comparison (("==" | "!=") comparison)? ;
+comparison     = add_expr (("<" | ">" | "<=" | ">=") add_expr)? ;
 add_expr       = mul_expr (("+" | "-") mul_expr)* ;
 mul_expr       = unary (("*" | "/") unary)* ;
 unary          = "!" unary | expr_primary ;
-expr_primary   = tag_access | prop_access | geom_func | coerce_func
-               | string_func | NUMBER | STRING | BOOL
+expr_primary   = tag_access | prop_access | geom_func | distance_func
+               | coerce_func | string_func | size_func
+               | constructor | variable | output_ref | attr_access
+               | output_bracket_ref | atom
+               | NUMBER | STRING | BOOL
                | "(" filter_expr ")" ;
 tag_access     = "t" "[" STRING "]" ;
 prop_access    = ("id" | "type" | "lat" | "lon") "(" ")" ;
-geom_func      = ("length" | "area" | "is_closed") "(" ")" ;
+geom_func      = ("length" | "area" | "elevation" | "is_closed") "(" ")" ;
+distance_func  = "distance" "(" value ")" ;
+size_func      = "size" "(" filter_expr ")" ;
 coerce_func    = ("number" | "is_number") "(" filter_expr ")" ;
 string_func    = ("starts_with" | "ends_with" | "str_contains")
-                 "(" filter_expr "," filter_expr ")"
-               | "size" "(" filter_expr ")" ;
+                 "(" filter_expr "," filter_expr ")" ;
 
 element_type   = "node" | "way" | "relation" | "nwr" ;
 
 value          = STRING | NUMBER | BOOL | constructor | variable
-               | attr_access | output_ref | ":" IDENT ;
+               | attr_access | output_ref | output_named_ref
+               | output_bracket_ref | list_literal | atom
+               | search | boundary_call | route_call | isochrone_call
+               | dataset_call | "(" expression ")" ;
 variable       = "$" IDENT ;
-attr_access    = variable "[" IDENT "]" ;
-output_ref     = "$$." IDENT ;
+attr_access    = variable "[" (IDENT | STRING) "]" ;
+output_ref     = "$$" ;
+output_named_ref = "$$." IDENT ;
+output_bracket_ref = "$$." IDENT "[" (IDENT | STRING) "]" ;
+atom           = ":" IDENT ;
 
 STRING         = '"' ( ~["\\\n] | '\\' . )* '"' ;
 NUMBER         = "-"? [0-9]+ ("." [0-9]+)? ;
 BOOL           = "true" | "false" ;
 IDENT          = [a-zA-Z_] [a-zA-Z0-9_]* ;
 
-COMMENT        = "//" ~[\n]* | "/*" .*? "*/" ;
+LINE_COMMENT   = "//" ~[\n]* ;
+BLOCK_COMMENT  = "/*" ( BLOCK_COMMENT | ~[*/] )* "*/" ;
 ```
 
 ---

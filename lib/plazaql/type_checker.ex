@@ -399,6 +399,30 @@ defmodule PlazaQL.TypeChecker do
     {Enum.reverse(typed_rev), final_ctx.current_type, flattened_errors}
   end
 
+  # Sort with expression argument: {:method, :sort_expr, expr, order, pos}
+  defp check_method({:method, :sort_expr, expr, order, pos}, ctx, _scope) do
+    group = Types.method_group(:sort)
+    ordering_errors = check_ordering(:sort, group, ctx, pos)
+    {output_type, compat_errors} = check_method_compat(:sort, ctx.current_type, pos)
+    expr_errors = check_filter_expr(expr, pos)
+
+    all_errors = List.flatten([ordering_errors, compat_errors, expr_errors])
+
+    new_group =
+      if @group_rank[group] > @group_rank[ctx.last_group], do: group, else: ctx.last_group
+
+    new_ctx = %{
+      ctx
+      | last_group: new_group,
+        last_method_name: :sort,
+        current_type: output_type,
+        output_mode_count: ctx.output_mode_count
+    }
+
+    typed = {:method, :sort_expr, expr, order, Map.put(pos, :type, output_type)}
+    {typed, all_errors, new_ctx}
+  end
+
   # Expression-argument methods: sum, min, max, avg, group_by — expr is an expression tree, not arg list
   @expr_arg_methods [:sum, :min, :max, :avg, :group_by]
 

@@ -46,8 +46,8 @@ module.exports = grammar({
     // ── Comments ─────────────────────────────────────────────────
     line_comment: (_) => token(seq("//", /[^\n]*/)),
 
-    block_comment: (_) =>
-      token(seq("/*", /[^*]*\*+([^/*][^*]*\*+)*/, "/")),
+    block_comment: ($) =>
+      seq("/*", repeat(choice($.block_comment, /[^*\/]/, /\*/, /\//)), "*/"),
 
     // ── Directives ───────────────────────────────────────────────
     directive: ($) =>
