@@ -1,0 +1,1938 @@
+================
+Line comment
+================
+
+// this is a comment
+search(node, amenity: "cafe");
+
+---
+
+(program
+  (line_comment)
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Block comment
+================
+
+/* block comment */
+search(node);
+
+---
+
+(program
+  (block_comment)
+  (bare_statement
+    (search_expression
+      type: (element_type))))
+
+================
+Simple search with element type
+================
+
+search(node);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type))))
+
+================
+Search with tag filter eq
+================
+
+search(node, amenity: "cafe");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Search with multiple tag filters
+================
+
+search(node, amenity: "restaurant", cuisine: *);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))
+        (tag_filter
+          key: (identifier)
+          value: (tag_exists))))))
+
+================
+Tag filter not exists
+================
+
+search(node, name: !*);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (tag_not_exists))))))
+
+================
+Tag filter regex
+================
+
+search(node, cuisine: ~"vegan");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (tag_regex
+            (string)))))))
+
+================
+Tag filter case-insensitive regex
+================
+
+search(node, name: ~i"starbucks");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (tag_regex_i
+            (string)))))))
+
+================
+Tag filter negated value
+================
+
+search(node, cuisine: !"fast_food");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (tag_neq
+            (string)))))))
+
+================
+Tag filter negated regex
+================
+
+search(node, name: !~"McDonald");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (tag_not_regex
+            (string)))))))
+
+================
+Element type way
+================
+
+search(way, building: "yes");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Element type nwr
+================
+
+search(nwr, tourism: "museum");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Element type relation
+================
+
+search(relation, route: "bus");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+ID filter with number
+================
+
+search(node, id: 12345);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (number))))))
+
+================
+ID filter with list
+================
+
+search(way, id: [123, 456, 789]);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (tag_id_list
+            (number)
+            (number)
+            (number)))))))
+
+================
+Regex key filter
+================
+
+search(node, ~"^addr:": ~"^[0-9]");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (regex_key_filter
+          key_pattern: (string)
+          value: (tag_regex
+            (string)))))))
+
+================
+Regex key filter with exists
+================
+
+search(node, ~"^name:": *);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (regex_key_filter
+          key_pattern: (string)
+          value: (tag_exists))))))
+
+================
+Search with filters only (no type)
+================
+
+search(amenity: "cafe");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Empty search
+================
+
+search();
+
+---
+
+(program
+  (bare_statement
+    (search_expression)))
+
+================
+Number literal integer
+================
+
+search(node, id: 42);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (number))))))
+
+================
+Boolean true
+================
+
+true;
+
+---
+
+(program
+  (bare_statement
+    (boolean)))
+
+================
+Boolean false
+================
+
+false;
+
+---
+
+(program
+  (bare_statement
+    (boolean)))
+
+================
+String literal
+================
+
+"hello world";
+
+---
+
+(program
+  (bare_statement
+    (string)))
+
+================
+Atom literal
+================
+
+:desc;
+
+---
+
+(program
+  (bare_statement
+    (atom
+      (identifier))))
+
+================
+Variable assignment
+================
+
+$cafes = search(node, amenity: "cafe");
+
+---
+
+(program
+  (variable_assignment
+    name: (variable_ref)
+    value: (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Output assignment with $$
+================
+
+$$ = search(node);
+
+---
+
+(program
+  (output_assignment
+    target: (output_ref)
+    value: (search_expression
+      type: (element_type))))
+
+================
+Named output assignment
+================
+
+$$.cafes = search(node, amenity: "cafe");
+
+---
+
+(program
+  (output_assignment
+    target: (output_named_ref)
+    value: (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Variable reference
+================
+
+$cafes;
+
+---
+
+(program
+  (bare_statement
+    (variable_ref)))
+
+================
+Output named reference in expression
+================
+
+$$.cafes;
+
+---
+
+(program
+  (bare_statement
+    (output_named_ref)))
+
+================
+Method chain simple
+================
+
+search(node, amenity: "cafe").limit(10);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type)
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string))))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+Method chain multiple
+================
+
+search(node, amenity: "cafe").limit(10).offset(5);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (method_call
+        receiver: (search_expression
+          type: (element_type)
+          (tag_filter_list
+            (tag_filter
+              key: (identifier)
+              value: (string))))
+        method: (method
+          name: (identifier)
+          (filter_expression
+            (number))))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+No-arg method
+================
+
+search(node, amenity: "cafe").count();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type)
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string))))
+      method: (method
+        name: (identifier)))))
+
+================
+Method with no parens
+================
+
+search(node).geom;
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)))))
+
+================
+Union expression
+================
+
+$a + $b;
+
+---
+
+(program
+  (bare_statement
+    (union_expression
+      left: (variable_ref)
+      right: (variable_ref))))
+
+================
+Difference expression
+================
+
+$a - $b;
+
+---
+
+(program
+  (bare_statement
+    (difference_expression
+      left: (variable_ref)
+      right: (variable_ref))))
+
+================
+Intersection expression
+================
+
+$a & $b;
+
+---
+
+(program
+  (bare_statement
+    (intersection_expression
+      left: (variable_ref)
+      right: (variable_ref))))
+
+================
+Boundary expression
+================
+
+boundary(name: "Berlin");
+
+---
+
+(program
+  (bare_statement
+    (boundary_expression
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Point constructor
+================
+
+point(40.7128, -74.0060);
+
+---
+
+(program
+  (bare_statement
+    (point_constructor
+      (number)
+      (number))))
+
+================
+Bbox constructor
+================
+
+bbox(40.70, -74.02, 40.75, -73.97);
+
+---
+
+(program
+  (bare_statement
+    (bbox_constructor
+      (number)
+      (number)
+      (number)
+      (number))))
+
+================
+Linestring constructor
+================
+
+linestring(point(1, 2), point(3, 4));
+
+---
+
+(program
+  (bare_statement
+    (linestring_constructor
+      (point_constructor
+        (number)
+        (number))
+      (point_constructor
+        (number)
+        (number)))))
+
+================
+Polygon constructor
+================
+
+polygon(point(1, 2), point(3, 4), point(5, 6));
+
+---
+
+(program
+  (bare_statement
+    (polygon_constructor
+      (point_constructor
+        (number)
+        (number))
+      (point_constructor
+        (number)
+        (number))
+      (point_constructor
+        (number)
+        (number)))))
+
+================
+Circle constructor
+================
+
+circle(point(1, 2), 500);
+
+---
+
+(program
+  (bare_statement
+    (circle_constructor
+      (point_constructor
+        (number)
+        (number))
+      (number))))
+
+================
+Route computation
+================
+
+route(point(1, 2), point(3, 4));
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (point_constructor
+        (number)
+        (number))
+      arguments: (point_constructor
+        (number)
+        (number)))))
+
+================
+Isochrone computation with kwargs
+================
+
+isochrone(center: point(1, 2), time: 15, mode: "walk");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (point_constructor
+          (number)
+          (number)))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (number))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string)))))
+
+================
+Geocode computation
+================
+
+geocode("1600 Pennsylvania Avenue");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (string))))
+
+================
+Reverse geocode
+================
+
+reverse_geocode(point(38.8977, -77.0365));
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (point_constructor
+        (number)
+        (number)))))
+
+================
+Elevation computation
+================
+
+elevation(point(27.9881, 86.9250));
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (point_constructor
+        (number)
+        (number)))))
+
+================
+Dataset source in search
+================
+
+search(dataset("my_data"), name: *);
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      (dataset_source
+        (string))
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (tag_exists))))))
+
+================
+Within method with boundary
+================
+
+search(node, amenity: "cafe").within(boundary(name: "Berlin"));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type)
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string))))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (boundary_expression
+            (tag_filter_list
+              (tag_filter
+                key: (identifier)
+                value: (string)))))))))
+
+================
+Around method with point
+================
+
+search(node, amenity: "cafe").around(500, point(40.7, -74.0));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type)
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string))))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))
+        (filter_expression
+          (point_constructor
+            (number)
+            (number)))))))
+
+================
+Sort method with keyword argument
+================
+
+search(node, amenity: "cafe").sort(by: :qt);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type)
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string))))
+      method: (method
+        name: (identifier)
+        (keyword_argument
+          key: (identifier)
+          value: (atom
+            (identifier)))))))
+
+================
+Fields method with strings
+================
+
+search(node).fields("name", "cuisine");
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (string))
+        (filter_expression
+          (string))))))
+
+================
+Expand method with atom
+================
+
+search(relation).expand(:down);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (atom
+            (identifier)))))))
+
+================
+Directive general
+================
+
+#within(geometry: boundary(name: "Berlin"));
+
+---
+
+(program
+  (directive
+    name: (identifier)
+    (keyword_argument
+      key: (identifier)
+      value: (boundary_expression
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string)))))))
+
+================
+Directive tag filter
+================
+
+#filter(name: *);
+
+---
+
+(program
+  (directive
+    name: (identifier)
+    (tag_filter_list
+      (tag_filter
+        key: (identifier)
+        value: (tag_exists)))))
+
+================
+Directive bbox
+================
+
+#bbox(south: 47.0, west: 10.0, north: 48.0, east: 11.0);
+
+---
+
+(program
+  (directive
+    name: (identifier)
+    (tag_filter_list
+      (tag_filter
+        key: (identifier)
+        value: (number))
+      (tag_filter
+        key: (identifier)
+        value: (number))
+      (tag_filter
+        key: (identifier)
+        value: (number))
+      (tag_filter
+        key: (identifier)
+        value: (number)))))
+
+================
+Directive limit
+================
+
+#limit(count: 5);
+
+---
+
+(program
+  (directive
+    name: (identifier)
+    (tag_filter_list
+      (tag_filter
+        key: (identifier)
+        value: (number)))))
+
+================
+Filter expression comparison
+================
+
+search(node).filter(number(t["capacity"]) > 50);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_cmp_expression
+            (coerce_function
+              name: (identifier)
+              (filter_expression
+                (tag_access
+                  (string))))
+            (number)))))))
+
+================
+Filter expression logical and
+================
+
+search(node).filter(t["a"] == "x" && t["b"] == "y");
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_and_expression
+            (filter_eq_expression
+              (tag_access
+                (string))
+              (string))
+            (filter_eq_expression
+              (tag_access
+                (string))
+              (string))))))))
+
+================
+Filter expression logical or
+================
+
+search(node).filter(t["a"] == "x" || t["a"] == "y");
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_or_expression
+            (filter_eq_expression
+              (tag_access
+                (string))
+              (string))
+            (filter_eq_expression
+              (tag_access
+                (string))
+              (string))))))))
+
+================
+Filter expression negation
+================
+
+search(node).filter(!(t["x"] == ""));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_unary_expression
+            (filter_paren_expression
+              (filter_expression
+                (filter_eq_expression
+                  (tag_access
+                    (string))
+                  (string))))))))))
+
+================
+Property accessor lat
+================
+
+search(node).filter(lat() < 41.89);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_cmp_expression
+            (prop_accessor
+              name: (identifier))
+            (number)))))))
+
+================
+Geom function length
+================
+
+search(way).filter(length() > 5000);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_cmp_expression
+            (geom_function
+              name: (identifier))
+            (number)))))))
+
+================
+String function starts_with
+================
+
+search(way).filter(starts_with(t["name"], "Via"));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (string_function
+            name: (identifier)
+            (filter_expression
+              (tag_access
+                (string)))
+            (filter_expression
+              (string))))))))
+
+================
+Size function
+================
+
+search(node).filter(size(t["name"]) > 50);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_cmp_expression
+            (size_function
+              (filter_expression
+                (tag_access
+                  (string))))
+            (number)))))))
+
+================
+Is_number coerce function
+================
+
+search(way).filter(is_number(t["height"]));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (coerce_function
+            name: (identifier)
+            (filter_expression
+              (tag_access
+                (string)))))))))
+
+================
+Group by and count
+================
+
+search(node, amenity: "restaurant").group_by(t["cuisine"]).count();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (method_call
+        receiver: (search_expression
+          type: (element_type)
+          (tag_filter_list
+            (tag_filter
+              key: (identifier)
+              value: (string))))
+        method: (method
+          name: (identifier)
+          (filter_expression
+            (tag_access
+              (string)))))
+      method: (method
+        name: (identifier)))))
+
+================
+Sum aggregation
+================
+
+search(way).sum(length());
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (geom_function
+            name: (identifier)))))))
+
+================
+Bracket reference
+================
+
+$$ = search(node, ref: $stop[ref]);
+
+---
+
+(program
+  (output_assignment
+    target: (output_ref)
+    value: (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (bracket_ref
+            variable: (variable_ref)
+            attribute: (identifier)))))))
+
+================
+Member_of method
+================
+
+search(node).member_of($route);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (variable_ref))))))
+
+================
+Member_of with role keyword
+================
+
+search(node).member_of(search(relation), role: "stop");
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (search_expression
+            type: (element_type)))
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Has_member method
+================
+
+search(relation).has_member($stops);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (variable_ref))))))
+
+================
+First narrowing
+================
+
+search(node).first();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)))))
+
+================
+Index narrowing
+================
+
+search(node).index(3);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+Set operations with method chains
+================
+
+$eating = search(node, amenity: "cafe") + search(node, amenity: "restaurant");
+
+---
+
+(program
+  (variable_assignment
+    name: (variable_ref)
+    value: (union_expression
+      left: (search_expression
+        type: (element_type)
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string))))
+      right: (search_expression
+        type: (element_type)
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string)))))))
+
+================
+Post-union filter
+================
+
+$eating.filter(wheelchair: "yes").limit(10);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (method_call
+        receiver: (variable_ref)
+        method: (method
+          name: (identifier)
+          (tag_filter
+            key: (identifier)
+            value: (string))))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+Directive expression filter
+================
+
+#filter(number(t["population"]) > 100000);
+
+---
+
+(program
+  (directive
+    name: (identifier)
+    (filter_expression
+      (filter_cmp_expression
+        (coerce_function
+          name: (identifier)
+          (filter_expression
+            (tag_access
+              (string))))
+        (number)))))
+
+================
+List literal
+================
+
+[point(1, 2), point(3, 4)];
+
+---
+
+(program
+  (bare_statement
+    (list_literal
+      (point_constructor
+        (number)
+        (number))
+      (point_constructor
+        (number)
+        (number)))))
+
+================
+Autocomplete computation
+================
+
+autocomplete("Eiffel Tow");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (string))))
+
+================
+Text search computation
+================
+
+text_search("pizza near Times Square");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (string))))
+
+================
+Matrix computation
+================
+
+matrix(point(1, 2), point(3, 4), point(5, 6));
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (point_constructor
+        (number)
+        (number))
+      arguments: (point_constructor
+        (number)
+        (number))
+      arguments: (point_constructor
+        (number)
+        (number)))))
+
+================
+Map match computation
+================
+
+map_match(linestring(point(1, 2), point(3, 4)), mode: "drive");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (linestring_constructor
+        (point_constructor
+          (number)
+          (number))
+        (point_constructor
+          (number)
+          (number)))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string)))))
+
+================
+Optimize computation
+================
+
+optimize(point(1, 2), point(3, 4), mode: "drive");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (point_constructor
+        (number)
+        (number))
+      arguments: (point_constructor
+        (number)
+        (number))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string)))))
+
+================
+EV route computation
+================
+
+ev_route(origin: point(1, 2), destination: point(3, 4));
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (point_constructor
+          (number)
+          (number)))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (point_constructor
+          (number)
+          (number))))))
+
+================
+Elevation profile computation
+================
+
+elevation_profile(linestring(point(1, 2), point(3, 4)));
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (linestring_constructor
+        (point_constructor
+          (number)
+          (number))
+        (point_constructor
+          (number)
+          (number))))))
+
+================
+Nearest computation
+================
+
+nearest(point(1, 2), amenity: "hospital");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (point_constructor
+        (number)
+        (number))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string)))))
+
+================
+Sort with tag access expression
+================
+
+search(node).sort(t["name"]);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (tag_access
+            (string)))))))
+
+================
+Sort with order keyword
+================
+
+search(way).sort(area(), order: :desc);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (geom_function
+            name: (identifier)))
+        (keyword_argument
+          key: (identifier)
+          value: (atom
+            (identifier)))))))
+
+================
+Distance function in expression
+================
+
+search(node).sort(distance(point(1, 2)));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (distance_function
+            (point_constructor
+              (number)
+              (number))))))))
+
+================
+H3 method
+================
+
+search(node).h3("872a1076dffffff");
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (string))))))
+
+================
+Buffer method
+================
+
+search(way).buffer(100);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+Simplify method
+================
+
+search(way).simplify(1000);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+Centroid method
+================
+
+search(way).centroid();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)))))
+
+================
+Precision method
+================
+
+search(node).precision(4);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+Include method
+================
+
+search(way).include("nodes");
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (string))))))
+
+================
+Elevation method
+================
+
+search(node).elevation();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)))))
+
+================
+Distance method
+================
+
+search(node).distance(point(1, 2));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (point_constructor
+            (number)
+            (number)))))))
+
+================
+Area method
+================
+
+search(way).area();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)))))
+
+================
+Length method
+================
+
+search(way).length();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)))))
+
+================
+Multiple directives
+================
+
+#within(geometry: boundary(name: "Paris"));
+#filter(wheelchair: "yes");
+#limit(count: 10);
+
+$$.cafes = search(node, amenity: "cafe");
+
+---
+
+(program
+  (directive
+    name: (identifier)
+    (keyword_argument
+      key: (identifier)
+      value: (boundary_expression
+        (tag_filter_list
+          (tag_filter
+            key: (identifier)
+            value: (string))))))
+  (directive
+    name: (identifier)
+    (tag_filter_list
+      (tag_filter
+        key: (identifier)
+        value: (string))))
+  (directive
+    name: (identifier)
+    (tag_filter_list
+      (tag_filter
+        key: (identifier)
+        value: (number))))
+  (output_assignment
+    target: (output_named_ref)
+    value: (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
+
+================
+Complex chained query
+================
+
+search(node, amenity: "restaurant")
+  .within(boundary(name: "Paris"))
+  .around(200, point(48.8566, 2.3522))
+  .limit(20);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (method_call
+        receiver: (method_call
+          receiver: (search_expression
+            type: (element_type)
+            (tag_filter_list
+              (tag_filter
+                key: (identifier)
+                value: (string))))
+          method: (method
+            name: (identifier)
+            (filter_expression
+              (boundary_expression
+                (tag_filter_list
+                  (tag_filter
+                    key: (identifier)
+                    value: (string)))))))
+        method: (method
+          name: (identifier)
+          (filter_expression
+            (number))
+          (filter_expression
+            (point_constructor
+              (number)
+              (number)))))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (number))))))
+
+================
+Parenthesized expression
+================
+
+($a + $b);
+
+---
+
+(program
+  (bare_statement
+    (parenthesized_expression
+      (union_expression
+        left: (variable_ref)
+        right: (variable_ref)))))

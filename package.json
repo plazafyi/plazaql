@@ -1,16 +1,35 @@
 {
   "name": "@plazafyi/plazaql",
   "version": "0.1.0",
-  "description": "PlazaQL language specification, TextMate grammar, and examples",
-  "main": "plazaql.tmLanguage.json",
+  "description": "PlazaQL language specification, tree-sitter parser, TextMate grammar, and examples",
+  "main": "grammar.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/plazafyi/plazaql"
   },
   "license": "MIT",
+  "keywords": [
+    "tree-sitter",
+    "plazaql",
+    "syntax-highlighting",
+    "geospatial",
+    "query-language"
+  ],
   "files": [
+    "grammar.js",
+    "src/",
+    "queries/",
+    "tree-sitter.json",
     "plazaql.tmLanguage.json",
     "language-configuration.json",
     "examples/"
+  ],
+  "tree-sitter": [
+    {
+      "scope": "source.plazaql",
+      "file-types": [
+        "pql"
+      ]
+    }
   ]
 }

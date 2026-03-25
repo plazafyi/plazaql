@@ -27,7 +27,7 @@ import { getDiagnostics } from "./diagnostics.js";
 import { getCompletions } from "./completions.js";
 import { getHover } from "./hover.js";
 import { getSignatureHelp } from "./signatures.js";
-import { parse } from "./parser.js";
+import { parse, parserReady } from "./parser.js";
 import { typeCheck } from "./type-checker.js";
 import { formatDocument } from "./formatter.js";
 import { DIAGNOSTIC_DEBOUNCE_MS } from "./constants.js";
@@ -63,7 +63,8 @@ const legend: SemanticTokensLegend = {
 
 // ── Initialize ───────────────────────────────────────────────────────
 
-connection.onInitialize(() => {
+connection.onInitialize(async () => {
+  await parserReady;
   return {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,

@@ -1,0 +1,21 @@
+{
+  "grammars": [
+    {
+      "name": "plazaql",
+      "camelCase": false,
+      "scope": "source.plazaql",
+      "path": ".",
+      "file-types": ["pql"],
+      "highlights": "queries/highlights.scm",
+      "indents": "queries/indents.scm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "PlazaQL grammar for tree-sitter",
+    "links": {
+      "repository": "https://github.com/plaza/plazaql"
+    }
+  }
+}

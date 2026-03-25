@@ -1,0 +1,4513 @@
+[
+  {
+    "type": "atom",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "bare_identifier",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "bare_statement",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "bbox_constructor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "keyword_argument",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "boolean",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "boundary_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "tag_filter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "bracket_ref",
+    "named": true,
+    "fields": {
+      "attribute": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "variable": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "circle_constructor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "keyword_argument",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "coerce_function",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "filter_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "computation",
+    "named": true,
+    "fields": {
+      "arguments": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": ",",
+            "named": false
+          },
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "difference_expression",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "intersection_expression",
+            "named": true
+          },
+          {
+            "type": "keyword_argument",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "union_expression",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "computation_name",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "computation_name",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "dataset_source",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "difference_expression",
+    "named": true,
+    "fields": {
+      "left": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "difference_expression",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "intersection_expression",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "union_expression",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      },
+      "right": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "directive",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "keyword_argument",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "tag_filter_list",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "distance_function",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "element_type",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "filter_add_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_add_expression",
+          "named": true
+        },
+        {
+          "type": "filter_mul_expression",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_and_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_add_expression",
+          "named": true
+        },
+        {
+          "type": "filter_and_expression",
+          "named": true
+        },
+        {
+          "type": "filter_cmp_expression",
+          "named": true
+        },
+        {
+          "type": "filter_eq_expression",
+          "named": true
+        },
+        {
+          "type": "filter_mul_expression",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_cmp_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_add_expression",
+          "named": true
+        },
+        {
+          "type": "filter_cmp_expression",
+          "named": true
+        },
+        {
+          "type": "filter_mul_expression",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_eq_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_add_expression",
+          "named": true
+        },
+        {
+          "type": "filter_cmp_expression",
+          "named": true
+        },
+        {
+          "type": "filter_eq_expression",
+          "named": true
+        },
+        {
+          "type": "filter_mul_expression",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_add_expression",
+          "named": true
+        },
+        {
+          "type": "filter_and_expression",
+          "named": true
+        },
+        {
+          "type": "filter_cmp_expression",
+          "named": true
+        },
+        {
+          "type": "filter_eq_expression",
+          "named": true
+        },
+        {
+          "type": "filter_mul_expression",
+          "named": true
+        },
+        {
+          "type": "filter_or_expression",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_function_call",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "filter_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_mul_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_mul_expression",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_or_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_add_expression",
+          "named": true
+        },
+        {
+          "type": "filter_and_expression",
+          "named": true
+        },
+        {
+          "type": "filter_cmp_expression",
+          "named": true
+        },
+        {
+          "type": "filter_eq_expression",
+          "named": true
+        },
+        {
+          "type": "filter_mul_expression",
+          "named": true
+        },
+        {
+          "type": "filter_or_expression",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_paren_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "filter_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "filter_unary_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "coerce_function",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "distance_function",
+          "named": true
+        },
+        {
+          "type": "filter_paren_expression",
+          "named": true
+        },
+        {
+          "type": "filter_unary_expression",
+          "named": true
+        },
+        {
+          "type": "geom_function",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "prop_accessor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "size_function",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "string_function",
+          "named": true
+        },
+        {
+          "type": "tag_access",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "geom_function",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "identifier",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "intersection_expression",
+    "named": true,
+    "fields": {
+      "left": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "difference_expression",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "intersection_expression",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "union_expression",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      },
+      "right": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "keyword_argument",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "tag_access",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "linestring_constructor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "keyword_argument",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "list_literal",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "method",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "filter_expression",
+          "named": true
+        },
+        {
+          "type": "keyword_argument",
+          "named": true
+        },
+        {
+          "type": "regex_key_filter",
+          "named": true
+        },
+        {
+          "type": "tag_filter",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "method_call",
+    "named": true,
+    "fields": {
+      "method": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "method",
+            "named": true
+          }
+        ]
+      },
+      "receiver": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "output_assignment",
+    "named": true,
+    "fields": {
+      "target": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "difference_expression",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "intersection_expression",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "union_expression",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "output_bracket_ref",
+    "named": true,
+    "fields": {
+      "attribute": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "variable": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "output_named_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "parenthesized_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "point_constructor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "keyword_argument",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "polygon_constructor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "bare_identifier",
+          "named": true
+        },
+        {
+          "type": "bbox_constructor",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "boundary_expression",
+          "named": true
+        },
+        {
+          "type": "bracket_ref",
+          "named": true
+        },
+        {
+          "type": "circle_constructor",
+          "named": true
+        },
+        {
+          "type": "computation",
+          "named": true
+        },
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "difference_expression",
+          "named": true
+        },
+        {
+          "type": "filter_function_call",
+          "named": true
+        },
+        {
+          "type": "intersection_expression",
+          "named": true
+        },
+        {
+          "type": "keyword_argument",
+          "named": true
+        },
+        {
+          "type": "linestring_constructor",
+          "named": true
+        },
+        {
+          "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "method_call",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "output_bracket_ref",
+          "named": true
+        },
+        {
+          "type": "output_named_ref",
+          "named": true
+        },
+        {
+          "type": "output_ref",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "point_constructor",
+          "named": true
+        },
+        {
+          "type": "polygon_constructor",
+          "named": true
+        },
+        {
+          "type": "search_expression",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "union_expression",
+          "named": true
+        },
+        {
+          "type": "variable_ref",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "program",
+    "named": true,
+    "root": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "bare_statement",
+          "named": true
+        },
+        {
+          "type": "directive",
+          "named": true
+        },
+        {
+          "type": "output_assignment",
+          "named": true
+        },
+        {
+          "type": "variable_assignment",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "prop_accessor",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "regex_key_filter",
+    "named": true,
+    "fields": {
+      "key_pattern": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "tag_exists",
+            "named": true
+          },
+          {
+            "type": "tag_id_list",
+            "named": true
+          },
+          {
+            "type": "tag_neq",
+            "named": true
+          },
+          {
+            "type": "tag_not_exists",
+            "named": true
+          },
+          {
+            "type": "tag_not_regex",
+            "named": true
+          },
+          {
+            "type": "tag_regex",
+            "named": true
+          },
+          {
+            "type": "tag_regex_i",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "search_expression",
+    "named": true,
+    "fields": {
+      "type": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "element_type",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "dataset_source",
+          "named": true
+        },
+        {
+          "type": "tag_filter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "size_function",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "filter_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "string_function",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "filter_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "tag_access",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "tag_exists",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "tag_filter",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "tag_exists",
+            "named": true
+          },
+          {
+            "type": "tag_id_list",
+            "named": true
+          },
+          {
+            "type": "tag_neq",
+            "named": true
+          },
+          {
+            "type": "tag_not_exists",
+            "named": true
+          },
+          {
+            "type": "tag_not_regex",
+            "named": true
+          },
+          {
+            "type": "tag_regex",
+            "named": true
+          },
+          {
+            "type": "tag_regex_i",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "tag_filter_list",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "regex_key_filter",
+          "named": true
+        },
+        {
+          "type": "tag_filter",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "tag_id_list",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "number",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "tag_neq",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "tag_not_exists",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "tag_not_regex",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "tag_regex",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "tag_regex_i",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "union_expression",
+    "named": true,
+    "fields": {
+      "left": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "difference_expression",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "intersection_expression",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "union_expression",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      },
+      "right": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "variable_assignment",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "bare_identifier",
+            "named": true
+          },
+          {
+            "type": "bbox_constructor",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "boundary_expression",
+            "named": true
+          },
+          {
+            "type": "bracket_ref",
+            "named": true
+          },
+          {
+            "type": "circle_constructor",
+            "named": true
+          },
+          {
+            "type": "computation",
+            "named": true
+          },
+          {
+            "type": "dataset_source",
+            "named": true
+          },
+          {
+            "type": "difference_expression",
+            "named": true
+          },
+          {
+            "type": "filter_function_call",
+            "named": true
+          },
+          {
+            "type": "intersection_expression",
+            "named": true
+          },
+          {
+            "type": "linestring_constructor",
+            "named": true
+          },
+          {
+            "type": "list_literal",
+            "named": true
+          },
+          {
+            "type": "method_call",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "output_bracket_ref",
+            "named": true
+          },
+          {
+            "type": "output_named_ref",
+            "named": true
+          },
+          {
+            "type": "output_ref",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "point_constructor",
+            "named": true
+          },
+          {
+            "type": "polygon_constructor",
+            "named": true
+          },
+          {
+            "type": "search_expression",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "union_expression",
+            "named": true
+          },
+          {
+            "type": "variable_ref",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "!",
+    "named": false
+  },
+  {
+    "type": "!=",
+    "named": false
+  },
+  {
+    "type": "!~",
+    "named": false
+  },
+  {
+    "type": "#",
+    "named": false
+  },
+  {
+    "type": "&",
+    "named": false
+  },
+  {
+    "type": "&&",
+    "named": false
+  },
+  {
+    "type": "(",
+    "named": false
+  },
+  {
+    "type": ")",
+    "named": false
+  },
+  {
+    "type": "*",
+    "named": false
+  },
+  {
+    "type": "+",
+    "named": false
+  },
+  {
+    "type": ",",
+    "named": false
+  },
+  {
+    "type": "-",
+    "named": false
+  },
+  {
+    "type": ".",
+    "named": false
+  },
+  {
+    "type": "/",
+    "named": false
+  },
+  {
+    "type": ":",
+    "named": false
+  },
+  {
+    "type": ";",
+    "named": false
+  },
+  {
+    "type": "<",
+    "named": false
+  },
+  {
+    "type": "<=",
+    "named": false
+  },
+  {
+    "type": "=",
+    "named": false
+  },
+  {
+    "type": "==",
+    "named": false
+  },
+  {
+    "type": ">",
+    "named": false
+  },
+  {
+    "type": ">=",
+    "named": false
+  },
+  {
+    "type": "[",
+    "named": false
+  },
+  {
+    "type": "]",
+    "named": false
+  },
+  {
+    "type": "area",
+    "named": false
+  },
+  {
+    "type": "autocomplete",
+    "named": false
+  },
+  {
+    "type": "bbox",
+    "named": false
+  },
+  {
+    "type": "block_comment",
+    "named": true,
+    "extra": true
+  },
+  {
+    "type": "boundary",
+    "named": false
+  },
+  {
+    "type": "circle",
+    "named": false
+  },
+  {
+    "type": "dataset",
+    "named": false
+  },
+  {
+    "type": "distance",
+    "named": false
+  },
+  {
+    "type": "elevation",
+    "named": false
+  },
+  {
+    "type": "elevation_profile",
+    "named": false
+  },
+  {
+    "type": "ev_route",
+    "named": false
+  },
+  {
+    "type": "false",
+    "named": false
+  },
+  {
+    "type": "geocode",
+    "named": false
+  },
+  {
+    "type": "is_closed",
+    "named": false
+  },
+  {
+    "type": "is_number",
+    "named": false
+  },
+  {
+    "type": "isochrone",
+    "named": false
+  },
+  {
+    "type": "length",
+    "named": false
+  },
+  {
+    "type": "line_comment",
+    "named": true,
+    "extra": true
+  },
+  {
+    "type": "linestring",
+    "named": false
+  },
+  {
+    "type": "map_match",
+    "named": false
+  },
+  {
+    "type": "matrix",
+    "named": false
+  },
+  {
+    "type": "nearest",
+    "named": false
+  },
+  {
+    "type": "node",
+    "named": false
+  },
+  {
+    "type": "number",
+    "named": false
+  },
+  {
+    "type": "number",
+    "named": true
+  },
+  {
+    "type": "nwr",
+    "named": false
+  },
+  {
+    "type": "optimize",
+    "named": false
+  },
+  {
+    "type": "output_named_ref",
+    "named": true
+  },
+  {
+    "type": "output_ref",
+    "named": true
+  },
+  {
+    "type": "point",
+    "named": false
+  },
+  {
+    "type": "polygon",
+    "named": false
+  },
+  {
+    "type": "relation",
+    "named": false
+  },
+  {
+    "type": "reverse_geocode",
+    "named": false
+  },
+  {
+    "type": "route",
+    "named": false
+  },
+  {
+    "type": "search",
+    "named": false
+  },
+  {
+    "type": "size",
+    "named": false
+  },
+  {
+    "type": "string",
+    "named": true
+  },
+  {
+    "type": "t",
+    "named": false
+  },
+  {
+    "type": "text_search",
+    "named": false
+  },
+  {
+    "type": "true",
+    "named": false
+  },
+  {
+    "type": "variable_ref",
+    "named": true
+  },
+  {
+    "type": "way",
+    "named": false
+  },
+  {
+    "type": "||",
+    "named": false
+  },
+  {
+    "type": "~",
+    "named": false
+  },
+  {
+    "type": "~i",
+    "named": false
+  }
+]
