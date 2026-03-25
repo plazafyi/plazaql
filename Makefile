@@ -3,7 +3,7 @@
 # Full project setup (elixir deps + LSP node deps + prek)
 install:
 	mix deps.get
-	cd lsp && bun install
+	cd lsp && npm install
 	prek install
 
 # Compile with strict warnings
@@ -14,7 +14,7 @@ compile:
 test:
 	tree-sitter test
 	mix test
-	cd lsp && bunx vitest run
+	cd lsp && npx vitest run
 
 # Format all files
 format:

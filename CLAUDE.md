@@ -12,7 +12,7 @@ make format       # Auto-format (mix format + biome)
 make precommit    # Full lint/format/typecheck via prek
 ```
 
-Always use `make` targets. Never run `mix` or `bun` directly.
+Always use `make` targets. Never run `mix` or `npm` directly.
 
 ## Architecture
 
@@ -158,7 +158,7 @@ Three test suites must all pass:
 
 1. **Tree-sitter corpus** (`tree-sitter test`) — grammar-level syntax tests in `test/corpus/`
 2. **Elixir tests** (`mix test`) — parser, type-checker, formatter, error (330 tests)
-3. **LSP tests** (`cd lsp && bunx vitest run`) — parser, type-checker, completions, osm-tags (184 tests)
+3. **LSP tests** (`cd lsp && npx vitest run`) — parser, type-checker, completions, osm-tags (184 tests)
 
 When adding new syntax: add a corpus test, then verify both Elixir and TS CST→AST layers handle the new node type.
 
