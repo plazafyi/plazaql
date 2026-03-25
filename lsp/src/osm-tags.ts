@@ -2,16 +2,16 @@
 // Source: OSM wiki / taginfo — covers ~90% of common usage
 
 export interface TagValueInfo {
-  value: string;
-  description?: string;
+  value: string
+  description?: string
 }
 
 export interface TagKeyInfo {
-  key: string;
-  description: string;
-  rank: number;
-  values: TagValueInfo[];
-  freeform?: boolean;
+  key: string
+  description: string
+  rank: number
+  values: TagValueInfo[]
+  freeform?: boolean
 }
 
 export const OSM_TAG_DATABASE: TagKeyInfo[] = [
@@ -580,49 +580,31 @@ export const OSM_TAG_DATABASE: TagKeyInfo[] = [
     key: "outdoor_seating",
     description: "Has outdoor seating",
     rank: 26,
-    values: [
-      { value: "yes" },
-      { value: "no" },
-    ],
+    values: [{ value: "yes" }, { value: "no" }],
   },
   {
     key: "organic",
     description: "Sells organic products",
     rank: 27,
-    values: [
-      { value: "yes" },
-      { value: "no" },
-      { value: "only" },
-    ],
+    values: [{ value: "yes" }, { value: "no" }, { value: "only" }],
   },
   {
     key: "diet:vegan",
     description: "Vegan food options",
     rank: 28,
-    values: [
-      { value: "yes" },
-      { value: "no" },
-      { value: "only" },
-    ],
+    values: [{ value: "yes" }, { value: "no" }, { value: "only" }],
   },
   {
     key: "diet:vegetarian",
     description: "Vegetarian food options",
     rank: 29,
-    values: [
-      { value: "yes" },
-      { value: "no" },
-      { value: "only" },
-    ],
+    values: [{ value: "yes" }, { value: "no" }, { value: "only" }],
   },
   {
     key: "drive_through",
     description: "Has drive-through",
     rank: 30,
-    values: [
-      { value: "yes" },
-      { value: "no" },
-    ],
+    values: [{ value: "yes" }, { value: "no" }],
   },
   {
     key: "hgv",
@@ -843,8 +825,8 @@ export const OSM_TAG_DATABASE: TagKeyInfo[] = [
     freeform: true,
     values: [],
   },
-];
+]
 
 export const TAG_KEY_MAP: Map<string, TagKeyInfo> = new Map(
   OSM_TAG_DATABASE.map((t) => [t.key, t]),
-);
+)

@@ -10,6 +10,9 @@ defmodule PlazaQL.TreeSitter do
 
   alias PlazaQL.Error
 
+  # xmerl record accessors (require before module attributes)
+  require Record
+
   @grammar_path Path.expand("../../..", __DIR__)
   @lib_path Path.join([
               System.get_env("HOME", "/tmp"),
@@ -43,6 +46,13 @@ defmodule PlazaQL.TreeSitter do
     "nwr" => :nwr
   }
 
+  Record.defrecordp(:xmlElement, Record.extract(:xmlElement, from_lib: "xmerl/include/xmerl.hrl"))
+  Record.defrecordp(:xmlText, Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl"))
+
+  Record.defrecordp(
+    :xmlAttribute,
+    Record.extract(:xmlAttribute, from_lib: "xmerl/include/xmerl.hrl")
+  )
 
   @doc """
   Parse PQL source using tree-sitter and return the same AST as NimbleParsec parser.
@@ -60,7 +70,9 @@ defmodule PlazaQL.TreeSitter do
   # ── Tree-sitter CLI invocation ──────────────────────────────────
 
   defp run_tree_sitter(source) do
-    tmp_path = System.tmp_dir!() |> Path.join("plazaql_#{:erlang.phash2(self())}_#{System.unique_integer([:positive])}.pql")
+    tmp_path =
+      System.tmp_dir!()
+      |> Path.join("plazaql_#{:erlang.phash2(self())}_#{System.unique_integer([:positive])}.pql")
 
     try do
       File.write!(tmp_path, source)
@@ -76,7 +88,8 @@ defmodule PlazaQL.TreeSitter do
         end
 
       # Capture both stdout and stderr
-      {output, exit_code} = System.cmd("tree-sitter", args, Keyword.put(opts, :stderr_to_stdout, true))
+      {output, exit_code} =
+        System.cmd("tree-sitter", args, Keyword.put(opts, :stderr_to_stdout, true))
 
       # Split: XML goes to stdout (before error lines), errors to stderr
       # tree-sitter mixes XML and error info when stderr_to_stdout is true
@@ -91,6 +104,7 @@ defmodule PlazaQL.TreeSitter do
           # Parse succeeded with warnings/MISSING nodes
           # Check stderr for MISSING indicators
           missing_errors = extract_missing_errors(stderr_lines, source)
+
           if missing_errors != [] do
             {:error, missing_errors}
           else
@@ -98,7 +112,8 @@ defmodule PlazaQL.TreeSitter do
           end
 
         true ->
-          {:error, [%Error{line: 1, col: 1, message: "tree-sitter parse failed: #{String.trim(output)}"}]}
+          {:error,
+           [%Error{line: 1, col: 1, message: "tree-sitter parse failed: #{String.trim(output)}"}]}
       end
     after
       File.rm(tmp_path)
@@ -108,21 +123,21 @@ defmodule PlazaQL.TreeSitter do
   # ── XML parsing ─────────────────────────────────────────────────
 
   defp parse_xml(xml) do
-    try do
-      # tree-sitter XML output may contain raw UTF-8 text from source;
-      # add encoding declaration and sanitize for xmerl
-      sanitized =
-        xml
-        |> String.replace(~r/^<\?xml version="1\.0"\?>/, ~s(<?xml version="1.0" encoding="UTF-8"?>))
-        |> sanitize_xml_text()
+    # tree-sitter XML output may contain raw UTF-8 text from source;
+    # add encoding declaration and sanitize for xmerl
+    sanitized =
+      xml
+      |> String.replace(~r/^<\?xml version="1\.0"\?>/, ~s(<?xml version="1.0" encoding="UTF-8"?>))
+      |> sanitize_xml_text()
 
-      {doc, _} = sanitized |> String.to_charlist() |> :xmerl_scan.string(quiet: true)
-      {:ok, doc}
-    rescue
-      e -> {:error, [%Error{line: 1, col: 1, message: "XML parse error: #{inspect(e)}"}]}
-    catch
-      :exit, reason -> {:error, [%Error{line: 1, col: 1, message: "XML parse error: #{inspect(reason)}"}]}
-    end
+    charlist = String.to_charlist(sanitized)
+    {doc, _} = :xmerl_scan.string(charlist, quiet: true)
+    {:ok, doc}
+  rescue
+    e -> {:error, [%Error{line: 1, col: 1, message: "XML parse error: #{inspect(e)}"}]}
+  catch
+    :exit, reason ->
+      {:error, [%Error{line: 1, col: 1, message: "XML parse error: #{inspect(reason)}"}]}
   end
 
   # Sanitize XML text content by escaping characters that xmerl can't handle.
@@ -130,35 +145,24 @@ defmodule PlazaQL.TreeSitter do
   defp sanitize_xml_text(xml) do
     xml
     |> String.graphemes()
-    |> Enum.map(fn grapheme ->
+    |> Enum.map_join(fn grapheme ->
       <<first_byte, _rest::binary>> = grapheme
 
       if first_byte > 127 do
         # Escape non-ASCII as numeric character references
+        # credo:disable-for-lines:3 Credo.Check.Refactor.Nesting
         grapheme
         |> String.to_charlist()
-        |> Enum.map(fn cp -> "&##{cp};" end)
-        |> Enum.join()
+        |> Enum.map_join(fn cp -> "&##{cp};" end)
       else
         grapheme
       end
     end)
-    |> Enum.join()
   end
 
   # ── CST → AST transformation ───────────────────────────────────
 
-  # xmerl record accessors
-  require Record
-
-  Record.defrecordp(:xmlElement, Record.extract(:xmlElement, from_lib: "xmerl/include/xmerl.hrl"))
-  Record.defrecordp(:xmlText, Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl"))
-
-  Record.defrecordp(
-    :xmlAttribute,
-    Record.extract(:xmlAttribute, from_lib: "xmerl/include/xmerl.hrl")
-  )
-
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp transform_program(doc, source) do
     # Navigate: sources > source > program
     program_el = find_child(find_child(doc, :source), :program)
@@ -178,6 +182,7 @@ defmodule PlazaQL.TreeSitter do
         statements =
           named_children(program_el)
           |> Enum.flat_map(fn child ->
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
             case elem_name(child) do
               :bare_statement -> [transform_bare_statement(child)]
               :variable_assignment -> [transform_variable_assignment(child)]
@@ -220,7 +225,9 @@ defmodule PlazaQL.TreeSitter do
 
     name =
       case elem_name(target_el) do
-        :output_ref -> nil
+        :output_ref ->
+          nil
+
         :output_named_ref ->
           text = text_content(target_el)
           # $$.name -> extract "name"
@@ -239,15 +246,17 @@ defmodule PlazaQL.TreeSitter do
     # Check what kind of args the directive has
     children = named_children(el)
     # Skip the identifier (name field)
-    arg_children = Enum.reject(children, fn c ->
-      get_field(c) == "name"
-    end)
+    arg_children =
+      Enum.reject(children, fn c ->
+        get_field(c) == "name"
+      end)
 
     case dir_name do
       "filter" ->
         # Could be tag filter list or expression filter
         case arg_children do
           [tag_list] ->
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
             case elem_name(tag_list) do
               :tag_filter_list ->
                 filters = transform_tag_filter_list(tag_list)
@@ -290,53 +299,143 @@ defmodule PlazaQL.TreeSitter do
 
   # ── Expression transformations ──────────────────────────────────
 
+  # credo:disable-for-lines:150 Credo.Check.Refactor.CyclomaticComplexity
+  # credo:disable-for-lines:150 Credo.Check.Refactor.ABCSize
   defp transform_expression(el) do
     case elem_name(el) do
-      :search_expression -> transform_search(el)
-      :boundary_expression -> transform_boundary(el)
-      :method_call -> transform_method_call(el)
-      :union_expression -> transform_set_op(el, :union)
-      :intersection_expression -> transform_set_op(el, :intersection)
-      :difference_expression -> transform_set_op(el, :difference)
-      :computation -> transform_computation(el)
-      :variable_ref -> transform_var_ref(el)
-      :output_ref -> transform_var_ref(el)
-      :output_named_ref -> transform_output_var_ref(el)
-      :bracket_ref -> transform_bracket_ref(el)
-      :output_bracket_ref -> transform_output_bracket_ref(el)
-      :point_constructor -> transform_point(el)
-      :linestring_constructor -> transform_geometry(el, :linestring)
-      :polygon_constructor -> transform_geometry(el, :polygon)
-      :circle_constructor -> transform_geometry(el, :circle)
-      :bbox_constructor -> transform_bbox(el)
-      :list_literal -> transform_list(el)
-      :parenthesized_expression -> transform_paren(el)
-      :number -> transform_number(el)
-      :string -> transform_string(el)
-      :boolean -> transform_boolean(el)
-      :atom -> transform_atom(el)
-      :bare_identifier -> transform_bare_identifier(el)
-      :identifier -> transform_identifier_as_bare(el)
+      :search_expression ->
+        transform_search(el)
+
+      :boundary_expression ->
+        transform_boundary(el)
+
+      :method_call ->
+        transform_method_call(el)
+
+      :union_expression ->
+        transform_set_op(el, :union)
+
+      :intersection_expression ->
+        transform_set_op(el, :intersection)
+
+      :difference_expression ->
+        transform_set_op(el, :difference)
+
+      :computation ->
+        transform_computation(el)
+
+      :variable_ref ->
+        transform_var_ref(el)
+
+      :output_ref ->
+        transform_var_ref(el)
+
+      :output_named_ref ->
+        transform_output_var_ref(el)
+
+      :bracket_ref ->
+        transform_bracket_ref(el)
+
+      :output_bracket_ref ->
+        transform_output_bracket_ref(el)
+
+      :point_constructor ->
+        transform_point(el)
+
+      :linestring_constructor ->
+        transform_geometry(el, :linestring)
+
+      :polygon_constructor ->
+        transform_geometry(el, :polygon)
+
+      :circle_constructor ->
+        transform_geometry(el, :circle)
+
+      :bbox_constructor ->
+        transform_bbox(el)
+
+      :list_literal ->
+        transform_list(el)
+
+      :parenthesized_expression ->
+        transform_paren(el)
+
+      :number ->
+        transform_number(el)
+
+      :string ->
+        transform_string(el)
+
+      :boolean ->
+        transform_boolean(el)
+
+      :atom ->
+        transform_atom(el)
+
+      :bare_identifier ->
+        transform_bare_identifier(el)
+
+      :identifier ->
+        transform_identifier_as_bare(el)
+
       # Filter expressions that can appear as method arguments
-      :filter_expression -> transform_filter_expression(el)
-      :filter_and_expression -> transform_filter_binop(el)
-      :filter_or_expression -> transform_filter_binop(el)
-      :filter_eq_expression -> transform_filter_binop(el)
-      :filter_cmp_expression -> transform_filter_binop(el)
-      :filter_add_expression -> transform_filter_binop(el)
-      :filter_mul_expression -> transform_filter_binop(el)
-      :filter_unary_expression -> transform_filter_unary(el)
-      :filter_paren_expression -> transform_filter_paren(el)
-      :filter_function_call -> transform_filter_function_call(el)
-      :tag_access -> transform_tag_access(el)
-      :prop_accessor -> transform_prop_accessor(el)
-      :geom_function -> transform_geom_function(el)
-      :coerce_function -> transform_coerce_function(el)
-      :string_function -> transform_string_function(el)
-      :distance_function -> transform_distance_function(el)
-      :size_function -> transform_size_function(el)
-      :dataset_source -> transform_dataset_source(el)
-      :keyword_argument -> transform_kwarg(el)
+      :filter_expression ->
+        transform_filter_expression(el)
+
+      :filter_and_expression ->
+        transform_filter_binop(el)
+
+      :filter_or_expression ->
+        transform_filter_binop(el)
+
+      :filter_eq_expression ->
+        transform_filter_binop(el)
+
+      :filter_cmp_expression ->
+        transform_filter_binop(el)
+
+      :filter_add_expression ->
+        transform_filter_binop(el)
+
+      :filter_mul_expression ->
+        transform_filter_binop(el)
+
+      :filter_unary_expression ->
+        transform_filter_unary(el)
+
+      :filter_paren_expression ->
+        transform_filter_paren(el)
+
+      :filter_function_call ->
+        transform_filter_function_call(el)
+
+      :tag_access ->
+        transform_tag_access(el)
+
+      :prop_accessor ->
+        transform_prop_accessor(el)
+
+      :geom_function ->
+        transform_geom_function(el)
+
+      :coerce_function ->
+        transform_coerce_function(el)
+
+      :string_function ->
+        transform_string_function(el)
+
+      :distance_function ->
+        transform_distance_function(el)
+
+      :size_function ->
+        transform_size_function(el)
+
+      :dataset_source ->
+        transform_dataset_source(el)
+
+      :keyword_argument ->
+        transform_kwarg(el)
+
       other ->
         raise "Unknown CST node type: #{inspect(other)} at #{inspect(make_pos(el))}"
     end
@@ -446,46 +545,56 @@ defmodule PlazaQL.TreeSitter do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp transform_filter_method(arg_children, pos) do
     # Classify the children
-    has_tag_filters = Enum.any?(arg_children, fn c ->
-      elem_name(c) in [:tag_filter_list, :tag_filter, :regex_key_filter]
-    end)
+    has_tag_filters =
+      Enum.any?(arg_children, fn c ->
+        elem_name(c) in [:tag_filter_list, :tag_filter, :regex_key_filter]
+      end)
 
-    has_filter_exprs = Enum.any?(arg_children, fn c ->
-      elem_name(c) in [:filter_expression, :filter_and_expression, :filter_or_expression,
-                        :filter_eq_expression, :filter_cmp_expression,
-                        :filter_function_call, :tag_access]
-    end)
+    has_filter_exprs =
+      Enum.any?(arg_children, fn c ->
+        elem_name(c) in [
+          :filter_expression,
+          :filter_and_expression,
+          :filter_or_expression,
+          :filter_eq_expression,
+          :filter_cmp_expression,
+          :filter_function_call,
+          :tag_access
+        ]
+      end)
 
-    cond do
-      has_filter_exprs and not has_tag_filters ->
-        # Expression filter: .filter(t["key"] > 5)
-        case arg_children do
-          [child] ->
-            expr = transform_expression(child)
-            {:method, :filter_expr, expr, pos}
-          _ ->
-            expr = transform_expression(hd(arg_children))
-            {:method, :filter_expr, expr, pos}
-        end
+    if has_filter_exprs and not has_tag_filters do
+      # Expression filter: .filter(t["key"] > 5)
+      case arg_children do
+        [child] ->
+          expr = transform_expression(child)
+          {:method, :filter_expr, expr, pos}
 
-      true ->
-        # Tag filter: .filter(cuisine: "italian")
-        filters =
-          Enum.flat_map(arg_children, fn c ->
-            case elem_name(c) do
-              :tag_filter_list -> transform_tag_filter_list(c)
-              :tag_filter -> [transform_tag_filter(c)]
-              :regex_key_filter -> [transform_regex_key_filter(c)]
-              _ -> []
-            end
-          end)
+        _ ->
+          expr = transform_expression(hd(arg_children))
+          {:method, :filter_expr, expr, pos}
+      end
+    else
+      # Tag filter: .filter(cuisine: "italian")
+      filters =
+        Enum.flat_map(arg_children, fn c ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          case elem_name(c) do
+            :tag_filter_list -> transform_tag_filter_list(c)
+            :tag_filter -> [transform_tag_filter(c)]
+            :regex_key_filter -> [transform_regex_key_filter(c)]
+            _ -> []
+          end
+        end)
 
-        {:method, :filter, filters, pos}
+      {:method, :filter, filters, pos}
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp transform_sort_method(arg_children, pos) do
     # Determine if this is a sort_expr (filter expression arg) or general sort (keyword-only)
     # sort_expr: .sort(t["name"]) or .sort(by: t["name"]) or .sort(distance(...))
@@ -529,6 +638,7 @@ defmodule PlazaQL.TreeSitter do
 
       order =
         if order_el do
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
           case transform_expression(order_el) do
             {:atom, atom_val, _} -> atom_val
             _ -> :asc
@@ -546,13 +656,23 @@ defmodule PlazaQL.TreeSitter do
   end
 
   @filter_expression_types [
-    :filter_expression, :tag_access, :prop_accessor,
-    :geom_function, :distance_function, :coerce_function,
-    :string_function, :size_function, :filter_function_call,
-    :filter_and_expression, :filter_or_expression,
-    :filter_eq_expression, :filter_cmp_expression,
-    :filter_add_expression, :filter_mul_expression,
-    :filter_unary_expression, :filter_paren_expression
+    :filter_expression,
+    :tag_access,
+    :prop_accessor,
+    :geom_function,
+    :distance_function,
+    :coerce_function,
+    :string_function,
+    :size_function,
+    :filter_function_call,
+    :filter_and_expression,
+    :filter_or_expression,
+    :filter_eq_expression,
+    :filter_cmp_expression,
+    :filter_add_expression,
+    :filter_mul_expression,
+    :filter_unary_expression,
+    :filter_paren_expression
   ]
 
   defp has_filter_expression_content?(el) do
@@ -601,20 +721,25 @@ defmodule PlazaQL.TreeSitter do
     children
     |> Enum.flat_map(fn child ->
       result = transform_to_arg(child)
+
       case result do
         {:__tag_filters__, filters} ->
           # Expand tag filters into individual kwargs when in method context
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
           Enum.map(filters, fn
             {:eq, key, val} -> {:kwarg, key, {:string, val, %{line: 1, col: 1}}}
             {:exists, key} -> {:kwarg, key, {:atom, :exists, %{line: 1, col: 1}}}
             filter -> {:posarg, filter}
           end)
-        other -> [other]
+
+        other ->
+          [other]
       end
     end)
     |> clean_args()
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp transform_to_arg(el) do
     case elem_name(el) do
       :keyword_argument ->
@@ -847,6 +972,7 @@ defmodule PlazaQL.TreeSitter do
         |> String.trim()
       end
 
+    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
     atom = Map.get_lazy(@literal_atoms, name, fn -> String.to_atom(name) end)
     {:atom, atom, pos}
   end
@@ -878,6 +1004,7 @@ defmodule PlazaQL.TreeSitter do
     end)
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp transform_tag_filter(el) do
     key_el = field_child(el, "key")
     value_el = field_child(el, "value")
@@ -1019,6 +1146,7 @@ defmodule PlazaQL.TreeSitter do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp extract_operator(el) do
     # Read the text content between named children to find the operator
     raw = raw_text_between_named(el)
@@ -1066,16 +1194,20 @@ defmodule PlazaQL.TreeSitter do
     transform_expression(child)
   end
 
+  # credo:disable-for-lines:70 Credo.Check.Refactor.CyclomaticComplexity
+  # credo:disable-for-lines:70 Credo.Check.Refactor.ABCSize
   defp transform_filter_function_call(el) do
     pos = make_pos(el)
     # The function name is embedded as anonymous text before the "(" token
     # Extract it from the raw text of the element
     all_text = text_content(el) |> String.trim()
+
     func_name =
       case Regex.run(~r/^([a-zA-Z_][a-zA-Z0-9_]*)/, all_text) do
         [_, name] -> name
         _ -> all_text
       end
+
     children = named_children(el)
 
     case func_name do
@@ -1085,11 +1217,13 @@ defmodule PlazaQL.TreeSitter do
         {:coerce_func, String.to_atom(name), arg, pos}
 
       name when name in ["starts_with", "ends_with", "str_contains"] ->
-        {arg1, arg2} = case children do
-          [a, b] -> {transform_expression(a), transform_expression(b)}
-          [a] -> {transform_expression(a), nil}
-          _ -> {nil, nil}
-        end
+        {arg1, arg2} =
+          case children do
+            [a, b] -> {transform_expression(a), transform_expression(b)}
+            [a] -> {transform_expression(a), nil}
+            _ -> {nil, nil}
+          end
+
         # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
         {:str_func, String.to_atom(name), arg1, arg2, pos}
 
@@ -1099,11 +1233,11 @@ defmodule PlazaQL.TreeSitter do
 
       "distance" ->
         point_el = Enum.find(children, fn c -> elem_name(c) == :point_constructor end)
+
+        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
         if point_el do
-          case transform_point(point_el) do
-            {:point, lat, lng, _} -> {:geom_func, :distance, {lat, lng}, pos}
-            other -> {:geom_func, :distance, other, pos}
-          end
+          {:point, lat, lng, _} = transform_point(point_el)
+          {:geom_func, :distance, {lat, lng}, pos}
         else
           {:geom_func, :distance, nil, pos}
         end
@@ -1118,7 +1252,9 @@ defmodule PlazaQL.TreeSitter do
 
       _ ->
         # Unknown function — try to transform as expression
-        if children != [], do: transform_expression(hd(children)), else: {:identifier, func_name, pos}
+        if children != [],
+          do: transform_expression(hd(children)),
+          else: {:identifier, func_name, pos}
     end
   end
 
@@ -1185,13 +1321,8 @@ defmodule PlazaQL.TreeSitter do
     point_el = Enum.find(children, fn c -> elem_name(c) == :point_constructor end)
 
     if point_el do
-      case transform_point(point_el) do
-        {:point, lat, lng, _point_pos} ->
-          {:geom_func, :distance, {lat, lng}, pos}
-
-        other ->
-          {:geom_func, :distance, other, pos}
-      end
+      {:point, lat, lng, _point_pos} = transform_point(point_el)
+      {:geom_func, :distance, {lat, lng}, pos}
     else
       {:geom_func, :distance, nil, pos}
     end
@@ -1318,14 +1449,16 @@ defmodule PlazaQL.TreeSitter do
 
   defp collect_errors_rec(el, source, acc) when Record.is_record(el, :xmlElement) do
     acc =
-      cond do
-        elem_name(el) == :ERROR ->
-          pos = make_pos(el)
-          snippet = get_source_snippet(source, pos.line, pos.col)
-          [%Error{line: pos.line, col: pos.col, message: "unexpected input near: \"#{snippet}\""} | acc]
+      if elem_name(el) == :ERROR do
+        pos = make_pos(el)
+        snippet = get_source_snippet(source, pos.line, pos.col)
 
-        true ->
-          acc
+        [
+          %Error{line: pos.line, col: pos.col, message: "unexpected input near: \"#{snippet}\""}
+          | acc
+        ]
+      else
+        acc
       end
 
     xmlElement(el, :content)
@@ -1345,7 +1478,9 @@ defmodule PlazaQL.TreeSitter do
     # When stderr_to_stdout is true, they're interleaved
     # The XML ends with </sources>, everything after is errors
     case String.split(output, "</sources>", parts: 2) do
-      [before, after_xml] -> {before <> "</sources>", after_xml}
+      [before, after_xml] ->
+        {before <> "</sources>", after_xml}
+
       [only] ->
         if String.contains?(only, "<?xml") do
           {only, ""}
@@ -1430,7 +1565,7 @@ defmodule PlazaQL.TreeSitter do
 
   defp text_content(el) when Record.is_record(el, :xmlElement) do
     xmlElement(el, :content)
-    |> Enum.map(fn
+    |> Enum.map_join(fn
       child when Record.is_record(child, :xmlText) ->
         xmlText(child, :value) |> to_string()
 
@@ -1440,7 +1575,6 @@ defmodule PlazaQL.TreeSitter do
       _ ->
         ""
     end)
-    |> Enum.join()
     |> String.trim()
   end
 
@@ -1453,8 +1587,7 @@ defmodule PlazaQL.TreeSitter do
       child when Record.is_record(child, :xmlText) -> true
       _ -> false
     end)
-    |> Enum.map(fn child -> xmlText(child, :value) |> to_string() end)
-    |> Enum.join()
+    |> Enum.map_join(fn child -> xmlText(child, :value) |> to_string() end)
   end
 
   defp raw_text_before_first_named(el) when Record.is_record(el, :xmlElement) do
@@ -1463,10 +1596,9 @@ defmodule PlazaQL.TreeSitter do
       child when Record.is_record(child, :xmlElement) -> false
       _ -> true
     end)
-    |> Enum.map(fn
+    |> Enum.map_join(fn
       child when Record.is_record(child, :xmlText) -> xmlText(child, :value) |> to_string()
       _ -> ""
     end)
-    |> Enum.join()
   end
 end

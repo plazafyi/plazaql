@@ -31,5 +31,8 @@
         "pql"
       ]
     }
-  ]
+  ],
+  "devDependencies": {
+    "tree-sitter-cli": "^0.26.7"
+  }
 }

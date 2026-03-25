@@ -15,7 +15,7 @@ export type PqlType =
   | "Boundary"
   | "Matrix"
   | "Elevation"
-  | "Scalar";
+  | "Scalar"
 
 const GEOMETRY_TYPES: PqlType[] = [
   "Point",
@@ -24,52 +24,49 @@ const GEOMETRY_TYPES: PqlType[] = [
   "Route",
   "Isochrone",
   "Boundary",
-];
-const GEO_SET_TYPES: PqlType[] = [
-  "PointSet",
-  "LineSet",
-  "PolygonSet",
-  "GeoSet",
-];
+]
+const GEO_SET_TYPES: PqlType[] = ["PointSet", "LineSet", "PolygonSet", "GeoSet"]
 const CHAINABLE_TYPES: PqlType[] = [
   ...GEO_SET_TYPES,
   "Route",
   "Isochrone",
   "Boundary",
-];
-const TERMINAL_TYPES: PqlType[] = ["Matrix", "Elevation", "Scalar"];
+]
+const TERMINAL_TYPES: PqlType[] = ["Matrix", "Elevation", "Scalar"]
 
 export function isGeometric(type: PqlType): boolean {
-  return GEOMETRY_TYPES.includes(type);
+  return GEOMETRY_TYPES.includes(type)
 }
 
 export function isGeoSet(type: PqlType): boolean {
-  return GEO_SET_TYPES.includes(type);
+  return GEO_SET_TYPES.includes(type)
 }
 
 export function isChainable(type: PqlType): boolean {
-  return CHAINABLE_TYPES.includes(type);
+  return CHAINABLE_TYPES.includes(type)
 }
 
 export function isTerminal(type: PqlType): boolean {
-  return TERMINAL_TYPES.includes(type);
+  return TERMINAL_TYPES.includes(type)
 }
 
 export function unionType(a: PqlType, b: PqlType): PqlType {
-  if (a === b) return a;
-  return "GeoSet";
+  if (a === b) {
+    return a
+  }
+  return "GeoSet"
 }
 
 // ── Source Position ──────────────────────────────────────────────────
 
 export interface Pos {
-  line: number; // 1-based
-  col: number; // 1-based
+  line: number // 1-based
+  col: number // 1-based
 }
 
 // ── AST Nodes ────────────────────────────────────────────────────────
 
-export type ElementType = "node" | "way" | "relation" | "nwr";
+export type ElementType = "node" | "way" | "relation" | "nwr"
 
 export type TagFilterOp =
   | "eq"
@@ -78,99 +75,99 @@ export type TagFilterOp =
   | "regex_i"
   | "not_regex"
   | "exists"
-  | "not_exists";
+  | "not_exists"
 
 export interface TagFilter {
-  op: TagFilterOp;
-  key: string;
-  value?: string; // undefined for exists/not_exists
+  op: TagFilterOp
+  key: string
+  value?: string // undefined for exists/not_exists
 }
 
 export interface NumberNode {
-  kind: "number";
-  value: number;
-  pos: Pos;
+  kind: "number"
+  value: number
+  pos: Pos
 }
 
 export interface StringNode {
-  kind: "string";
-  value: string;
-  pos: Pos;
+  kind: "string"
+  value: string
+  pos: Pos
 }
 
 export interface BoolNode {
-  kind: "bool";
-  value: boolean;
-  pos: Pos;
+  kind: "bool"
+  value: boolean
+  pos: Pos
 }
 
 export interface AtomNode {
-  kind: "atom";
-  value: string;
-  pos: Pos;
+  kind: "atom"
+  value: string
+  pos: Pos
 }
 
 export interface IdentifierNode {
-  kind: "identifier";
-  name: string;
-  pos: Pos;
+  kind: "identifier"
+  name: string
+  pos: Pos
 }
 
 export interface VarRefNode {
-  kind: "var_ref";
-  name: string; // includes "$" prefix
-  pos: Pos;
+  kind: "var_ref"
+  name: string // includes "$" prefix
+  pos: Pos
 }
 
 export interface OutputRefNode {
-  kind: "output_ref";
-  name: string; // the identifier after "$$."
-  pos: Pos;
+  kind: "output_ref"
+  name: string // the identifier after "$$."
+  pos: Pos
 }
 
 export interface PointNode {
-  kind: "point";
-  lat: number | null;
-  lng: number | null;
-  args: Arg[];
-  pos: Pos;
+  kind: "point"
+  lat: number | null
+  lng: number | null
+  args: Arg[]
+  pos: Pos
 }
 
 export interface BboxNode {
-  kind: "bbox";
-  s: number | null;
-  w: number | null;
-  n: number | null;
-  e: number | null;
-  args: Arg[];
-  pos: Pos;
+  kind: "bbox"
+  s: number | null
+  w: number | null
+  n: number | null
+  e: number | null
+  args: Arg[]
+  pos: Pos
 }
 
 export interface GeometryNode {
-  kind: "linestring" | "polygon" | "circle";
-  items: Expr[];
-  pos: Pos;
+  kind: "linestring" | "polygon" | "circle"
+  items: Expr[]
+  pos: Pos
 }
 
 export interface SearchNode {
-  kind: "search";
-  elementType: ElementType | null;
-  filters: TagFilter[];
-  methods: MethodNode[];
-  pos: Pos;
+  kind: "search"
+  elementType: ElementType | null
+  filters: TagFilter[]
+  methods: MethodNode[]
+  pos: Pos
 }
 
 export interface BoundaryNode {
-  kind: "boundary";
-  filters: TagFilter[];
-  pos: Pos;
+  kind: "boundary"
+  filters: TagFilter[]
+  pos: Pos
 }
 
 export interface ComputationNode {
-  kind: "computation";
-  name: ComputationName;
-  args: Arg[];
-  pos: Pos;
+  kind: "computation"
+  name: ComputationName
+  args: Arg[]
+  pos: Pos
 }
 
 export type ComputationName =
@@ -186,71 +183,71 @@ export type ComputationName =
   | "ev_route"
   | "elevation"
   | "elevation_profile"
-  | "nearest";
+  | "nearest"
 
 export interface MethodNode {
-  kind: "method";
-  name: string;
-  args: Arg[] | TagFilter[]; // TagFilter[] for filter() method
-  pos: Pos;
+  kind: "method"
+  name: string
+  args: Arg[] | TagFilter[] // TagFilter[] for filter() method
+  pos: Pos
 }
 
 export interface ChainNode {
-  kind: "chain";
-  receiver: Expr;
-  method: MethodNode;
-  pos: Pos;
+  kind: "chain"
+  receiver: Expr
+  method: MethodNode
+  pos: Pos
 }
 
 export interface UnionNode {
-  kind: "union";
-  left: Expr;
-  right: Expr;
-  pos: Pos;
+  kind: "union"
+  left: Expr
+  right: Expr
+  pos: Pos
 }
 
 export interface DifferenceNode {
-  kind: "difference";
-  left: Expr;
-  right: Expr;
-  pos: Pos;
+  kind: "difference"
+  left: Expr
+  right: Expr
+  pos: Pos
 }
 
 export interface ListNode {
-  kind: "list";
-  items: Expr[];
-  pos: Pos;
+  kind: "list"
+  items: Expr[]
+  pos: Pos
 }
 
 export interface SettingsNode {
-  kind: "settings";
-  pairs: Array<{ key: string; value: string | number | boolean }>;
-  pos: Pos;
+  kind: "settings"
+  pairs: Array<{ key: string; value: string | number | boolean }>
+  pos: Pos
 }
 
 export interface VarAssignNode {
-  kind: "var_assign";
-  name: string; // includes "$" prefix
-  expr: Expr;
-  pos: Pos;
+  kind: "var_assign"
+  name: string // includes "$" prefix
+  expr: Expr
+  pos: Pos
 }
 
 export interface OutputNode {
-  kind: "output";
-  name: string | null;
-  expr: Expr;
-  pos: Pos;
+  kind: "output"
+  name: string | null
+  expr: Expr
+  pos: Pos
 }
 
 export interface BareOutputNode {
-  kind: "bare_output";
-  expr: Expr;
-  pos: Pos;
+  kind: "bare_output"
+  expr: Expr
+  pos: Pos
 }
 
-export type KwArg = { type: "kwarg"; name: string; value: Expr };
-export type PosArg = { type: "posarg"; value: Expr };
-export type Arg = KwArg | PosArg;
+export type KwArg = { type: "kwarg"; name: string; value: Expr }
+export type PosArg = { type: "posarg"; value: Expr }
+export type Arg = KwArg | PosArg
 
 export type Expr =
   | NumberNode
@@ -269,18 +266,22 @@ export type Expr =
   | ChainNode
   | UnionNode
   | DifferenceNode
-  | ListNode;
+  | ListNode
 
-export type Statement = SettingsNode | VarAssignNode | OutputNode | BareOutputNode;
+export type Statement =
+  | SettingsNode
+  | VarAssignNode
+  | OutputNode
+  | BareOutputNode
 
-export type AstNode = Statement | Expr;
+export type AstNode = Statement | Expr
 
 // ── Method Phases ────────────────────────────────────────────────────
 
 export type MethodPhase = {
-  ordinal: number;
-  label: string;
-};
+  ordinal: number
+  label: string
+}
 
 const SPATIAL_METHODS = [
   "within",
@@ -296,13 +297,13 @@ const SPATIAL_METHODS = [
   "touches",
   "member_of",
   "has_member",
-];
-const TRANSFORM_METHODS = ["buffer", "simplify", "centroid"];
-const COMPUTED_METHODS = ["elevation", "distance", "area", "length"];
-const OUTPUT_SHAPE_METHODS = ["fields", "include", "precision", "expand"];
-const ORDERING_METHODS = ["sort", "limit", "offset"];
-const OUTPUT_MODE_METHODS = ["count", "ids", "tags", "skel"];
-const NARROWING_METHODS = ["first", "last", "index"];
+]
+const TRANSFORM_METHODS = ["buffer", "simplify", "centroid"]
+const COMPUTED_METHODS = ["elevation", "distance", "area", "length"]
+const OUTPUT_SHAPE_METHODS = ["fields", "include", "precision", "expand"]
+const ORDERING_METHODS = ["sort", "limit", "offset"]
+const OUTPUT_MODE_METHODS = ["count", "ids", "tags", "skel"]
+const NARROWING_METHODS = ["first", "last", "index"]
 
 export const ALL_METHODS = [
   ...SPATIAL_METHODS,
@@ -313,82 +314,126 @@ export const ALL_METHODS = [
   ...ORDERING_METHODS,
   ...OUTPUT_MODE_METHODS,
   ...NARROWING_METHODS,
-];
+]
 
 export function methodPhase(method: string): MethodPhase {
-  if (SPATIAL_METHODS.includes(method))
-    return { ordinal: 3, label: "spatial (phase 3)" };
-  if (method === "filter")
-    return { ordinal: 3.5, label: "tag filter (phase 3b)" };
-  if (TRANSFORM_METHODS.includes(method))
-    return { ordinal: 4, label: "transform (phase 4)" };
-  if (COMPUTED_METHODS.includes(method))
-    return { ordinal: 5, label: "computed (phase 5)" };
-  if (OUTPUT_SHAPE_METHODS.includes(method))
-    return { ordinal: 6, label: "output shape (phase 6)" };
-  if (ORDERING_METHODS.includes(method))
-    return { ordinal: 7, label: "ordering (phase 7)" };
-  if (OUTPUT_MODE_METHODS.includes(method))
-    return { ordinal: 8, label: "output mode (phase 8)" };
-  if (NARROWING_METHODS.includes(method))
-    return { ordinal: 7.5, label: "narrowing (phase 7b)" };
-  return { ordinal: 0, label: "unknown" };
+  if (SPATIAL_METHODS.includes(method)) {
+    return { ordinal: 3, label: "spatial (phase 3)" }
+  }
+  if (method === "filter") {
+    return { ordinal: 3.5, label: "tag filter (phase 3b)" }
+  }
+  if (TRANSFORM_METHODS.includes(method)) {
+    return { ordinal: 4, label: "transform (phase 4)" }
+  }
+  if (COMPUTED_METHODS.includes(method)) {
+    return { ordinal: 5, label: "computed (phase 5)" }
+  }
+  if (OUTPUT_SHAPE_METHODS.includes(method)) {
+    return { ordinal: 6, label: "output shape (phase 6)" }
+  }
+  if (ORDERING_METHODS.includes(method)) {
+    return { ordinal: 7, label: "ordering (phase 7)" }
+  }
+  if (OUTPUT_MODE_METHODS.includes(method)) {
+    return { ordinal: 8, label: "output mode (phase 8)" }
+  }
+  if (NARROWING_METHODS.includes(method)) {
+    return { ordinal: 7.5, label: "narrowing (phase 7b)" }
+  }
+  return { ordinal: 0, label: "unknown" }
 }
 
-export type MethodGroup = "source" | "freely_orderable" | "late_chain" | "terminal";
+export type MethodGroup =
+  | "source"
+  | "freely_orderable"
+  | "late_chain"
+  | "terminal"
 
 export function methodGroup(method: string): MethodGroup {
-  if (ORDERING_METHODS.includes(method)) return "late_chain";
-  if (NARROWING_METHODS.includes(method)) return "late_chain";
-  if (OUTPUT_MODE_METHODS.includes(method)) return "terminal";
-  return "freely_orderable";
+  if (ORDERING_METHODS.includes(method)) {
+    return "late_chain"
+  }
+  if (NARROWING_METHODS.includes(method)) {
+    return "late_chain"
+  }
+  if (OUTPUT_MODE_METHODS.includes(method)) {
+    return "terminal"
+  }
+  return "freely_orderable"
 }
 
 export function methodCategory(method: string): string {
-  if (SPATIAL_METHODS.includes(method)) return "spatial";
-  if (method === "filter") return "filter";
-  if (TRANSFORM_METHODS.includes(method)) return "transform";
-  if (COMPUTED_METHODS.includes(method)) return "computed";
-  if (OUTPUT_SHAPE_METHODS.includes(method)) return "output shape";
-  if (ORDERING_METHODS.includes(method)) return "ordering";
-  if (OUTPUT_MODE_METHODS.includes(method)) return "output mode";
-  if (NARROWING_METHODS.includes(method)) return "narrowing";
-  return "unknown";
+  if (SPATIAL_METHODS.includes(method)) {
+    return "spatial"
+  }
+  if (method === "filter") {
+    return "filter"
+  }
+  if (TRANSFORM_METHODS.includes(method)) {
+    return "transform"
+  }
+  if (COMPUTED_METHODS.includes(method)) {
+    return "computed"
+  }
+  if (OUTPUT_SHAPE_METHODS.includes(method)) {
+    return "output shape"
+  }
+  if (ORDERING_METHODS.includes(method)) {
+    return "ordering"
+  }
+  if (OUTPUT_MODE_METHODS.includes(method)) {
+    return "output mode"
+  }
+  if (NARROWING_METHODS.includes(method)) {
+    return "narrowing"
+  }
+  return "unknown"
 }
 
 export function isOutputMode(method: string): boolean {
-  return OUTPUT_MODE_METHODS.includes(method);
+  return OUTPUT_MODE_METHODS.includes(method)
 }
 
 export function isSpatialMethod(method: string): boolean {
-  return SPATIAL_METHODS.includes(method);
+  return SPATIAL_METHODS.includes(method)
 }
 
 export function methodOutputType(
   method: string,
-  inputType: PqlType
+  inputType: PqlType,
 ): { ok: true; type: PqlType } | { ok: false; error: string } {
-  if (method === "centroid" && isChainable(inputType))
-    return { ok: true, type: "PointSet" };
-  if (method === "buffer" && isChainable(inputType))
-    return { ok: true, type: "PolygonSet" };
-  if (method === "count" && isChainable(inputType))
-    return { ok: true, type: "Scalar" };
-  if ((method === "ids" || method === "tags" || method === "skel") && isChainable(inputType))
-    return { ok: true, type: "Scalar" };
-  if (isChainable(inputType)) {
-    if (ALL_METHODS.includes(method)) return { ok: true, type: inputType };
-    return { ok: false, error: `unknown method \`.${method}()\`` };
+  if (method === "centroid" && isChainable(inputType)) {
+    return { ok: true, type: "PointSet" }
   }
-  if (isTerminal(inputType))
+  if (method === "buffer" && isChainable(inputType)) {
+    return { ok: true, type: "PolygonSet" }
+  }
+  if (method === "count" && isChainable(inputType)) {
+    return { ok: true, type: "Scalar" }
+  }
+  if (
+    (method === "ids" || method === "tags" || method === "skel") &&
+    isChainable(inputType)
+  ) {
+    return { ok: true, type: "Scalar" }
+  }
+  if (isChainable(inputType)) {
+    if (ALL_METHODS.includes(method)) {
+      return { ok: true, type: inputType }
+    }
+    return { ok: false, error: `unknown method \`.${method}()\`` }
+  }
+  if (isTerminal(inputType)) {
     return {
       ok: false,
       error: `\`.${method}()\` cannot be applied to ${inputType} — ${inputType} is a terminal type that does not support chaining`,
-    };
+    }
+  }
   return {
     ok: false,
     error: `\`.${method}()\` cannot be applied to ${inputType}`,
-  };
+  }
 }
 
 const CONTAINMENT_TYPES: PqlType[] = [
@@ -396,122 +441,398 @@ const CONTAINMENT_TYPES: PqlType[] = [
   "Isochrone",
   "Polygon",
   "PolygonSet",
-];
+]
 
 export function validSpatialArgTypes(method: string): PqlType[] {
-  if (method === "within" || method === "not_within") return CONTAINMENT_TYPES;
-  if (method === "crosses") return ["LineString", "Route", "LineSet"];
-  return [...GEOMETRY_TYPES, ...GEO_SET_TYPES];
+  if (method === "within" || method === "not_within") {
+    return CONTAINMENT_TYPES
+  }
+  if (method === "crosses") {
+    return ["LineString", "Route", "LineSet"]
+  }
+  return [...GEOMETRY_TYPES, ...GEO_SET_TYPES]
 }
 
 // ── Computation Type Inference ───────────────────────────────────────
 
 const COMPUTATION_TYPES: Record<string, PqlType> = {
   route: "Route",
+  // biome-ignore lint/style/useNamingConvention: PQL name
   map_match: "Route",
   optimize: "Route",
+  // biome-ignore lint/style/useNamingConvention: PQL name
   ev_route: "Route",
   isochrone: "Isochrone",
   geocode: "PointSet",
+  // biome-ignore lint/style/useNamingConvention: PQL name
   reverse_geocode: "PointSet",
   autocomplete: "PointSet",
+  // biome-ignore lint/style/useNamingConvention: PQL name
   text_search: "PointSet",
   nearest: "PointSet",
   matrix: "Matrix",
   elevation: "Elevation",
+  // biome-ignore lint/style/useNamingConvention: PQL name
   elevation_profile: "Elevation",
-};
+}
 
 export function computationType(name: string): PqlType {
-  return COMPUTATION_TYPES[name] ?? "GeoSet";
+  return COMPUTATION_TYPES[name] ?? "GeoSet"
 }
 
 export function searchBaseType(elemType: ElementType | null): PqlType {
-  if (elemType === "node") return "PointSet";
-  return "GeoSet";
+  if (elemType === "node") {
+    return "PointSet"
+  }
+  return "GeoSet"
 }
 
 // ── Method Descriptions (for hover/completions) ─────────────────────
 
 export interface MethodInfo {
-  name: string;
-  signature: string;
-  description: string;
-  phase: string;
-  ordinal: number;
-  group: MethodGroup;
+  name: string
+  signature: string
+  description: string
+  phase: string
+  ordinal: number
+  group: MethodGroup
 }
 
 export const METHOD_CATALOG: MethodInfo[] = [
   // Spatial
-  { name: "within", signature: ".within(geometry: Boundary | Polygon | Isochrone)", description: "Filter to features fully inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "not_within", signature: ".not_within(geometry: Boundary | Polygon | Isochrone)", description: "Exclude features inside the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "around", signature: ".around(distance: number, geometry?: Point | Boundary)", description: "Filter to features within distance (meters) of a point or geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "bbox", signature: ".bbox(s: number, w: number, n: number, e: number)", description: "Filter to features within a bounding box.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "h3", signature: ".h3(cell: string)", description: "Filter to features within an H3 cell.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "intersects", signature: ".intersects(geometry: Geometry)", description: "Filter to features that intersect the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "not_intersects", signature: ".not_intersects(geometry: Geometry)", description: "Exclude features that intersect the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "contains", signature: ".contains(geometry: Geometry)", description: "Filter to features that contain the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "not_contains", signature: ".not_contains(geometry: Geometry)", description: "Exclude features that contain the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "crosses", signature: ".crosses(geometry: LineString | Route)", description: "Filter to features that cross the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "touches", signature: ".touches(geometry: Geometry)", description: "Filter to features that touch the geometry.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  {
+    name: "within",
+    signature: ".within(geometry: Boundary | Polygon | Isochrone)",
+    description: "Filter to features fully inside the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "not_within",
+    signature: ".not_within(geometry: Boundary | Polygon | Isochrone)",
+    description: "Exclude features inside the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "around",
+    signature: ".around(distance: number, geometry?: Point | Boundary)",
+    description:
+      "Filter to features within distance (meters) of a point or geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "bbox",
+    signature: ".bbox(s: number, w: number, n: number, e: number)",
+    description: "Filter to features within a bounding box.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "h3",
+    signature: ".h3(cell: string)",
+    description: "Filter to features within an H3 cell.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "intersects",
+    signature: ".intersects(geometry: Geometry)",
+    description: "Filter to features that intersect the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "not_intersects",
+    signature: ".not_intersects(geometry: Geometry)",
+    description: "Exclude features that intersect the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "contains",
+    signature: ".contains(geometry: Geometry)",
+    description: "Filter to features that contain the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "not_contains",
+    signature: ".not_contains(geometry: Geometry)",
+    description: "Exclude features that contain the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "crosses",
+    signature: ".crosses(geometry: LineString | Route)",
+    description: "Filter to features that cross the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "touches",
+    signature: ".touches(geometry: Geometry)",
+    description: "Filter to features that touch the geometry.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
   // Tag filter
-  { name: "filter", signature: ".filter(key: value, ...)", description: "Post-search/post-union tag filtering.", phase: "Tag Filter", ordinal: 3.5, group: "freely_orderable" },
+  {
+    name: "filter",
+    signature: ".filter(key: value, ...)",
+    description: "Post-search/post-union tag filtering.",
+    phase: "Tag Filter",
+    ordinal: 3.5,
+    group: "freely_orderable",
+  },
   // Transform
-  { name: "buffer", signature: ".buffer(meters: number)", description: "Expand geometries by a buffer distance.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
-  { name: "simplify", signature: ".simplify(tolerance: number)", description: "Simplify geometries by reducing coordinate precision.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
-  { name: "centroid", signature: ".centroid()", description: "Replace geometries with their centroids. Result type becomes PointSet.", phase: "Transform", ordinal: 4, group: "freely_orderable" },
+  {
+    name: "buffer",
+    signature: ".buffer(meters: number)",
+    description: "Expand geometries by a buffer distance.",
+    phase: "Transform",
+    ordinal: 4,
+    group: "freely_orderable",
+  },
+  {
+    name: "simplify",
+    signature: ".simplify(tolerance: number)",
+    description: "Simplify geometries by reducing coordinate precision.",
+    phase: "Transform",
+    ordinal: 4,
+    group: "freely_orderable",
+  },
+  {
+    name: "centroid",
+    signature: ".centroid()",
+    description:
+      "Replace geometries with their centroids. Result type becomes PointSet.",
+    phase: "Transform",
+    ordinal: 4,
+    group: "freely_orderable",
+  },
   // Enrichment
-  { name: "elevation", signature: ".elevation()", description: "Add elevation as a computed column on each feature.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
-  { name: "distance", signature: ".distance(geometry: Point)", description: "Add distance from a reference point as a computed column on each feature.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
-  { name: "area", signature: ".area()", description: "Add geometry area as a computed column on polygon features.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
-  { name: "length", signature: ".length()", description: "Add geometry length as a computed column on line features.", phase: "Computed", ordinal: 5, group: "freely_orderable" },
+  {
+    name: "elevation",
+    signature: ".elevation()",
+    description: "Add elevation as a computed column on each feature.",
+    phase: "Computed",
+    ordinal: 5,
+    group: "freely_orderable",
+  },
+  {
+    name: "distance",
+    signature: ".distance(geometry: Point)",
+    description:
+      "Add distance from a reference point as a computed column on each feature.",
+    phase: "Computed",
+    ordinal: 5,
+    group: "freely_orderable",
+  },
+  {
+    name: "area",
+    signature: ".area()",
+    description: "Add geometry area as a computed column on polygon features.",
+    phase: "Computed",
+    ordinal: 5,
+    group: "freely_orderable",
+  },
+  {
+    name: "length",
+    signature: ".length()",
+    description: "Add geometry length as a computed column on line features.",
+    phase: "Computed",
+    ordinal: 5,
+    group: "freely_orderable",
+  },
   // Output shape
-  { name: "fields", signature: ".fields(field1, field2, ...)", description: "Select specific tag fields to include in output.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
-  { name: "include", signature: ".include(extra1, extra2, ...)", description: "Include additional data (e.g., geometry, metadata).", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
-  { name: "precision", signature: ".precision(digits: number)", description: "Set coordinate precision for output.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
-  { name: "expand", signature: ".expand(direction: :down | :up)", description: "Expand relations to their members or ways to their nodes.", phase: "Output Shape", ordinal: 6, group: "freely_orderable" },
+  {
+    name: "fields",
+    signature: ".fields(field1, field2, ...)",
+    description: "Select specific tag fields to include in output.",
+    phase: "Output Shape",
+    ordinal: 6,
+    group: "freely_orderable",
+  },
+  {
+    name: "include",
+    signature: ".include(extra1, extra2, ...)",
+    description: "Include additional data (e.g., geometry, metadata).",
+    phase: "Output Shape",
+    ordinal: 6,
+    group: "freely_orderable",
+  },
+  {
+    name: "precision",
+    signature: ".precision(digits: number)",
+    description: "Set coordinate precision for output.",
+    phase: "Output Shape",
+    ordinal: 6,
+    group: "freely_orderable",
+  },
+  {
+    name: "expand",
+    signature: ".expand(direction: :down | :up)",
+    description: "Expand relations to their members or ways to their nodes.",
+    phase: "Output Shape",
+    ordinal: 6,
+    group: "freely_orderable",
+  },
   // Ordering
-  { name: "sort", signature: ".sort(expr, order?: :asc | :desc)", description: "Sort results by an expression (e.g., `t[\"name\"]`, `distance()`, `area()`).", phase: "Ordering", ordinal: 7, group: "late_chain" },
-  { name: "limit", signature: ".limit(n: number)", description: "Limit the number of results.", phase: "Ordering", ordinal: 7, group: "late_chain" },
-  { name: "offset", signature: ".offset(n: number)", description: "Skip the first n results. Requires `.limit()` first.", phase: "Ordering", ordinal: 7, group: "late_chain" },
+  {
+    name: "sort",
+    signature: ".sort(expr, order?: :asc | :desc)",
+    description:
+      'Sort results by an expression (e.g., `t["name"]`, `distance()`, `area()`).',
+    phase: "Ordering",
+    ordinal: 7,
+    group: "late_chain",
+  },
+  {
+    name: "limit",
+    signature: ".limit(n: number)",
+    description: "Limit the number of results.",
+    phase: "Ordering",
+    ordinal: 7,
+    group: "late_chain",
+  },
+  {
+    name: "offset",
+    signature: ".offset(n: number)",
+    description: "Skip the first n results. Requires `.limit()` first.",
+    phase: "Ordering",
+    ordinal: 7,
+    group: "late_chain",
+  },
   // Output mode
-  { name: "count", signature: ".count()", description: "Return only the count of matching features. Result type becomes Scalar.", phase: "Output Mode", ordinal: 8, group: "terminal" },
-  { name: "ids", signature: ".ids()", description: "Return only OSM IDs.", phase: "Output Mode", ordinal: 8, group: "terminal" },
-  { name: "tags", signature: ".tags()", description: "Return only tags (no geometry).", phase: "Output Mode", ordinal: 8, group: "terminal" },
-  { name: "skel", signature: ".skel()", description: "Return skeleton (IDs + minimal geometry).", phase: "Output Mode", ordinal: 8, group: "terminal" },
+  {
+    name: "count",
+    signature: ".count()",
+    description:
+      "Return only the count of matching features. Result type becomes Scalar.",
+    phase: "Output Mode",
+    ordinal: 8,
+    group: "terminal",
+  },
+  {
+    name: "ids",
+    signature: ".ids()",
+    description: "Return only OSM IDs.",
+    phase: "Output Mode",
+    ordinal: 8,
+    group: "terminal",
+  },
+  {
+    name: "tags",
+    signature: ".tags()",
+    description: "Return only tags (no geometry).",
+    phase: "Output Mode",
+    ordinal: 8,
+    group: "terminal",
+  },
+  {
+    name: "skel",
+    signature: ".skel()",
+    description: "Return skeleton (IDs + minimal geometry).",
+    phase: "Output Mode",
+    ordinal: 8,
+    group: "terminal",
+  },
   // Structural joins
-  { name: "member_of", signature: ".member_of(source, role?: string)", description: "Filter to elements that are members of the source set. Works with OSM relations and ways.", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
-  { name: "has_member", signature: ".has_member(source, role?: string)", description: "Filter to elements that contain the source elements as members. Reverse of .member_of().", phase: "Spatial", ordinal: 3, group: "freely_orderable" },
+  {
+    name: "member_of",
+    signature: ".member_of(source, role?: string)",
+    description:
+      "Filter to elements that are members of the source set. Works with OSM relations and ways.",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
+  {
+    name: "has_member",
+    signature: ".has_member(source, role?: string)",
+    description:
+      "Filter to elements that contain the source elements as members. Reverse of .member_of().",
+    phase: "Spatial",
+    ordinal: 3,
+    group: "freely_orderable",
+  },
   // Narrowing
-  { name: "first", signature: ".first()", description: "Narrow set to its first element. Transforms GeoSet to GeoElement.", phase: "Narrowing", ordinal: 7.5, group: "late_chain" },
-  { name: "last", signature: ".last()", description: "Narrow set to its last element. Transforms GeoSet to GeoElement.", phase: "Narrowing", ordinal: 7.5, group: "late_chain" },
-  { name: "index", signature: ".index(n: number)", description: "Narrow set to its nth element (1-indexed). Transforms GeoSet to GeoElement.", phase: "Narrowing", ordinal: 7.5, group: "late_chain" },
-];
+  {
+    name: "first",
+    signature: ".first()",
+    description:
+      "Narrow set to its first element. Transforms GeoSet to GeoElement.",
+    phase: "Narrowing",
+    ordinal: 7.5,
+    group: "late_chain",
+  },
+  {
+    name: "last",
+    signature: ".last()",
+    description:
+      "Narrow set to its last element. Transforms GeoSet to GeoElement.",
+    phase: "Narrowing",
+    ordinal: 7.5,
+    group: "late_chain",
+  },
+  {
+    name: "index",
+    signature: ".index(n: number)",
+    description:
+      "Narrow set to its nth element (1-indexed). Transforms GeoSet to GeoElement.",
+    phase: "Narrowing",
+    ordinal: 7.5,
+    group: "late_chain",
+  },
+]
 
 // ── Function Signatures (for signature help) ─────────────────────────
 
 export interface ParamInfo {
-  name: string;
-  type: string;
-  optional?: boolean;
-  description?: string;
-  enumValues?: Array<{ value: string; description?: string }>;
+  name: string
+  type: string
+  optional?: boolean
+  description?: string
+  enumValues?: Array<{ value: string; description?: string }>
 }
 
 export interface FunctionSignature {
-  name: string;
-  params: ParamInfo[];
-  returnType: string;
-  description: string;
+  name: string
+  params: ParamInfo[]
+  returnType: string
+  description: string
 }
 
 export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   search: {
     name: "search",
     params: [
-      { name: "type", type: "node | way | relation | nwr", optional: true, description: "Element type to search" },
-      { name: "...filters", type: "TagFilter", optional: true, description: "Tag key: value filters" },
+      {
+        name: "type",
+        type: "node | way | relation | nwr",
+        optional: true,
+        description: "Element type to search",
+      },
+      {
+        name: "...filters",
+        type: "TagFilter",
+        optional: true,
+        description: "Tag key: value filters",
+      },
     ],
     returnType: "GeoSet",
     description: "Search for OSM features matching tag filters.",
@@ -519,7 +840,12 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   boundary: {
     name: "boundary",
     params: [
-      { name: "...filters", type: "TagFilter", description: "Tag filters to identify the boundary (e.g., name: \"Berlin\")" },
+      {
+        name: "...filters",
+        type: "TagFilter",
+        description:
+          'Tag filters to identify the boundary (e.g., name: "Berlin")',
+      },
     ],
     returnType: "Boundary",
     description: "Look up a named administrative boundary or area.",
@@ -555,7 +881,11 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   polygon: {
     name: "polygon",
     params: [
-      { name: "...points", type: "Point", description: "Three or more points (auto-closed)" },
+      {
+        name: "...points",
+        type: "Point",
+        description: "Three or more points (auto-closed)",
+      },
     ],
     returnType: "Polygon",
     description: "Create a polygon from a ring of points.",
@@ -565,8 +895,25 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     params: [
       { name: "origin", type: "Point", description: "Starting point" },
       { name: "destination", type: "Point", description: "Ending point" },
-      { name: "waypoints", type: "Point[]", optional: true, description: "Intermediate waypoints" },
-      { name: "mode", type: "\"auto\" | \"car\" | \"bicycle\" | \"foot\" | \"truck\"", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }, { value: '"truck"' }, { value: '"car"' }] },
+      {
+        name: "waypoints",
+        type: "Point[]",
+        optional: true,
+        description: "Intermediate waypoints",
+      },
+      {
+        name: "mode",
+        type: '"auto" | "car" | "bicycle" | "foot" | "truck"',
+        optional: true,
+        description: "Travel mode",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"foot"' },
+          { value: '"bicycle"' },
+          { value: '"truck"' },
+          { value: '"car"' },
+        ],
+      },
     ],
     returnType: "Route",
     description: "Compute a route between waypoints.",
@@ -575,9 +922,29 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     name: "isochrone",
     params: [
       { name: "center", type: "Point", description: "Center point" },
-      { name: "time", type: "number", optional: true, description: "Travel time in seconds" },
-      { name: "distance", type: "number", optional: true, description: "Travel distance in meters" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
+      {
+        name: "time",
+        type: "number",
+        optional: true,
+        description: "Travel time in seconds",
+      },
+      {
+        name: "distance",
+        type: "number",
+        optional: true,
+        description: "Travel distance in meters",
+      },
+      {
+        name: "mode",
+        type: "string",
+        optional: true,
+        description: "Travel mode",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"foot"' },
+          { value: '"bicycle"' },
+        ],
+      },
     ],
     returnType: "Isochrone",
     description: "Compute a travel-time or travel-distance polygon.",
@@ -585,15 +952,24 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   geocode: {
     name: "geocode",
     params: [
-      { name: "query", type: "string", description: "Address or place name to geocode" },
+      {
+        name: "query",
+        type: "string",
+        description: "Address or place name to geocode",
+      },
     ],
     returnType: "PointSet",
     description: "Geocode an address to coordinates.",
   },
+  // biome-ignore lint/style/useNamingConvention: PQL name
   reverse_geocode: {
     name: "reverse_geocode",
     params: [
-      { name: "point", type: "Point", description: "Coordinates to reverse geocode" },
+      {
+        name: "point",
+        type: "Point",
+        description: "Coordinates to reverse geocode",
+      },
     ],
     returnType: "PointSet",
     description: "Reverse geocode coordinates to an address.",
@@ -601,12 +977,22 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   autocomplete: {
     name: "autocomplete",
     params: [
-      { name: "query", type: "string", description: "Partial text to autocomplete" },
-      { name: "center", type: "Point", optional: true, description: "Bias results toward this point" },
+      {
+        name: "query",
+        type: "string",
+        description: "Partial text to autocomplete",
+      },
+      {
+        name: "center",
+        type: "Point",
+        optional: true,
+        description: "Bias results toward this point",
+      },
     ],
     returnType: "PointSet",
     description: "Autocomplete a place name or address.",
   },
+  // biome-ignore lint/style/useNamingConvention: PQL name
   text_search: {
     name: "text_search",
     params: [
@@ -619,17 +1005,42 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     name: "matrix",
     params: [
       { name: "sources", type: "Point[]", description: "Source points" },
-      { name: "destinations", type: "Point[]", description: "Destination points" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
+      {
+        name: "destinations",
+        type: "Point[]",
+        description: "Destination points",
+      },
+      {
+        name: "mode",
+        type: "string",
+        optional: true,
+        description: "Travel mode",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"foot"' },
+          { value: '"bicycle"' },
+        ],
+      },
     ],
     returnType: "Matrix",
     description: "Compute a distance/duration matrix between point sets.",
   },
+  // biome-ignore lint/style/useNamingConvention: PQL name
   map_match: {
     name: "map_match",
     params: [
       { name: "points", type: "Point[]", description: "GPS trace points" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
+      {
+        name: "mode",
+        type: "string",
+        optional: true,
+        description: "Travel mode",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"foot"' },
+          { value: '"bicycle"' },
+        ],
+      },
     ],
     returnType: "Route",
     description: "Snap a GPS trace to the road network.",
@@ -637,18 +1048,38 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   optimize: {
     name: "optimize",
     params: [
-      { name: "waypoints", type: "Point[]", description: "Waypoints to optimize" },
-      { name: "mode", type: "string", optional: true, description: "Travel mode", enumValues: [{ value: '"auto"' }, { value: '"foot"' }, { value: '"bicycle"' }] },
+      {
+        name: "waypoints",
+        type: "Point[]",
+        description: "Waypoints to optimize",
+      },
+      {
+        name: "mode",
+        type: "string",
+        optional: true,
+        description: "Travel mode",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"foot"' },
+          { value: '"bicycle"' },
+        ],
+      },
     ],
     returnType: "Route",
     description: "Optimize waypoint ordering (TSP).",
   },
+  // biome-ignore lint/style/useNamingConvention: PQL name
   ev_route: {
     name: "ev_route",
     params: [
       { name: "origin", type: "Point", description: "Starting point" },
       { name: "destination", type: "Point", description: "Ending point" },
-      { name: "battery", type: "number", optional: true, description: "Battery capacity" },
+      {
+        name: "battery",
+        type: "number",
+        optional: true,
+        description: "Battery capacity",
+      },
     ],
     returnType: "Route",
     description: "Compute an EV-optimized route with charging stops.",
@@ -656,15 +1087,24 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   elevation: {
     name: "elevation",
     params: [
-      { name: "point", type: "Point", description: "Point to get elevation for" },
+      {
+        name: "point",
+        type: "Point",
+        description: "Point to get elevation for",
+      },
     ],
     returnType: "Elevation",
     description: "Get elevation at a point.",
   },
+  // biome-ignore lint/style/useNamingConvention: PQL name
   elevation_profile: {
     name: "elevation_profile",
     params: [
-      { name: "line", type: "LineString | Route", description: "Line to profile" },
+      {
+        name: "line",
+        type: "LineString | Route",
+        description: "Line to profile",
+      },
     ],
     returnType: "Elevation",
     description: "Get elevation profile along a line.",
@@ -673,14 +1113,22 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     name: "nearest",
     params: [
       { name: "point", type: "Point", description: "Reference point" },
-      { name: "type", type: "string", optional: true, description: "Element type" },
+      {
+        name: "type",
+        type: "string",
+        optional: true,
+        description: "Element type",
+      },
     ],
     returnType: "PointSet",
     description: "Find nearest OSM features to a point.",
   },
-};
+}
 
-export const METHOD_PARAM_VALUES: Record<string, Record<string, Array<{ value: string; description?: string }>>> = {
+export const METHOD_PARAM_VALUES: Record<
+  string,
+  Record<string, Array<{ value: string; description?: string }>>
+> = {
   sort: {
     order: [
       { value: ":asc", description: "Ascending order" },
@@ -689,8 +1137,14 @@ export const METHOD_PARAM_VALUES: Record<string, Record<string, Array<{ value: s
   },
   expand: {
     direction: [
-      { value: ":down", description: "Expand relations to members / ways to nodes" },
-      { value: ":up", description: "Expand nodes to parent ways / ways to parent relations" },
+      {
+        value: ":down",
+        description: "Expand relations to members / ways to nodes",
+      },
+      {
+        value: ":up",
+        description: "Expand nodes to parent ways / ways to parent relations",
+      },
     ],
   },
-};
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.7/schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "asNeeded"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noArrayIndexKey": "error",
+        "noDuplicateCustomProperties": "error",
+        "noConfusingVoidType": "error",
+        "noEmptyBlockStatements": "error",
+        "useAwait": "error",
+        "noConsole": "warn",
+        "noDoubleEquals": "error",
+        "noShadowRestrictedNames": "error",
+        "noImplicitAnyLet": "error"
+      },
+      "style": {
+        "noNonNullAssertion": "error",
+        "useConst": "error",
+        "useTemplate": "error",
+        "noParameterAssign": "error",
+        "useDefaultParameterLast": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useExportType": "error",
+        "useImportType": "error",
+        "useNodejsImportProtocol": "off",
+        "noNamespace": "error",
+        "useEnumInitializers": "error",
+        "useNamingConvention": "warn",
+        "useNumberNamespace": "error",
+        "useBlockStatements": "error"
+      },
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        "noUndeclaredVariables": "error",
+        "noVoidTypeReturn": "error"
+      },
+      "complexity": {
+        "noForEach": "error",
+        "useFlatMap": "error",
+        "useLiteralKeys": "off",
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": { "maxAllowedComplexity": 15 }
+        }
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "error"
+      },
+      "performance": {
+        "noAccumulatingSpread": "error",
+        "noDelete": "error",
+        "noBarrelFile": "error"
+      }
+    }
+  },
+  "files": {
+    "includes": ["lsp/src/**/*.{js,ts,json}"],
+    "ignoreUnknown": true
+  }
+}

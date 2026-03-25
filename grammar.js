@@ -1,6 +1,7 @@
 /// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
 
+
 // PlazaQL tree-sitter grammar
 // Authoritative reference: Plaza.PlazaQL.Parser (NimbleParsec)
 

@@ -1,0 +1,59 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v2.4.6
+    hooks:
+      - id: biome-check
+        additional_dependencies: ['@biomejs/biome@2.4.7']
+
+  - repo: local
+    hooks:
+      - id: mix-format
+        name: mix format
+        entry: mix format --check-formatted
+        language: system
+        files: '\.exs?$'
+
+      - id: mix-compile
+        name: mix compile
+        entry: mix compile --warnings-as-errors
+        language: system
+        files: '\.exs?$'
+        pass_filenames: false
+
+      - id: mix-credo
+        name: mix credo
+        entry: mix credo --strict
+        language: system
+        files: '\.exs?$'
+        pass_filenames: false
+
+      - id: mix-dialyzer
+        name: mix dialyzer
+        entry: mix dialyzer
+        language: system
+        files: '\.exs?$'
+        pass_filenames: false
+
+      - id: mix-deps-audit
+        name: mix hex.audit
+        entry: mix hex.audit
+        language: system
+        pass_filenames: false
+
+      - id: tsc-check-lsp
+        name: tsc typecheck (lsp)
+        entry: bunx tsc --noEmit --project lsp/tsconfig.json
+        language: system
+        files: '^lsp/src/.*\.ts$'
+        pass_filenames: false
