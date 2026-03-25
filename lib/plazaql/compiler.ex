@@ -183,7 +183,10 @@ defmodule PlazaQL.Compiler do
   end
 
   defp compile_expr(expr, _env) do
-    raise ArgumentError, "PlazaQL compiler: unknown expression node: #{inspect(expr)}"
+    throw(
+      {:compile_error,
+       %Error{message: "unknown expression node: #{inspect(expr)}", line: 0, col: 0}}
+    )
   end
 
   defp find_within_geometry(directives) do
@@ -435,7 +438,7 @@ defmodule PlazaQL.Compiler do
   # -- Unknown method: pass through --
 
   defp apply_method(_plan, {:method, name, _args, _pos}, _env) do
-    raise ArgumentError, "PlazaQL compiler: unknown method: #{inspect(name)}"
+    throw({:compile_error, %Error{message: "unknown method: #{inspect(name)}", line: 0, col: 0}})
   end
 
   # ── Element type expansion ────────────────────────────────────────
@@ -497,7 +500,7 @@ defmodule PlazaQL.Compiler do
       |> Enum.reject(&is_nil/1)
 
     if length(ids) > max do
-      raise ArgumentError, "too many IDs (max #{max})"
+      throw({:compile_error, %Error{message: "too many IDs (max #{max})", line: 0, col: 0}})
     end
 
     ids
