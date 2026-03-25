@@ -14,12 +14,13 @@ defmodule PlazaQL.TreeSitter do
   require Record
 
   @grammar_path Path.expand("../../..", __DIR__)
+  @lib_ext if(:os.type() == {:unix, :darwin}, do: "dylib", else: "so")
   @lib_path Path.join([
               System.get_env("HOME", "/tmp"),
               ".cache",
               "tree-sitter",
               "lib",
-              "plazaql.dylib"
+              "plazaql.#{@lib_ext}"
             ])
 
   # Safe atom allowlists (same as in the NimbleParsec parser)
