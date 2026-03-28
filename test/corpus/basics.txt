@@ -1557,7 +1557,7 @@ optimize(point(1, 2), point(3, 4), mode: "drive");
 EV route computation
 ================
 
-ev_route(origin: point(1, 2), destination: point(3, 4));
+ev_route(origin: point(1, 2), destination: point(3, 4), battery: 60000);
 
 ---
 
@@ -1574,7 +1574,10 @@ ev_route(origin: point(1, 2), destination: point(3, 4));
         key: (identifier)
         value: (point_constructor
           (number)
-          (number))))))
+          (number)))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (number)))))
 
 ================
 Elevation profile computation

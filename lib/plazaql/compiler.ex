@@ -681,6 +681,37 @@ defmodule PlazaQL.Compiler do
     Map.merge(base, kwargs)
   end
 
+  defp compile_computation_params(:ev_route, args, opts, env) do
+    base =
+      case args do
+        [{:posarg, origin}, {:posarg, dest} | _] ->
+          %{
+            origin: compile_geometry_arg(origin, env),
+            destination: compile_geometry_arg(dest, env)
+          }
+
+        _ ->
+          %{}
+      end
+
+    kwargs = compile_kwargs(opts)
+
+    # Normalize point kwargs
+    kwargs =
+      kwargs
+      |> normalize_point_kwarg(:origin)
+      |> normalize_point_kwarg(:destination)
+
+    # Map PlazaQL's `battery` to executor's `battery_capacity_wh`
+    kwargs =
+      case Map.pop(kwargs, :battery) do
+        {nil, kw} -> kw
+        {val, kw} -> Map.put(kw, :battery_capacity_wh, val)
+      end
+
+    Map.merge(base, kwargs)
+  end
+
   defp compile_computation_params(_type, _args, opts, _env) do
     compile_kwargs(opts)
   end

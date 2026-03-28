@@ -163,21 +163,33 @@ defmodule PlazaQL.TypeCheckerTest do
 
     test "undefined variable produces error" do
       errors = check_errors(~s|$$ = search(node, amenity: "cafe").within($missing);|)
-      assert Enum.any?(errors, &(&1.message =~ "undefined variable `$missing`"))
+      error = Enum.find(errors, &(&1.message =~ "undefined variable `$missing`"))
+      assert error.line == 1
+      assert error.col == 43
+      assert error.severity == :error
+      assert error.hint =~ "define it first"
     end
 
     test "forward reference produces error" do
       errors =
         check_errors(~s|$$ = search(node).within($a); $a = boundary(name: "Berlin");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "undefined variable `$a`"))
+      error = Enum.find(errors, &(&1.message =~ "undefined variable `$a`"))
+      assert error.line == 1
+      assert error.col == 26
+      assert error.severity == :error
+      assert error.hint =~ "define it first"
     end
 
     test "duplicate variable produces error" do
       errors =
         check_errors(~s|$a = boundary(name: "Berlin"); $a = boundary(name: "Munich"); $$ = $a;|)
 
-      assert Enum.any?(errors, &(&1.message =~ "duplicate variable `$a`"))
+      error = Enum.find(errors, &(&1.message =~ "duplicate variable `$a`"))
+      assert error.line == 1
+      assert error.col == 32
+      assert error.severity == :error
+      assert error.hint =~ "choose a different name"
     end
   end
 
@@ -194,7 +206,13 @@ defmodule PlazaQL.TypeCheckerTest do
       errors =
         check_errors(~s|$$ = search(node, amenity: "cafe").limit(10).buffer(50);|)
 
-      assert Enum.any?(errors, &(&1.message =~ "cannot follow"))
+      error = Enum.find(errors, &(&1.message =~ "cannot follow"))
+      assert error.line == 1
+      assert error.col == 46
+      assert error.severity == :error
+      assert error.message =~ ".buffer()"
+      assert error.message =~ ".limit()"
+      assert error.hint =~ "move `.buffer()` before `.limit()`"
     end
 
     test "multiple methods in same phase allowed" do
@@ -237,14 +255,26 @@ defmodule PlazaQL.TypeCheckerTest do
       errors =
         check_errors(~s|$a = boundary(name: "Berlin"); $$ = search(node).limit(10).within($a);|)
 
-      assert Enum.any?(errors, &(&1.message =~ "cannot follow"))
+      error = Enum.find(errors, &(&1.message =~ "cannot follow"))
+      assert error.line == 1
+      assert error.col == 60
+      assert error.severity == :error
+      assert error.message =~ ".within()"
+      assert error.message =~ ".limit()"
+      assert error.hint =~ "move `.within()` before `.limit()`"
     end
 
     test "anything after output mode still errors" do
       errors =
         check_errors(~s|$$ = search(node, amenity: "cafe").count().limit(10);|)
 
-      assert Enum.any?(errors, &(&1.message =~ "cannot follow"))
+      error = Enum.find(errors, &(&1.message =~ "cannot follow"))
+      assert error.line == 1
+      assert error.col == 44
+      assert error.severity == :error
+      assert error.message =~ ".limit()"
+      assert error.message =~ ".count()"
+      assert error.hint =~ "move `.limit()` before the output mode"
     end
 
     test "centroid then simplify is valid (relaxed type restriction)" do
@@ -267,7 +297,12 @@ defmodule PlazaQL.TypeCheckerTest do
           ~s|$r = route(origin: point(0, 0), destination: point(1, 1)); $$ = search(node, amenity: "cafe").within($r);|
         )
 
-      assert Enum.any?(errors, &(&1.message =~ "`.within()` requires"))
+      error = Enum.find(errors, &(&1.message =~ "`.within()` requires"))
+      assert error.line == 1
+      assert error.col == 95
+      assert error.severity == :error
+      assert error.message =~ "Route"
+      assert error.hint =~ "around"
     end
 
     test ".simplify() on PointSet is valid" do
@@ -298,7 +333,11 @@ defmodule PlazaQL.TypeCheckerTest do
           ~s|$$ = search(node, amenity: "cafe").bbox(40.7, -74.0, 40.8, -73.9).sort(by: :distance);|
         )
 
-      assert Enum.any?(errors, &(&1.message =~ "`.sort(by: :distance)` requires"))
+      error = Enum.find(errors, &(&1.message =~ "`.sort(by: :distance)` requires"))
+      assert error.line == 1
+      assert error.col == 67
+      assert error.severity == :error
+      assert error.hint =~ ".around("
     end
 
     test ".sort(by: :distance) with .around() passes" do
@@ -313,7 +352,12 @@ defmodule PlazaQL.TypeCheckerTest do
 
     test ".offset() without .limit() produces error" do
       errors = check_errors(~s|$$ = search(node, amenity: "cafe").offset(10);|)
-      assert Enum.any?(errors, &(&1.message =~ "`.offset()` requires `.limit()`"))
+
+      error = Enum.find(errors, &(&1.message =~ "`.offset()` requires `.limit()`"))
+      assert error.line == 1
+      assert error.col == 36
+      assert error.severity == :error
+      assert error.hint =~ "limit"
     end
 
     test ".offset() with .limit() passes" do
@@ -326,7 +370,12 @@ defmodule PlazaQL.TypeCheckerTest do
   describe "output mode" do
     test "two output modes produce error" do
       errors = check_errors(~s|$$ = search(node, amenity: "cafe").count().ids();|)
-      assert Enum.any?(errors, &(&1.message =~ "multiple output modes"))
+
+      error = Enum.find(errors, &(&1.message =~ "multiple output modes"))
+      assert error.line == 1
+      assert error.col == 44
+      assert error.severity == :error
+      assert error.hint =~ "only one output mode"
     end
 
     test "single output mode passes" do
@@ -335,7 +384,12 @@ defmodule PlazaQL.TypeCheckerTest do
 
     test "missing output statement produces error" do
       errors = check_errors(~s|$a = boundary(name: "Berlin");|)
-      assert Enum.any?(errors, &(&1.message =~ "at least one output statement"))
+
+      error = Enum.find(errors, &(&1.message =~ "at least one output statement"))
+      assert error.line == 1
+      assert error.col == 1
+      assert error.severity == :error
+      assert error.hint =~ "add an expression"
     end
   end
 
@@ -354,28 +408,44 @@ defmodule PlazaQL.TypeCheckerTest do
       errors =
         check_errors(~s|$$ = search(amenity: "cafe"); $$ = search(amenity: "bar");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "only one simple output"))
+      error = Enum.find(errors, &(&1.message =~ "only one simple output"))
+      assert error.line == 1
+      assert error.col == 31
+      assert error.severity == :error
+      assert error.hint =~ "named outputs"
     end
 
     test "mixing simple and named output produces error" do
       errors =
         check_errors(~s|$$ = search(amenity: "cafe"); $$.foo = search(amenity: "bar");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "cannot mix simple output"))
+      error = Enum.find(errors, &(&1.message =~ "cannot mix simple output"))
+      assert error.line == 1
+      assert error.col == 31
+      assert error.severity == :error
+      assert error.hint =~ "named outputs"
     end
 
     test "mixing named and simple output produces error" do
       errors =
         check_errors(~s|$$.foo = search(amenity: "cafe"); $$ = search(amenity: "bar");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "cannot mix simple output"))
+      error = Enum.find(errors, &(&1.message =~ "cannot mix simple output"))
+      assert error.line == 1
+      assert error.col == 35
+      assert error.severity == :error
+      assert error.hint =~ "named outputs"
     end
 
     test "duplicate named output produces error" do
       errors =
         check_errors(~s|$$.foo = search(amenity: "cafe"); $$.foo = search(amenity: "bar");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "duplicate output variable `$$.foo`"))
+      error = Enum.find(errors, &(&1.message =~ "duplicate output variable `$$.foo`"))
+      assert error.line == 1
+      assert error.col == 35
+      assert error.severity == :error
+      assert error.hint =~ "choose a different name"
     end
   end
 
@@ -398,7 +468,13 @@ defmodule PlazaQL.TypeCheckerTest do
 
     test "undefined output variable produces error" do
       errors = check_errors(~s|$$.stops = search(node).within($$.missing);|)
-      assert Enum.any?(errors, &(&1.message =~ "undefined output variable `$$.missing`"))
+
+      error = Enum.find(errors, &(&1.message =~ "undefined output variable `$$.missing`"))
+      assert error.line == 1
+      assert error.col == 32
+      assert error.severity == :error
+      assert error.hint =~ "define it first"
+      assert error.hint =~ "$$.missing"
     end
 
     test "forward reference to output variable produces error" do
@@ -407,7 +483,12 @@ defmodule PlazaQL.TypeCheckerTest do
           ~s|$$.stops = search(node).within($$.area); $$.area = boundary(name: "Berlin");|
         )
 
-      assert Enum.any?(errors, &(&1.message =~ "undefined output variable `$$.area`"))
+      error = Enum.find(errors, &(&1.message =~ "undefined output variable `$$.area`"))
+      assert error.line == 1
+      assert error.col == 32
+      assert error.severity == :error
+      assert error.hint =~ "define it first"
+      assert error.hint =~ "$$.area"
     end
 
     test "output variable usable in around method" do
@@ -439,21 +520,33 @@ defmodule PlazaQL.TypeCheckerTest do
       errors =
         check_errors(~s|search(amenity: "cafe"); search(amenity: "bar");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "only one simple output"))
+      error = Enum.find(errors, &(&1.message =~ "only one simple output"))
+      assert error.line == 1
+      assert error.col == 26
+      assert error.severity == :error
+      assert error.hint =~ "named outputs"
     end
 
     test "mixing bare and named output produces error" do
       errors =
         check_errors(~s|search(amenity: "cafe"); $$.foo = search(amenity: "bar");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "cannot mix simple output"))
+      error = Enum.find(errors, &(&1.message =~ "cannot mix simple output"))
+      assert error.line == 1
+      assert error.col == 26
+      assert error.severity == :error
+      assert error.hint =~ "named outputs"
     end
 
     test "mixing bare and $$ produces error" do
       errors =
         check_errors(~s|search(amenity: "cafe"); $$ = search(amenity: "bar");|)
 
-      assert Enum.any?(errors, &(&1.message =~ "only one simple output"))
+      error = Enum.find(errors, &(&1.message =~ "only one simple output"))
+      assert error.line == 1
+      assert error.col == 1
+      assert error.severity == :error
+      assert error.hint =~ "named outputs"
     end
   end
 
@@ -494,8 +587,10 @@ defmodule PlazaQL.TypeCheckerTest do
     test "errors have line and col" do
       errors = check_errors(~s|$$ = search(node).within($missing);|)
       error = Enum.find(errors, &(&1.message =~ "undefined"))
-      assert error.line >= 1
-      assert error.col >= 1
+      assert error.line == 1
+      assert error.col == 25
+      assert error.severity == :error
+      assert error.hint =~ "define it first"
     end
 
     test "errors have descriptive messages" do
@@ -505,14 +600,20 @@ defmodule PlazaQL.TypeCheckerTest do
         )
 
       error = Enum.find(errors, &(&1.message =~ "`.within()`"))
+      assert error.line == 1
+      assert error.severity == :error
       assert error.message =~ "Route"
+      assert error.hint =~ "around"
     end
 
     test "errors have hints" do
       errors = check_errors(~s|$$ = search(node).offset(10);|)
       error = Enum.find(errors, &(&1.message =~ "`.offset()`"))
+      assert error.line == 1
+      assert error.severity == :error
       assert error.hint != nil
       assert error.hint =~ "limit"
+      assert error.hint =~ ".limit(n)"
     end
 
     test "multiple errors returned for multiple issues" do
@@ -520,6 +621,14 @@ defmodule PlazaQL.TypeCheckerTest do
         check_errors(~s|$$ = search(node).limit(10).buffer(50).within($missing);|)
 
       assert length(errors) >= 2
+
+      # Verify each error has proper structure
+      for error <- errors do
+        assert error.line == 1
+        assert error.col >= 1
+        assert error.severity == :error
+        assert is_binary(error.message)
+      end
     end
 
     test "errors sorted by line/col" do
@@ -528,6 +637,11 @@ defmodule PlazaQL.TypeCheckerTest do
 
       positions = Enum.map(errors, &{&1.line, &1.col})
       assert positions == Enum.sort(positions)
+
+      # Verify specific ordering: buffer error, within error, undefined var error
+      assert Enum.at(errors, 0).col == 29
+      assert Enum.at(errors, 1).col == 40
+      assert Enum.at(errors, 2).col == 47
     end
   end
 
@@ -562,7 +676,13 @@ defmodule PlazaQL.TypeCheckerTest do
 
     test "$var[attr] with undefined variable errors" do
       errors = check_errors(~s|$$ = $unknown[ref];|)
-      assert Enum.any?(errors, &String.contains?(&1.message, "undefined variable"))
+
+      error = Enum.find(errors, &String.contains?(&1.message, "undefined variable"))
+      assert error.line == 1
+      assert error.col == 6
+      assert error.severity == :error
+      assert error.message =~ "$unknown"
+      assert error.hint =~ "define it first"
     end
 
     test "$var[attr] on geo_set produces value_set type" do
@@ -583,7 +703,12 @@ defmodule PlazaQL.TypeCheckerTest do
 
     test "member_of with undefined variable errors" do
       errors = check_errors(~s|$$ = search(node).member_of($nope);|)
-      assert Enum.any?(errors, &String.contains?(&1.message, "undefined variable"))
+
+      error = Enum.find(errors, &String.contains?(&1.message, "undefined variable"))
+      assert error.line == 1
+      assert error.col == 29
+      assert error.severity == :error
+      assert error.hint =~ "define it first"
     end
 
     test "member_of with inline search passes" do
@@ -613,12 +738,22 @@ defmodule PlazaQL.TypeCheckerTest do
 
     test ".first().first() errors — can't narrow an element" do
       errors = check_errors(~s|$$ = search(node).first().first();|)
-      assert Enum.any?(errors, &String.contains?(&1.message, "already a single element"))
+
+      error = Enum.find(errors, &String.contains?(&1.message, "already a single element"))
+      assert error.line == 1
+      assert error.col == 27
+      assert error.severity == :error
+      assert error.message =~ ".first()"
     end
 
     test ".index() requires positive integer" do
       errors = check_errors(~s|$$ = search(node).index(0);|)
-      assert Enum.any?(errors, &String.contains?(&1.message, "positive integer"))
+
+      error = Enum.find(errors, &String.contains?(&1.message, "positive integer"))
+      assert error.line == 1
+      assert error.col == 19
+      assert error.severity == :error
+      assert error.hint =~ ".index(3)"
     end
 
     test ".index(3) passes" do
@@ -716,7 +851,14 @@ defmodule PlazaQL.TypeCheckerTest do
     test "filter_expr cannot follow terminal" do
       errors = check_errors(~s|$$ = search(node).count().filter(id() > 1);|)
       assert errors != []
-      assert hd(errors).message =~ "cannot follow"
+
+      error = hd(errors)
+      assert error.line == 1
+      assert error.col == 27
+      assert error.severity == :error
+      assert error.message =~ "cannot follow"
+      assert error.message =~ ".count()"
+      assert error.hint =~ "before the output mode"
     end
   end
 
@@ -727,9 +869,16 @@ defmodule PlazaQL.TypeCheckerTest do
       errors = check_errors(~s|$$ = search(node).group_by(t["amenity"]).ids();|)
       assert errors != []
 
-      assert Enum.any?(errors, fn e ->
-               e.message =~ "cannot be applied to GroupedSet"
-             end)
+      error =
+        Enum.find(errors, fn e ->
+          e.message =~ "cannot be applied to GroupedSet"
+        end)
+
+      assert error.line == 1
+      assert error.col == 42
+      assert error.severity == :error
+      assert error.message =~ ".ids()"
+      assert error.hint == nil
     end
 
     test "group_by followed by count is valid" do
@@ -757,7 +906,14 @@ defmodule PlazaQL.TypeCheckerTest do
         check_errors(~s|$$ = search(node).sum(number(t["capacity"])).limit(10);|)
 
       assert errors != []
-      assert hd(errors).message =~ "cannot follow"
+
+      error = hd(errors)
+      assert error.line == 1
+      assert error.col == 46
+      assert error.severity == :error
+      assert error.message =~ "cannot follow"
+      assert error.message =~ ".sum()"
+      assert error.hint =~ "before the output mode"
     end
 
     test "filter method cannot be applied to grouped_set" do
@@ -766,9 +922,16 @@ defmodule PlazaQL.TypeCheckerTest do
 
       assert errors != []
 
-      assert Enum.any?(errors, fn e ->
-               e.message =~ "cannot be applied to GroupedSet"
-             end)
+      error =
+        Enum.find(errors, fn e ->
+          e.message =~ "cannot be applied to GroupedSet"
+        end)
+
+      assert error.line == 1
+      assert error.col == 42
+      assert error.severity == :error
+      assert error.message =~ ".filter()"
+      assert error.hint == nil
     end
   end
 end

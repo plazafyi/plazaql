@@ -75,7 +75,8 @@ optimize(
 ev_route(
   origin: point(40.7128, -74.0060),
   destination: point(42.3601, -71.0589),
-  mode: "drive"
+  battery: 60000,
+  mode: "auto"
 );
 
 // Distance matrix between multiple points

@@ -381,6 +381,19 @@ defmodule PlazaQL.CompilerTest do
       assert {:matrix, params} = plan.computation
       assert params.mode == "driving"
     end
+
+    test "ev_route with battery" do
+      plan =
+        first_plan(
+          ~s|$$ = ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60_000);|
+        )
+
+      assert plan.kind == :computation
+      assert {:ev_route, params} = plan.computation
+      assert params.origin == {40.71, -74.00}
+      assert params.destination == {42.36, -71.06}
+      assert params.battery_capacity_wh == 60_000
+    end
   end
 
   # ── Filter method ─────────────────────────────────────────────────
@@ -796,6 +809,285 @@ defmodule PlazaQL.CompilerTest do
 
       assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast, schema: schema)
       assert msg =~ "too many IDs"
+    end
+  end
+
+  # ── Error path tests ──────────────────────────────────────────────
+
+  describe "unknown method errors" do
+    test "unknown method on search returns compile error" do
+      # Build AST with an unknown method by hand — the parser accepts any
+      # identifier as a method name, so we craft the AST directly.
+      ast = [
+        {:output, nil,
+         {:search, :node, [{:eq, "amenity", "cafe"}], [{:method, :frobnicate, [], %{}}],
+          %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown method"
+      assert msg =~ "frobnicate"
+    end
+
+    test "unknown method in chained position returns compile error" do
+      ast = [
+        {:output, nil,
+         {:chain,
+          {:search, :node, [], [{:method, :limit, [{:posarg, {:number, 10, %{}}}], %{}}],
+           %{line: 1, col: 1}}, {:method, :bogus_method, [], %{}}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown method"
+      assert msg =~ "bogus_method"
+    end
+  end
+
+  describe "unknown atom value errors" do
+    test ".sort with unknown atom value returns compile error" do
+      # .sort(by: :invalid_sort_key) — "invalid_sort_key" is not in @known_atoms
+      ast = [
+        {:output, nil,
+         {:search, :node, [{:eq, "amenity", "cafe"}],
+          [{:method, :sort, [{:kwarg, "by", {:identifier, "invalid_sort_key", %{}}}], %{}}],
+          %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown atom value"
+      assert msg =~ "invalid_sort_key"
+    end
+
+    test ".include with unknown atom returns compile error" do
+      ast = [
+        {:output, nil,
+         {:search, :node, [],
+          [
+            {:method, :include, [{:posarg, {:identifier, "nonexistent_option", %{}}}], %{}}
+          ], %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown atom value"
+      assert msg =~ "nonexistent_option"
+    end
+
+    test ".expand with unknown direction string returns compile error" do
+      # .expand(:sideways) — "sideways" not in @known_atoms, triggers safe_to_atom!
+      # But :expand only reads {:atom, ...} posargs for known directions, so
+      # an identifier arg goes through safe_to_atom! indirectly only if the
+      # direction doesn't match. Let's trigger via sort with a bad string.
+      ast = [
+        {:output, nil,
+         {:search, :node, [], [{:method, :sort, [{:posarg, {:string, "xyzzy", %{}}}], %{}}],
+          %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown atom value"
+      assert msg =~ "xyzzy"
+    end
+  end
+
+  describe "too many IDs errors" do
+    test "exceeding default max_osm_ids returns compile error" do
+      # Default max is 10_000 — generate 10_001 IDs
+      ids = Enum.to_list(1..10_001)
+      id_filter = {:eq_list, "id", ids}
+
+      ast = [
+        {:output, nil, {:search, :node, [id_filter], [], %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "too many IDs"
+      assert msg =~ "10000"
+    end
+
+    test "exceeding custom schema max_osm_ids returns compile error" do
+      schema = %PlazaQL.Schema{limits: %{max_osm_ids: 5}}
+      ids = Enum.to_list(1..6)
+      id_filter = {:eq_list, "id", ids}
+
+      ast = [
+        {:output, nil, {:search, :node, [id_filter], [], %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast, schema: schema)
+      assert msg =~ "too many IDs"
+      assert msg =~ "5"
+    end
+
+    test "exactly at the limit succeeds" do
+      schema = %PlazaQL.Schema{limits: %{max_osm_ids: 3}}
+      id_filter = {:eq_list, "id", [1, 2, 3]}
+
+      ast = [
+        {:output, nil, {:search, :node, [id_filter], [], %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:ok, %{plans: [plan]}} = Compiler.compile(ast, schema: schema)
+      assert plan.osm_ids == [1, 2, 3]
+    end
+  end
+
+  describe "too many datasets errors" do
+    test "exceeding max datasets returns compile error" do
+      slugs = Enum.map(1..21, &"dataset-#{&1}")
+
+      ast = [
+        {:output, nil, {:search, {:dataset, slugs}, [], [], %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "too many datasets"
+      assert msg =~ "20"
+      assert msg =~ "21"
+    end
+
+    test "exactly at dataset limit succeeds" do
+      slugs = Enum.map(1..20, &"dataset-#{&1}")
+
+      ast = [
+        {:output, nil, {:search, {:dataset, slugs}, [], [], %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:ok, %{plans: [plan]}} = Compiler.compile(ast)
+      assert length(plan.sources) == 20
+    end
+  end
+
+  describe "invalid tag filter errors" do
+    test "eq_list on non-id key returns compile error" do
+      # List values (e.g., amenity: [1, 2, 3]) are only valid for id filters
+      ast = [
+        {:output, nil, {:search, :node, [{:eq_list, "amenity", [1, 2, 3]}], [], %{line: 1, col: 1}},
+         %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "list values are only supported for id filters"
+      assert msg =~ "amenity"
+    end
+
+    test "eq_list on id key succeeds" do
+      ast = [
+        {:output, nil, {:search, :node, [{:eq_list, "id", [1, 2, 3]}], [], %{line: 1, col: 1}},
+         %{line: 1, col: 1}}
+      ]
+
+      assert {:ok, %{plans: [plan]}} = Compiler.compile(ast)
+      assert plan.osm_ids == [1, 2, 3]
+    end
+  end
+
+  describe "unknown expression node errors" do
+    test "completely unknown expression node returns compile error" do
+      ast = [
+        {:output, nil, {:totally_unknown, "garbage", %{line: 3, col: 5}}, %{line: 3, col: 5}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown expression node"
+    end
+
+    test "malformed tuple as expression returns compile error" do
+      ast = [
+        {:output, nil, {:not_a_real_node}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown expression node"
+    end
+  end
+
+  describe "error struct fields" do
+    test "compile errors include line and col" do
+      ast = [
+        {:output, nil,
+         {:search, :node, [], [{:method, :nonexistent_method, [], %{line: 5, col: 20}}],
+          %{line: 5, col: 1}}, %{line: 5, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{} = error]} = Compiler.compile(ast)
+      assert is_integer(error.line)
+      assert is_integer(error.col)
+      assert is_binary(error.message)
+      assert error.severity == :error
+    end
+
+    test "error wraps as single-element list" do
+      # The compiler catches throw({:compile_error, %Error{}}) and wraps in a list
+      ast = [
+        {:output, nil, {:search, :node, [{:eq_list, "name", [1, 2]}], [], %{line: 1, col: 1}},
+         %{line: 1, col: 1}}
+      ]
+
+      assert {:error, errors} = Compiler.compile(ast)
+      assert is_list(errors)
+      assert [_] = errors
+      assert %PlazaQL.Error{} = hd(errors)
+    end
+  end
+
+  describe "error paths through PlazaQL.compile/1" do
+    test "unknown method via full pipeline" do
+      # We can't easily trigger an unknown method through the full pipeline
+      # because the type checker validates methods. But we can test that
+      # parser errors propagate correctly.
+      assert {:error, [%PlazaQL.Error{}]} = PlazaQL.compile(";;;totally broken{{{")
+    end
+
+    test "too many IDs via full pipeline" do
+      ids = Enum.map_join(1..10_001, ", ", & &1)
+      source = "$$ = search(node, id: [#{ids}]);"
+
+      # This may fail at parse or compile — either way we get {:error, [...]}
+      result = PlazaQL.compile(source)
+      assert {:error, errors} = result
+      assert is_list(errors)
+      assert errors != []
+    end
+
+    test "schema limit enforcement via full pipeline" do
+      schema = %PlazaQL.Schema{limits: %{max_osm_ids: 2}}
+      source = ~s|$$ = search(node, id: [1, 2, 3]);|
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} =
+               PlazaQL.compile(source, schema: schema)
+
+      assert msg =~ "too many IDs"
+    end
+  end
+
+  describe "kwarg compilation with unknown atoms" do
+    test "unknown kwarg key in computation returns compile error" do
+      # Computation kwargs go through safe_to_atom! for key names
+      ast = [
+        {:output, nil,
+         {:computation, :route, [], [{:kwarg, "unknown_key_xyzzy", {:number, 42, %{}}}],
+          %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
+      assert msg =~ "unknown atom value"
+      assert msg =~ "unknown_key_xyzzy"
+    end
+
+    test "known kwarg keys compile successfully" do
+      ast = [
+        {:output, nil,
+         {:computation, :route, [],
+          [
+            {:kwarg, "mode", {:atom, :car, %{}}},
+            {:kwarg, "profile", {:atom, :bicycle, %{}}}
+          ], %{line: 1, col: 1}}, %{line: 1, col: 1}}
+      ]
+
+      assert {:ok, %{plans: [plan]}} = Compiler.compile(ast)
+      assert {:route, params} = plan.computation
+      assert params.mode == :car
+      assert params.profile == :bicycle
     end
   end
 end
