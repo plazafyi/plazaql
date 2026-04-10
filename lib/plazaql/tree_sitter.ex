@@ -1480,9 +1480,11 @@ defmodule PlazaQL.TreeSitter do
   defp collect_errors_rec(_, _, acc), do: acc
 
   defp split_xml_and_errors(output) do
-    # tree-sitter outputs XML first, then error/stat lines on stderr
-    # When stderr_to_stdout is true, they're interleaved
-    # The XML ends with </sources>, everything after is errors
+    # tree-sitter may output warnings/errors before XML (e.g. "Warning: You have
+    # not configured any parser directories!"). Strip everything before <?xml.
+    # The XML ends with </sources>, everything after is errors/stats.
+    output = strip_before_xml(output)
+
     case String.split(output, "</sources>", parts: 2) do
       [before, after_xml] ->
         {before <> "</sources>", after_xml}
@@ -1493,6 +1495,13 @@ defmodule PlazaQL.TreeSitter do
         else
           {"", only}
         end
+    end
+  end
+
+  defp strip_before_xml(output) do
+    case :binary.match(output, "<?xml") do
+      {pos, _len} -> binary_part(output, pos, byte_size(output) - pos)
+      :nomatch -> output
     end
   end
 
