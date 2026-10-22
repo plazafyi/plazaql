@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { formatDocument } from "../src/formatter.js";
 import { parse } from "../src/parser.js";
 
 describe("PlazaQL Parser", () => {
@@ -110,6 +111,49 @@ describe("PlazaQL Parser", () => {
     if (ast[0]!.kind === "output" && ast[0]!.expr.kind === "search") {
       expect(ast[0]!.expr.filters[0]).toEqual({ op: "not_exists", key: "name" });
     }
+  });
+
+  // ── Regex key filters (~"pattern": value) ─────────────────────
+
+  function searchExpr(source: string) {
+    const { ast, errors } = parse(source);
+    expect(errors).toEqual([]);
+    const stmt = ast[0]!;
+    if (stmt.kind !== "bare_output" || stmt.expr.kind !== "search") {
+      throw new Error(`expected a bare search expression, got ${JSON.stringify(stmt)}`);
+    }
+    return stmt.expr;
+  }
+
+  const searchFilters = (source: string) => searchExpr(source).filters;
+
+  it("parses a regex key filter with an exists value", () => {
+    expect(searchFilters('search(node, ~"^name:": *);')).toEqual([
+      { op: "exists", key: "^name:", keyRegex: true },
+    ]);
+  });
+
+  it("parses a regex key filter with a regex value", () => {
+    expect(searchFilters('search(node, ~"^addr:": ~"^[0-9]");')).toEqual([
+      { op: "regex", key: "^addr:", value: "^[0-9]", keyRegex: true },
+    ]);
+  });
+
+  it("parses a regex key filter alongside plain tag filters", () => {
+    expect(searchFilters('search(way, highway: "primary", ~"^highway": "primary");')).toEqual([
+      { op: "eq", key: "highway", value: "primary" },
+      { op: "eq", key: "^highway", value: "primary", keyRegex: true },
+    ]);
+  });
+
+  it("keeps regex key filters inside .filter()", () => {
+    const search = searchExpr('search(node, amenity: "cafe").filter(~"^name:": *);');
+    expect(search.methods[0]!.args).toEqual([{ op: "exists", key: "^name:", keyRegex: true }]);
+  });
+
+  it("formats regex key filters back to ~\"pattern\" syntax", () => {
+    const source = 'search(node, ~"^addr:": ~"^[0-9]", name: *);';
+    expect(formatDocument(source)?.trim()).toBe(source);
   });
 
   // ── Geometry constructors ──────────────────────────────────────

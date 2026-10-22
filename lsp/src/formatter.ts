@@ -132,21 +132,22 @@ function formatSearchHead(
 }
 
 function formatTagFilter(filter: TagFilter): string {
+  const key = filter.keyRegex ? `~"${escapeString(filter.key)}"` : filter.key
   switch (filter.op) {
     case "eq":
-      return `${filter.key}: "${escapeString(filter.value ?? "")}"`
+      return `${key}: "${escapeString(filter.value ?? "")}"`
     case "neq":
-      return `${filter.key}: !"${escapeString(filter.value ?? "")}"`
+      return `${key}: !"${escapeString(filter.value ?? "")}"`
     case "regex":
-      return `${filter.key}: ~"${escapeString(filter.value ?? "")}"`
+      return `${key}: ~"${escapeString(filter.value ?? "")}"`
     case "regex_i":
-      return `${filter.key}: ~i"${escapeString(filter.value ?? "")}"`
+      return `${key}: ~i"${escapeString(filter.value ?? "")}"`
     case "not_regex":
-      return `${filter.key}: !~"${escapeString(filter.value ?? "")}"`
+      return `${key}: !~"${escapeString(filter.value ?? "")}"`
     case "exists":
-      return `${filter.key}: *`
+      return `${key}: *`
     case "not_exists":
-      return `${filter.key}: !*`
+      return `${key}: !*`
   }
 }
 

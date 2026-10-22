@@ -81,8 +81,9 @@ export type TagFilterOp =
 
 export interface TagFilter {
   op: TagFilterOp
-  key: string
+  key: string // tag key, or the key regex pattern when keyRegex is true
   value?: string // undefined for exists/not_exists
+  keyRegex?: boolean // true for ~"pattern": value filters, which match tag keys by regex
 }
 
 export interface NumberNode {
