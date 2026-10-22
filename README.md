@@ -598,6 +598,8 @@ $walk = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
 search(dataset("census-tracts")).intersects($walk);
 ```
 
+`.within()` and `.not_within()` keep their type rule with variables: the variable must hold a `Boundary`, `Isochrone`, `Polygon` or `PolygonSet`. For a variable holding a general feature set (for example a `dataset(...)` search), use `.intersects($var)`.
+
 ### Tag Filter (Phase 3b)
 
 | Method | Signature | Description |
