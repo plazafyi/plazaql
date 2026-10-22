@@ -18,6 +18,7 @@ import {
   methodGroup,
   methodOutputType,
   methodPhase,
+  REVERSE_GEOCODE_INCLUDES,
   searchBaseType,
   unionType,
   validSpatialArgTypes,
@@ -219,8 +220,29 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
     case "computation": {
       const type = computationType(expr.name)
       const argErrors = checkVarRefsInArgs(expr.args, scope, outputScope)
-      return { type, errors: argErrors }
+      const kwargErrors = checkComputationKwargs(expr.name, expr.args, expr.pos)
+      return { type, errors: [...argErrors, ...kwargErrors] }
     }
+
+    case "overlap_fraction":
+      return {
+        type: "Scalar",
+        errors: checkOverlapFractionArg(
+          expr.arg,
+          expr.pos,
+          scope,
+          outputScope,
+          true,
+        ),
+      }
+
+    case "expression":
+      return {
+        type: "Scalar",
+        errors: expr.calls.flatMap(
+          (call) => checkExpr(call, scope, outputScope).errors,
+        ),
+      }
 
     case "point":
       return { type: "Point", errors: [] }
@@ -461,6 +483,17 @@ function checkMethod(
   // 5. Var refs in args (only for Arg[], not TagFilter[])
   if (isArgArray(method.args)) {
     errors.push(...checkVarRefsInArgs(method.args, scope, outputScope))
+    errors.push(...checkExpressionArgs(method.args, scope, outputScope))
+    if (method.name === "overlap_fraction") {
+      errors.push(
+        ...checkOverlapFractionMethod(
+          method.args,
+          method.pos,
+          scope,
+          outputScope,
+        ),
+      )
+    }
   }
 
   // 6. Contextual requirements
@@ -635,6 +668,181 @@ function checkVarRefsInArgs(
     }
   }
   return errors
+}
+
+// ── Expression arguments (overlap_fraction) ─────────────────────────
+
+function checkExpressionArgs(
+  args: Arg[],
+  scope: Scope,
+  outputScope: Scope,
+): TypeCheckError[] {
+  return args.flatMap((arg) =>
+    arg.value.kind === "overlap_fraction" || arg.value.kind === "expression"
+      ? checkExpr(arg.value, scope, outputScope).errors
+      : [],
+  )
+}
+
+const OVERLAP_FRACTION_MESSAGE =
+  "`overlap_fraction()` expects a polygon(...), bbox(...), or a variable holding polygons"
+const OVERLAP_FRACTION_HINT =
+  "pass `polygon(point(lat, lng), ...)`, `bbox(s, w, n, e)`, `$var`, or `$$.name`"
+
+// Variable types that cannot hold polygons
+const NON_POLYGONAL_TYPES: PqlType[] = [
+  "Point",
+  "LineString",
+  "PointSet",
+  "LineSet",
+  "Route",
+  "Matrix",
+  "Elevation",
+  "Scalar",
+  "GroupedSet",
+]
+
+function overlapError(pos: Pos, message = OVERLAP_FRACTION_MESSAGE) {
+  return {
+    line: pos.line,
+    col: pos.col,
+    message,
+    hint: OVERLAP_FRACTION_HINT,
+    severity: "error" as const,
+  }
+}
+
+function checkOverlapRefType(
+  name: string,
+  type: PqlType,
+  pos: Pos,
+): TypeCheckError[] {
+  if (NON_POLYGONAL_TYPES.includes(type)) {
+    return [
+      overlapError(
+        pos,
+        `${OVERLAP_FRACTION_MESSAGE}, but \`${name}\` is ${type}`,
+      ),
+    ]
+  }
+  return []
+}
+
+function isLiteralPolygon(arg: Expr): boolean {
+  if (arg.kind === "bbox") {
+    return arg.s !== null && arg.w !== null && arg.n !== null && arg.e !== null
+  }
+  if (arg.kind !== "polygon") {
+    return false
+  }
+  const coords = new Set<string>()
+  for (const item of arg.items) {
+    if (item.kind !== "point" || item.lat === null || item.lng === null) {
+      return false
+    }
+    coords.add(`${item.lat},${item.lng}`)
+  }
+  return coords.size >= 3
+}
+
+function checkOverlapFractionArg(
+  arg: Expr | null,
+  pos: Pos,
+  scope: Scope,
+  outputScope: Scope,
+  reportUndefined: boolean,
+): TypeCheckError[] {
+  if (arg === null) {
+    return [overlapError(pos)]
+  }
+  if (isLiteralPolygon(arg)) {
+    return []
+  }
+  if (arg.kind === "var_ref") {
+    const info = scope.get(arg.name)
+    if (info) {
+      return checkOverlapRefType(arg.name, info.type, pos)
+    }
+    return reportUndefined
+      ? checkVarRefsInArgs([{ type: "posarg", value: arg }], scope, outputScope)
+      : []
+  }
+  if (arg.kind === "output_ref" && arg.name !== "") {
+    const key = `$$.${arg.name}`
+    const info = outputScope.get(key)
+    if (info) {
+      return checkOverlapRefType(key, info.type, pos)
+    }
+    return reportUndefined
+      ? checkVarRefsInArgs([{ type: "posarg", value: arg }], scope, outputScope)
+      : []
+  }
+  return [overlapError(pos)]
+}
+
+function checkOverlapFractionMethod(
+  args: Arg[],
+  pos: Pos,
+  scope: Scope,
+  outputScope: Scope,
+): TypeCheckError[] {
+  const [first] = args
+  if (args.length !== 1 || first?.type !== "posarg") {
+    return [
+      overlapError(
+        pos,
+        "`.overlap_fraction()` takes exactly one geometry argument",
+      ),
+    ]
+  }
+  // Undefined variables are already reported by checkVarRefsInArgs
+  return checkOverlapFractionArg(first.value, pos, scope, outputScope, false)
+}
+
+// ── Computation keyword arguments ────────────────────────────────────
+
+function checkComputationKwargs(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  if (name !== "reverse_geocode") {
+    return []
+  }
+  const supported = REVERSE_GEOCODE_INCLUDES.map((v) => `"${v}"`).join(", ")
+  const includeError = (message: string): TypeCheckError => ({
+    line: pos.line,
+    col: pos.col,
+    message,
+    hint: `supported values: ${supported}`,
+    severity: "error",
+  })
+  const checkValue = (value: Expr): TypeCheckError[] => {
+    if (value.kind !== "string") {
+      return [includeError("`include:` list items must be strings")]
+    }
+    if (REVERSE_GEOCODE_INCLUDES.includes(value.value)) {
+      return []
+    }
+    return [
+      includeError(
+        `unknown \`include:\` value "${value.value}" for \`reverse_geocode()\``,
+      ),
+    ]
+  }
+
+  return args.flatMap((arg) => {
+    if (arg.type !== "kwarg" || arg.name !== "include") {
+      return []
+    }
+    if (arg.value.kind === "string") {
+      return checkValue(arg.value)
+    }
+    if (arg.value.kind === "list") {
+      return arg.value.items.flatMap(checkValue)
+    }
+    return [includeError("`include:` must be a string or a list of strings")]
+  })
 }
 
 // ── Contextual requirements ──────────────────────────────────────────

@@ -20,6 +20,7 @@ import type {
   DifferenceNode,
   ElementType,
   Expr,
+  ExpressionNode,
   GeometryNode,
   IdentifierNode,
   IntersectionNode,
@@ -28,6 +29,7 @@ import type {
   NumberNode,
   OutputNode,
   OutputRefNode,
+  OverlapFractionNode,
   PointNode,
   Pos,
   SearchNode,
@@ -542,6 +544,8 @@ function transformExpr(node: SyntaxNode): Expr | null {
     case "filter_function_call":
       // In the old parser, these are treated as identifiers
       return transformFilterFunctionCall(node)
+    case "overlap_fraction_function":
+      return transformOverlapFraction(node)
     default:
       return null
   }
@@ -727,7 +731,7 @@ function transformMethod(node: SyntaxNode): MethodNode | null {
     if (!child) {
       continue
     }
-    if (child === nameNode) {
+    if (child.id === nameNode.id) {
       continue
     }
 
@@ -762,13 +766,19 @@ function transformMethod(node: SyntaxNode): MethodNode | null {
     }
   }
 
+  const regularArgs = args.filter((a): a is Arg => "type" in a)
+
+  // Expression filter: .filter(t["x"] > 5) keeps its expression argument
+  if (name === "filter" && !hasTagFilters && regularArgs.length > 0) {
+    return { kind: "method", name, args: regularArgs, pos: pos(node) }
+  }
+
   if (name === "filter" || hasTagFilters) {
     // filter() method uses TagFilter[] args
     const tagFilters = args.filter((a): a is TagFilter => "op" in a)
     return { kind: "method", name, args: tagFilters, pos: pos(node) }
   }
 
-  const regularArgs = args.filter((a): a is Arg => "type" in a)
   return { kind: "method", name, args: regularArgs, pos: pos(node) }
 }
 
@@ -805,10 +815,56 @@ function transformFilterExprToExpr(node: SyntaxNode): Expr | null {
     if (!child) {
       return null
     }
-    return transformExpr(child) ?? transformFilterPrimary(child)
+    return (
+      transformExpr(child) ??
+      transformFilterPrimary(child) ??
+      transformOpaqueExpression(child)
+    )
   }
   // For complex filter expressions, try to extract the inner expr
-  return transformFilterPrimary(node)
+  return transformFilterPrimary(node) ?? transformOpaqueExpression(node)
+}
+
+// Filter-expression nodes (comparisons, arithmetic, t["key"], number(...), …)
+// are not modelled structurally; keep their source text and any
+// overlap_fraction(...) calls inside them.
+function transformOpaqueExpression(node: SyntaxNode): ExpressionNode | null {
+  if (node.type === "ERROR" || node.hasError) {
+    return null
+  }
+  const calls: OverlapFractionNode[] = []
+  collectOverlapFractionCalls(node, calls)
+  return { kind: "expression", text: node.text, calls, pos: pos(node) }
+}
+
+function collectOverlapFractionCalls(
+  node: SyntaxNode,
+  calls: OverlapFractionNode[],
+): void {
+  if (isOverlapFractionCall(node)) {
+    calls.push(transformOverlapFraction(node))
+    return
+  }
+  for (let i = 0; i < node.namedChildCount; i++) {
+    const child = node.namedChild(i)
+    if (child) {
+      collectOverlapFractionCalls(child, calls)
+    }
+  }
+}
+
+function isOverlapFractionCall(node: SyntaxNode): boolean {
+  return (
+    node.type === "overlap_fraction_function" ||
+    (node.type === "filter_function_call" &&
+      node.child(0)?.type === "overlap_fraction")
+  )
+}
+
+function transformOverlapFraction(node: SyntaxNode): OverlapFractionNode {
+  const argNode = node.namedChild(0)
+  const arg = argNode ? transformExpr(argNode) : null
+  return { kind: "overlap_fraction", arg, pos: pos(node) }
 }
 
 function transformFilterPrimary(node: SyntaxNode): Expr | null {
@@ -896,7 +952,12 @@ function transformParenthesized(node: SyntaxNode): Expr | null {
   return transformExpr(inner)
 }
 
-function transformFilterFunctionCall(node: SyntaxNode): IdentifierNode {
+function transformFilterFunctionCall(
+  node: SyntaxNode,
+): IdentifierNode | OverlapFractionNode {
+  if (isOverlapFractionCall(node)) {
+    return transformOverlapFraction(node)
+  }
   // filter_function_call nodes like distance(...), length(), area()
   // In the old parser context, these are identifiers when used as method args
   return { kind: "identifier", name: node.text, pos: pos(node) }

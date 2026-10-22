@@ -1,7 +1,11 @@
 // PlazaQL signature help provider
 
 import type { FunctionSignature } from "./types.js"
-import { FUNCTION_SIGNATURES, METHOD_CATALOG } from "./types.js"
+import {
+  EXPRESSION_FUNCTIONS,
+  FUNCTION_SIGNATURES,
+  METHOD_CATALOG,
+} from "./types.js"
 
 export interface SignatureHelp {
   signatures: SignatureInfo[]
@@ -57,7 +61,7 @@ export function getSignatureHelp(
       }
     }
   } else {
-    sig = FUNCTION_SIGNATURES[name]
+    sig = FUNCTION_SIGNATURES[name] ?? EXPRESSION_FUNCTIONS[name]
   }
 
   if (!sig) {

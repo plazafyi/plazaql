@@ -152,6 +152,29 @@ export interface GeometryNode {
   pos: Pos
 }
 
+/**
+ * `overlap_fraction(geom)` — fraction (0..1) of each feature's area inside a
+ * reference polygon. `arg` is the raw geometry argument: polygon(...),
+ * bbox(...), $var, or $$.name (anything else is a type error).
+ */
+export interface OverlapFractionNode {
+  kind: "overlap_fraction"
+  arg: Expr | null
+  pos: Pos
+}
+
+/**
+ * Opaque filter/value expression (e.g. `number(t["pop"]) * overlap_fraction($a)`).
+ * The source text is preserved verbatim for formatting; `calls` lists the
+ * `overlap_fraction(...)` calls inside it so they can be type-checked.
+ */
+export interface ExpressionNode {
+  kind: "expression"
+  text: string
+  calls: OverlapFractionNode[]
+  pos: Pos
+}
+
 export interface SearchNode {
   kind: "search"
   elementType: ElementType | null
@@ -278,6 +301,8 @@ export type Expr =
   | DifferenceNode
   | IntersectionNode
   | ListNode
+  | OverlapFractionNode
+  | ExpressionNode
 
 export type Statement =
   | SettingsNode
@@ -310,7 +335,13 @@ const SPATIAL_METHODS = [
   "has_member",
 ]
 const TRANSFORM_METHODS = ["buffer", "simplify", "centroid"]
-const COMPUTED_METHODS = ["elevation", "distance", "area", "length"]
+const COMPUTED_METHODS = [
+  "elevation",
+  "distance",
+  "area",
+  "length",
+  "overlap_fraction",
+]
 const OUTPUT_SHAPE_METHODS = ["fields", "include", "precision", "expand"]
 const ORDERING_METHODS = ["sort", "limit", "offset"]
 const OUTPUT_MODE_METHODS = [
@@ -683,6 +714,15 @@ export const METHOD_CATALOG: MethodInfo[] = [
     signature: ".distance(geometry: Point)",
     description:
       "Add distance from a reference point as a computed column on each feature.",
+    phase: "Computed",
+    ordinal: 5,
+    group: "freely_orderable",
+  },
+  {
+    name: "overlap_fraction",
+    signature: ".overlap_fraction(geometry: Polygon | Bbox | $var)",
+    description:
+      'Add the fraction (0..1) of each feature\'s area that lies inside the reference polygon as a computed `overlap_fraction` column. Also usable as an expression: `.sum(number(t["population"]) * overlap_fraction($area))`.',
     phase: "Computed",
     ordinal: 5,
     group: "freely_orderable",
@@ -1066,6 +1106,19 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "Point",
         description: "Coordinates to reverse geocode",
       },
+      {
+        name: "include",
+        type: '"census" | ["census"]',
+        optional: true,
+        description:
+          'Extra data to attach. `"census"` adds a `census` object with Census GEOIDs (state, county, tract, block group, ZCTA, place, CBSA, congressional district) and their names.',
+        enumValues: [
+          {
+            value: '"census"',
+            description: "Census geographies (GEOIDs + names)",
+          },
+        ],
+      },
     ],
     returnType: "PointSet",
     description: "Reverse geocode coordinates to an address.",
@@ -1218,6 +1271,31 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     ],
     returnType: "PointSet",
     description: "Find nearest OSM features to a point.",
+  },
+}
+
+/** Values accepted by `reverse_geocode(include: ...)`. */
+export const REVERSE_GEOCODE_INCLUDES = ["census"]
+
+/**
+ * Expression-only functions (valid inside `.filter()`, `.sort()`, `.sum()`,
+ * `.group_by()` etc., not as top-level statements).
+ */
+export const EXPRESSION_FUNCTIONS: Record<string, FunctionSignature> = {
+  // biome-ignore lint/style/useNamingConvention: PQL name
+  overlap_fraction: {
+    name: "overlap_fraction",
+    params: [
+      {
+        name: "geometry",
+        type: "Polygon | Bbox | $var | $$.name",
+        description:
+          "Reference polygon: polygon(...), bbox(s, w, n, e), or a variable holding polygons",
+      },
+    ],
+    returnType: "number",
+    description:
+      'Fraction (0..1) of each feature\'s area that lies inside the reference polygon — for area-weighted apportionment, e.g. `.sum(number(t["population"]) * overlap_fraction($area))`.',
   },
 }
 
