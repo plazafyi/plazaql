@@ -1,0 +1,28 @@
+// US Census queries — Plaza-curated census datasets, area-weighted
+// apportionment with overlap_fraction(), and census geographies in
+// reverse geocoding. Dataset properties are read with t["key"].
+
+// Which county contains a point?
+search(dataset("census-counties")).contains(point(40.7484, -73.9856)).first();
+
+// Census tracts reachable in a 15-minute walk with median income above $75k
+$iso = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
+search(dataset("census-tracts"))
+  .intersects($iso)
+  .filter(number(t["median_household_income"]) > 75000);
+
+// Population inside a 15-minute walk — each tract's population is weighted
+// by the fraction of the tract's area that lies inside the isochrone
+$iso = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
+search(dataset("census-tracts"))
+  .intersects($iso)
+  .sum(number(t["population"]) * overlap_fraction($iso));
+
+// Reverse geocode with census geographies (state, county, tract, block group,
+// ZCTA, place, CBSA, congressional district)
+reverse_geocode(point(40.7484, -73.9856), include: "census");
+
+// Total population of New York State's counties
+search(dataset("census-counties"))
+  .filter(t["state_abbr"] == "NY")
+  .sum(number(t["population"]));

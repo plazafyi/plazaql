@@ -7,6 +7,7 @@ defmodule PlazaQL.Compiler do
   """
 
   alias PlazaQL.Error
+  alias PlazaQL.GeometryRef
   alias PlazaQL.Plan
   alias PlazaQL.Plan.OutputOptions
 
@@ -365,6 +366,31 @@ defmodule PlazaQL.Compiler do
     end
   end
 
+  defp apply_method(plan, {:method, :overlap_fraction, args, _pos}, _env) do
+    ref =
+      case args do
+        [{:posarg, geom}] -> GeometryRef.from_ast(geom)
+        _ -> :error
+      end
+
+    case ref do
+      {:ok, ref} ->
+        column = {:overlap_fraction, {:geom_func, :overlap_fraction, ref, nil}}
+        %{plan | computed_columns: plan.computed_columns ++ [column]}
+
+      :error ->
+        throw(
+          {:compile_error,
+           %Error{
+             message:
+               "`.overlap_fraction()` expects a polygon(...), bbox(...), or a variable holding polygons",
+             line: 0,
+             col: 0
+           }}
+        )
+    end
+  end
+
   # -- Recurse --
 
   defp apply_method(plan, {:method, :expand, args, _pos}, _env) do
@@ -583,29 +609,41 @@ defmodule PlazaQL.Compiler do
   defp extract_single_value([{:kwarg, _, val}]), do: val
   defp extract_single_value(_), do: nil
 
+  # Variable / output refs compile to {:set_ref, name} — the executor resolves
+  # the named set's geometry at run time ("name" for $name, "$$.name" for $$.name).
   defp extract_geometry_arg(args) do
     case args do
-      [{:posarg, {:var_ref, "$" <> _name, _pos}}] ->
-        # Placeholder — executor resolves variable geometry at runtime
-        {:point, 0.0, 0.0}
+      [{:posarg, {:var_ref, "$" <> _, _} = ref}] ->
+        geometry_ref!(ref)
 
-      [{:posarg, {:output_var_ref, _name, _pos}}] ->
-        # Placeholder — executor resolves output variable geometry at runtime
-        {:point, 0.0, 0.0}
+      [{:posarg, {:output_var_ref, _, _} = ref}] ->
+        geometry_ref!(ref)
 
       [{:posarg, {:point, lat, lng, _}}] ->
         {:point, lng, lat}
 
+      [{:posarg, {:bbox, _, _, _, _, _} = bbox}] ->
+        geometry_ref!(bbox)
+
       [{:posarg, {:polygon, items, _}}] ->
         coords = Enum.map(items, fn {:point, lat, lng, _} -> {lng, lat} end)
-
-        coords =
-          if List.first(coords) != List.last(coords), do: coords ++ [hd(coords)], else: coords
-
-        {:polygon, [coords]}
+        {:polygon, [GeometryRef.close_ring(coords)]}
 
       _ ->
         {:point, 0.0, 0.0}
+    end
+  end
+
+  defp geometry_ref!(ast) do
+    case GeometryRef.from_ast(ast) do
+      {:ok, ref} ->
+        ref
+
+      :error ->
+        throw(
+          {:compile_error,
+           %Error{message: "unsupported geometry argument: #{inspect(ast)}", line: 0, col: 0}}
+        )
     end
   end
 
@@ -718,6 +756,7 @@ defmodule PlazaQL.Compiler do
 
   defp compile_kwargs(opts) do
     Map.new(opts, fn
+      {:kwarg, "include", {:list, items, _}} -> {:include, Enum.map(items, &include_item!/1)}
       {:kwarg, key, {:number, n, _}} -> {kwarg_name!(key), n}
       {:kwarg, key, {:string, s, _}} -> {kwarg_name!(key), s}
       {:kwarg, key, {:bool, b, _}} -> {kwarg_name!(key), b}
@@ -732,7 +771,7 @@ defmodule PlazaQL.Compiler do
   # new atom value legal.
   @computation_kwarg_names Map.new(
                              ~w(alternatives battery battery_capacity_wh connector_types
-                                initial_charge_pct min_charge_pct min_power_kw waypoints)a,
+                                include initial_charge_pct min_charge_pct min_power_kw waypoints)a,
                              &{Atom.to_string(&1), &1}
                            )
 
@@ -741,6 +780,19 @@ defmodule PlazaQL.Compiler do
       {:ok, atom} -> atom
       :error -> safe_to_atom!(name)
     end
+  end
+
+  defp include_item!({:string, s, _}), do: s
+
+  defp include_item!(other) do
+    throw(
+      {:compile_error,
+       %Error{
+         message: "`include:` list items must be strings, got #{inspect(other)}",
+         line: 0,
+         col: 0
+       }}
+    )
   end
 
   defp normalize_point_kwarg(kwargs, key) do

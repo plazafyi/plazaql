@@ -5,6 +5,10 @@ defmodule PlazaQL.NotCompilable do
   This occurs for computation plans (route, isochrone, geocode, etc.)
   which require a service backend rather than direct SQL execution.
   The caller is responsible for implementing computation execution.
+
+  Also returned (reason `:unresolved_geometry_ref`) when a plan still holds a
+  `{:set_ref, name}` geometry (`$var` / `$$.name` in a spatial predicate or
+  `overlap_fraction`) — the executor must resolve those before SQL generation.
   """
 
   @type t :: %__MODULE__{

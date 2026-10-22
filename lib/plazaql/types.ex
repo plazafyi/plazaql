@@ -44,7 +44,7 @@ defmodule PlazaQL.Types do
     :has_member
   ]
   @transform_methods [:buffer, :simplify, :centroid]
-  @computed_methods [:elevation, :distance, :area, :length]
+  @computed_methods [:elevation, :distance, :area, :length, :overlap_fraction]
   @output_shape_methods [:fields, :include, :precision, :expand]
   @narrowing_methods [:first, :last, :index]
   @ordering_methods [:sort, :limit, :offset]

@@ -3,6 +3,8 @@ defmodule PlazaQL.SQL.Expression do
   # Internal: expression AST → SQL fragment with parameterized values.
   # Uses accumulator pattern: {fragment, params, next_idx}
 
+  alias PlazaQL.GeometryRef
+  alias PlazaQL.NotCompilable
   alias PlazaQL.Schema
 
   @type acc :: {String.t(), [term()], pos_integer()}
@@ -115,6 +117,23 @@ defmodule PlazaQL.SQL.Expression do
       "ST_Distance(ST_Centroid(#{geom})::geography, ST_SetSRID(ST_MakePoint($#{idx}, $#{idx + 1}), #{srid})::geography)"
 
     {sql, [lng, lat], idx + 2}
+  end
+
+  def to_sql({:geom_func, :overlap_fraction, {:polygon, rings}, _pos}, schema, idx) do
+    geom = schema.columns.geometry
+    ewkt = GeometryRef.polygon_ewkt(rings, schema.srid)
+
+    sql =
+      "(ST_Area(ST_Intersection(#{geom}, ST_GeomFromEWKT($#{idx}))::geography) / NULLIF(ST_Area(#{geom}::geography), 0))"
+
+    {sql, [ewkt], idx + 1}
+  end
+
+  def to_sql({:geom_func, :overlap_fraction, {:set_ref, name}, _pos}, _schema, _idx) do
+    raise NotCompilable,
+      reason: :unresolved_geometry_ref,
+      message:
+        "overlap_fraction() references set #{inspect(name)}, which must be resolved by the executor before SQL generation"
   end
 
   def to_sql({:geom_func, :elevation, _pos}, schema, idx) do

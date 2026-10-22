@@ -28,8 +28,8 @@ defmodule PlazaQL.TreeSitter do
                   ~w(area around avg bbox buffer centroid contains count crosses distance
                      elevation expand fields filter filter_expr first geom group_by h3
                      has_member ids include index intersects last length limit max min
-                     member_of not_contains not_intersects not_within offset precision
-                     simplify skel sort sort_expr sum tags touches within)a,
+                     member_of not_contains not_intersects not_within offset overlap_fraction
+                     precision simplify skel sort sort_expr sum tags touches within)a,
                   &{Atom.to_string(&1), &1}
                 )
 
@@ -433,6 +433,9 @@ defmodule PlazaQL.TreeSitter do
       :distance_function ->
         transform_distance_function(el)
 
+      :overlap_fraction_function ->
+        transform_overlap_fraction_function(el)
+
       :size_function ->
         transform_size_function(el)
 
@@ -667,6 +670,7 @@ defmodule PlazaQL.TreeSitter do
     :prop_accessor,
     :geom_function,
     :distance_function,
+    :overlap_fraction_function,
     :coerce_function,
     :string_function,
     :size_function,
@@ -1248,6 +1252,10 @@ defmodule PlazaQL.TreeSitter do
           {:geom_func, :distance, nil, pos}
         end
 
+      "overlap_fraction" ->
+        arg = if children != [], do: transform_expression(hd(children)), else: nil
+        overlap_fraction_node(arg, pos)
+
       name when name in ["id", "type", "lat", "lon"] ->
         # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
         {:prop_access, String.to_atom(name), pos}
@@ -1332,6 +1340,31 @@ defmodule PlazaQL.TreeSitter do
     else
       {:geom_func, :distance, nil, pos}
     end
+  end
+
+  defp transform_overlap_fraction_function(el) do
+    pos = make_pos(el)
+
+    arg =
+      case named_children(el) do
+        [child | _] -> transform_expression(child)
+        [] -> nil
+      end
+
+    overlap_fraction_node(arg, pos)
+  end
+
+  # {:geom_func, :overlap_fraction, ref, pos} where ref is a PlazaQL.GeometryRef
+  # ({:polygon, [ring]} | {:set_ref, name}). Unsupported arguments are kept as
+  # {:invalid, ast} so the type checker can report them.
+  defp overlap_fraction_node(arg, pos) do
+    ref =
+      case PlazaQL.GeometryRef.from_ast(arg) do
+        {:ok, ref} -> ref
+        :error -> {:invalid, arg}
+      end
+
+    {:geom_func, :overlap_fraction, ref, pos}
   end
 
   defp transform_size_function(el) do
@@ -1420,8 +1453,7 @@ defmodule PlazaQL.TreeSitter do
   end
 
   defp split_args_opts(args) do
-    {posargs, kwargs} = Enum.split_with(args, &match?({:posarg, _}, &1))
-    if kwargs != [], do: {[], kwargs}, else: {posargs, []}
+    Enum.split_with(args, &match?({:posarg, _}, &1))
   end
 
   defp extract_node_pos(node) do

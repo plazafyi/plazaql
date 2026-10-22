@@ -2,6 +2,7 @@ defmodule PlazaQL.SQL.Where do
   @moduledoc false
   # Internal: builds WHERE clause conditions from Plan filters.
 
+  alias PlazaQL.NotCompilable
   alias PlazaQL.Plan
   alias PlazaQL.Schema
   alias PlazaQL.SQL.Expression
@@ -93,6 +94,13 @@ defmodule PlazaQL.SQL.Where do
 
     {"ST_DWithin(#{geom}::geography, ST_GeomFromEWKT($#{idx})::geography, $#{idx + 1})",
      [collection_wkt, radius], idx + 2}
+  end
+
+  defp spatial_filter_sql({:predicate, predicate, {:set_ref, name}}, _schema, _idx) do
+    raise NotCompilable,
+      reason: :unresolved_geometry_ref,
+      message:
+        ".#{predicate}() references set #{inspect(name)}, which must be resolved by the executor before SQL generation"
   end
 
   defp spatial_filter_sql({:predicate, predicate, geometry}, schema, idx) do
