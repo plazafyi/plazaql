@@ -394,6 +394,37 @@ defmodule PlazaQL.CompilerTest do
       assert params.destination == {42.36, -71.06}
       assert params.battery_capacity_wh == 60_000
     end
+
+    test "ev_route accepts the EV and routing options as keywords" do
+      plan =
+        first_plan(
+          ~s|$$ = ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, initial_charge_pct: 0.9, min_charge_pct: 0.15, connector_types: ["ccs", "type2"], min_power_kw: 50, waypoints: [point(41.0, -73.5)], alternatives: 2);|
+        )
+
+      assert {:ev_route, params} = plan.computation
+      assert params.battery_capacity_wh == 60_000
+      assert params.initial_charge_pct == 0.9
+      assert params.min_charge_pct == 0.15
+      assert params.min_power_kw == 50
+      assert params.alternatives == 2
+      assert {:list, [{:string, "ccs", _}, {:string, "type2", _}], _} = params.connector_types
+      assert {:list, [{:point, 41.0, -73.5, _}], _} = params.waypoints
+    end
+
+    test "battery_capacity_wh is accepted under its executor name" do
+      plan =
+        first_plan(
+          ~s|$$ = ev_route(point(40.71, -74.00), point(42.36, -71.06), battery_capacity_wh: 60000);|
+        )
+
+      assert {:ev_route, %{battery_capacity_wh: 60_000}} = plan.computation
+    end
+
+    test "unknown keyword names are still rejected" do
+      {:ok, ast} = Parser.parse(~s|$$ = route(point(1.0, 2.0), point(1.1, 2.1), bogus: 1);|)
+      assert {:error, [%{message: message}]} = Compiler.compile(ast)
+      assert message =~ "bogus"
+    end
   end
 
   # ── Filter method ─────────────────────────────────────────────────
