@@ -1,0 +1,178 @@
+================
+overlap_fraction with variable in aggregation
+================
+
+search(node).sum(number(t["population"]) * overlap_fraction($area));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_mul_expression
+            (coerce_function
+              name: (identifier)
+              (filter_expression
+                (tag_access
+                  (string))))
+            (overlap_fraction_function
+              (variable_ref))))))))
+
+================
+overlap_fraction with polygon in filter
+================
+
+search(node).filter(overlap_fraction(polygon(point(1, 2), point(3, 4), point(5, 6))) > 0.5);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_cmp_expression
+            (overlap_fraction_function
+              (polygon_constructor
+                (point_constructor
+                  (number)
+                  (number))
+                (point_constructor
+                  (number)
+                  (number))
+                (point_constructor
+                  (number)
+                  (number))))
+            (number)))))))
+
+================
+overlap_fraction with bbox as sort keyword value
+================
+
+search(node).sort(by: overlap_fraction(bbox(1, 2, 3, 4)), order: :desc);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (keyword_argument
+          key: (identifier)
+          value: (filter_function_call
+            (bbox_constructor
+              (number)
+              (number)
+              (number)
+              (number))))
+        (keyword_argument
+          key: (identifier)
+          value: (atom
+            (identifier)))))))
+
+================
+overlap_fraction with output reference
+================
+
+search(node).group_by(overlap_fraction($$.area));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (overlap_fraction_function
+            (output_named_ref)))))))
+
+================
+overlap_fraction method
+================
+
+search(node).overlap_fraction($$.area);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (output_named_ref))))))
+
+================
+Spatial predicate with variable geometry
+================
+
+search(node).intersects($area);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (variable_ref))))))
+
+================
+Spatial predicate with bbox geometry
+================
+
+search(node).within(bbox(1, 2, 3, 4));
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (bbox_constructor
+            (number)
+            (number)
+            (number)
+            (number)))))))
+
+================
+Reverse geocode with include
+================
+
+reverse_geocode(point(1, 2), include: "census");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (point_constructor
+        (number)
+        (number))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string)))))

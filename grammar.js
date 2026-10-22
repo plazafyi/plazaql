@@ -322,7 +322,7 @@ module.exports = grammar({
       choice(
         $._identifier_token,
         "point", "bbox", "linestring", "polygon", "circle",
-        "distance", "elevation", "length", "area",
+        "distance", "elevation", "length", "area", "overlap_fraction",
         "node", "way", "relation", "nwr",
         "search", "boundary",
       ),
@@ -398,6 +398,7 @@ module.exports = grammar({
         $.prop_accessor,
         $.geom_function,
         $.distance_function,
+        $.overlap_fraction_function,
         $.coerce_function,
         $.string_function,
         $.size_function,
@@ -440,6 +441,11 @@ module.exports = grammar({
     distance_function: ($) =>
       seq("distance", "(", $._primary_expression, ")"),
 
+    // overlap_fraction(geom): fraction (0..1) of each feature's area inside
+    // a reference polygon — polygon(...), bbox(...), $var, or $$.name
+    overlap_fraction_function: ($) =>
+      seq("overlap_fraction", "(", $._primary_expression, ")"),
+
     coerce_function: ($) =>
       seq(
         field("name", alias(choice("number", "is_number"), $.identifier)),
@@ -468,6 +474,7 @@ module.exports = grammar({
         choice(
           seq(choice("length", "area", "is_closed"), "(", ")"),
           seq("distance", "(", $._primary_expression, ")"),
+          seq("overlap_fraction", "(", $._primary_expression, ")"),
           seq(choice("number", "is_number"), "(", $.filter_expression, ")"),
         ),
       ),
