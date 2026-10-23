@@ -124,7 +124,7 @@ defmodule PlazaQL.SQL.Expression do
     ewkt = GeometryRef.polygon_ewkt(rings, schema.srid)
 
     sql =
-      "(ST_Area(ST_Intersection(#{geom}, ST_GeomFromEWKT($#{idx}))::geography) / NULLIF(ST_Area(#{geom}::geography), 0))"
+      "(ST_Area(ST_Intersection(#{geom}, ST_MakeValid(ST_GeomFromEWKT($#{idx})))::geography) / NULLIF(ST_Area(#{geom}::geography), 0))"
 
     {sql, [ewkt], idx + 1}
   end

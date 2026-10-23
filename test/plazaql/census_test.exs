@@ -311,9 +311,16 @@ defmodule PlazaQL.CensusTest do
       {:ok, query} = SQL.to_sql(plan, Schema.new())
 
       assert query.sql =~
-               "(ST_Area(ST_Intersection(geom, ST_GeomFromEWKT($2))::geography) / NULLIF(ST_Area(geom::geography), 0))"
+               "(ST_Area(ST_Intersection(geom, ST_MakeValid(ST_GeomFromEWKT($2)))::geography) / NULLIF(ST_Area(geom::geography), 0))"
 
       assert "SRID=4326;POLYGON((-74.02 40.7, -73.97 40.7, -73.97 40.75, -74.02 40.75, -74.02 40.7))" in query.params
+    end
+
+    test "the reference is made valid, so a self-intersecting polygon does not abort GEOS" do
+      bowtie = "polygon(point(0, 0), point(1, 1), point(0, 1), point(1, 0))"
+      plan = last_plan(~s|search(node).overlap_fraction(#{bowtie});|)
+      {:ok, query} = SQL.to_sql(plan, Schema.new())
+      assert query.sql =~ "ST_MakeValid(ST_GeomFromEWKT("
     end
 
     test "computed column alias" do
