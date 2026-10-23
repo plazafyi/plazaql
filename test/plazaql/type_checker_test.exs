@@ -934,4 +934,47 @@ defmodule PlazaQL.TypeCheckerTest do
       assert error.hint == nil
     end
   end
+
+  describe "route options" do
+    @route ~s|route(origin: point(40.71, -74.00), destination: point(40.75, -73.98)|
+
+    test "valid depart_at, traffic_model and exclude pass" do
+      check!(
+        @route <>
+          ~s|, depart_at: "2026-03-16T08:00:00Z", traffic_model: "optimistic", exclude: ["toll", "unpaved"]);|
+      )
+
+      check!(@route <> ~s|, depart_at: "now", exclude: "ferry,motorway");|)
+    end
+
+    test "an unknown traffic_model is rejected with the allowed values" do
+      [error] = check_errors(@route <> ~s|, traffic_model: "psychic");|)
+
+      assert error.message =~
+               ~s|`traffic_model:` must be one of "best_guess", "optimistic", "pessimistic"|
+    end
+
+    test "unknown exclude values are rejected, in either form" do
+      [error] = check_errors(@route <> ~s|, exclude: ["toll", "stairs"]);|)
+      assert error.message =~ ~s|unknown `exclude:` value "stairs"|
+      assert error.hint =~ ~s|"motorway"|
+
+      [error] = check_errors(@route <> ~s|, exclude: "toll,stairs");|)
+      assert error.message =~ ~s|"stairs"|
+    end
+
+    test "depart_at must be a string" do
+      [error] = check_errors(@route <> ~s|, depart_at: 8);|)
+      assert error.message =~ "`depart_at:` must be an ISO 8601 datetime string"
+    end
+
+    test "ev_route checks the same options" do
+      [error] =
+        check_errors(
+          ~s|ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, exclude: ["stairs"]);|
+        )
+
+      assert error.message =~ "stairs"
+    end
+  end
 end

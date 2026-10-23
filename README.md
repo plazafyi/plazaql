@@ -350,6 +350,20 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 
 **Modes:** `"auto"`, `"foot"`, `"bicycle"`
 
+| Parameter       | Type            | Description                                                                 |
+|-----------------|-----------------|-----------------------------------------------------------------------------|
+| `origin`        | Point           | Start point                                                                 |
+| `destination`   | Point           | End point                                                                   |
+| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"` (optional)                                  |
+| `waypoints`     | Point[]         | Points to visit in order (optional)                                         |
+| `depart_at`     | string          | ISO 8601 departure time or `"now"`, for time-of-day traffic (optional)      |
+| `traffic_model` | string          | `"best_guess"` (default), `"optimistic"`, `"pessimistic"`; needs `depart_at` (optional) |
+| `exclude`       | string[]/string | Road types to avoid: `"toll"`, `"ferry"`, `"unpaved"`, `"motorway"`, `"trunk"`, `"primary"`, `"secondary"`, `"tertiary"`; a list or a comma-separated string (optional) |
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), depart_at: "2026-03-16T08:00:00Z", traffic_model: "pessimistic", exclude: ["toll", "ferry"])
+```
+
 ### `isochrone(center:, time:, mode:)`
 
 Compute a travel-time polygon.
@@ -440,17 +454,17 @@ nearest(point: point(40.71, -74.00))
 | `radius`  | number  | Search radius in meters (optional) |
 | `type`    | string  | Element type filter (optional) |
 
-### `matrix(sources:, destinations:, mode:?)`
+### `matrix(origins:, destinations:, mode:?)`
 
 Compute a distance/duration matrix between sets of points.
 
 ```plazaql
-matrix(sources: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [point(40.75, -73.98)])
+matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [point(40.75, -73.98)])
 ```
 
 | Parameter      | Type     | Description                    |
 |----------------|----------|--------------------------------|
-| `sources`      | Point[]  | Origin points                  |
+| `origins`      | Point[]  | Origin points                  |
 | `destinations` | Point[]  | Destination points             |
 | `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"` (optional) |
 
@@ -461,6 +475,11 @@ Snap a GPS trace to the road network.
 ```plazaql
 map_match(points: [point(40.71, -74.00), point(40.72, -73.99)], mode: "auto")
 ```
+
+| Parameter | Type    | Description                                |
+|-----------|---------|--------------------------------------------|
+| `points`  | Point[] | GPS trace, two or more points in order     |
+| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"` (optional) |
 
 ### `optimize(points..., mode:)`
 
@@ -485,6 +504,7 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `battery`            | number  | Battery capacity in watt-hours (required) |
 | `initial_charge_pct` | number  | Initial charge percentage (optional)     |
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
+| `depart_at`, `traffic_model`, `exclude` | | Same as `route()` (optional) |
 
 ### `elevation(point)`
 
@@ -493,6 +513,16 @@ Look up elevation at a single point.
 ```plazaql
 elevation(point(27.9881, 86.9250))
 ```
+
+Pass `points:` to look up several points at once:
+
+```plazaql
+elevation(points: [point(27.9881, 86.9250), point(28.5983, 83.9311)])
+```
+
+| Parameter | Type    | Description                               |
+|-----------|---------|-------------------------------------------|
+| `points`  | Point[] | Points to look up (instead of one point)  |
 
 ### `elevation_profile(linestring)`
 

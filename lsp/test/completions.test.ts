@@ -381,6 +381,32 @@ describe("PlazaQL Completions", () => {
       expect(items.some((i) => i.label === '"bicycle"')).toBe(true);
     });
 
+    it("suggests traffic_model values for route(traffic_model: )", () => {
+      const src = "$$ = route(origin: point(0,0), destination: point(1,1), traffic_model: ";
+      const items = getCompletions(src, 1, src.length + 1);
+      expect(items.some((i) => i.label === '"best_guess"')).toBe(true);
+      expect(items.some((i) => i.label === '"optimistic"')).toBe(true);
+      expect(items.some((i) => i.label === '"pessimistic"')).toBe(true);
+    });
+
+    it("suggests the POST /route options as route( and ev_route( params", () => {
+      for (const fn of ["route", "ev_route"]) {
+        const src = `$$ = ${fn}(`;
+        const items = getCompletions(src, 1, src.length + 1);
+        for (const name of ["depart_at", "traffic_model", "exclude"]) {
+          expect(items.some((i) => i.label === name)).toBe(true);
+        }
+      }
+    });
+
+    it("suggests origins and destinations for matrix(", () => {
+      const src = "$$ = matrix(";
+      const items = getCompletions(src, 1, src.length + 1);
+      expect(items.some((i) => i.label === "origins")).toBe(true);
+      expect(items.some((i) => i.label === "destinations")).toBe(true);
+      expect(items.some((i) => i.label === "sources")).toBe(false);
+    });
+
     it("suggests mode values for isochrone(mode: )", () => {
       const items = getCompletions("$$ = isochrone(center: point(0,0), time: 600, mode: ", 1, 53);
       expect(items.some((i) => i.label === '"auto"')).toBe(true);

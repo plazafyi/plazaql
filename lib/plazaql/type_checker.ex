@@ -1079,6 +1079,8 @@ defmodule PlazaQL.TypeChecker do
   # ── Computation keyword arguments ───────────────────────────────
 
   @reverse_geocode_includes ["census"]
+  @traffic_models ["best_guess", "optimistic", "pessimistic"]
+  @route_exclusions ~w(toll ferry unpaved motorway trunk primary secondary tertiary)
 
   defp check_computation_kwargs(:reverse_geocode, opts, pos) do
     Enum.flat_map(opts, fn
@@ -1099,7 +1101,68 @@ defmodule PlazaQL.TypeChecker do
     end)
   end
 
+  # route()/ev_route() options shared with Plaza's POST /route.
+  defp check_computation_kwargs(comp_type, opts, pos) when comp_type in [:route, :ev_route] do
+    Enum.flat_map(opts, &check_route_option(&1, pos))
+  end
+
   defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
+
+  defp check_route_option({:kwarg, "depart_at", {:string, _, _}}, _pos), do: []
+
+  defp check_route_option({:kwarg, "depart_at", _}, pos) do
+    route_option_error(
+      "`depart_at:` must be an ISO 8601 datetime string or \"now\"",
+      "e.g. `depart_at: \"2026-03-16T08:00:00Z\"`",
+      pos
+    )
+  end
+
+  defp check_route_option({:kwarg, "traffic_model", {:string, model, _}}, _pos)
+       when model in @traffic_models,
+       do: []
+
+  defp check_route_option({:kwarg, "traffic_model", _}, pos) do
+    route_option_error(
+      "`traffic_model:` must be one of #{Enum.map_join(@traffic_models, ", ", &inspect/1)}",
+      "`traffic_model:` applies when `depart_at:` is set",
+      pos
+    )
+  end
+
+  defp check_route_option({:kwarg, "exclude", {:string, value, _}}, pos) do
+    value
+    |> String.split(",", trim: true)
+    |> Enum.flat_map(&check_exclude_value(&1, pos))
+  end
+
+  defp check_route_option({:kwarg, "exclude", {:list, items, _}}, pos) do
+    Enum.flat_map(items, fn
+      {:string, value, _} -> check_exclude_value(value, pos)
+      _ -> exclude_error("`exclude:` list items must be strings", pos)
+    end)
+  end
+
+  defp check_route_option({:kwarg, "exclude", _}, pos),
+    do: exclude_error("`exclude:` must be a string or a list of strings", pos)
+
+  defp check_route_option(_opt, _pos), do: []
+
+  defp check_exclude_value(value, _pos) when value in @route_exclusions, do: []
+
+  defp check_exclude_value(value, pos),
+    do: exclude_error("unknown `exclude:` value #{inspect(value)}", pos)
+
+  defp exclude_error(message, pos) do
+    route_option_error(
+      message,
+      "supported: #{Enum.map_join(@route_exclusions, ", ", &inspect/1)}",
+      pos
+    )
+  end
+
+  defp route_option_error(message, hint, pos),
+    do: [%Error{line: pos.line, col: pos.col, message: message, hint: hint}]
 
   defp check_include_value(value, _pos) when value in @reverse_geocode_includes, do: []
 
