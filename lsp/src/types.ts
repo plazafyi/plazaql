@@ -1178,7 +1178,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   matrix: {
     name: "matrix",
     params: [
-      { name: "sources", type: "Point[]", description: "Source points" },
+      { name: "origins", type: "Point[]", description: "Origin points" },
       {
         name: "destinations",
         type: "Point[]",
@@ -1290,6 +1290,12 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         name: "point",
         type: "Point",
         description: "Point to get elevation for",
+      },
+      {
+        name: "points",
+        type: "Point[]",
+        optional: true,
+        description: "Several points to look up at once (instead of point)",
       },
     ],
     returnType: "Elevation",

@@ -787,8 +787,9 @@ defmodule PlazaQL.Compiler do
   # new atom value legal.
   @computation_kwarg_names Map.new(
                              ~w(alternatives battery battery_capacity_wh connector_types
-                                depart_at exclude include initial_charge_pct min_charge_pct
-                                min_power_kw traffic_model waypoints)a,
+                                depart_at destinations exclude include initial_charge_pct
+                                min_charge_pct min_power_kw origins points traffic_model
+                                waypoints)a,
                              &{Atom.to_string(&1), &1}
                            )
 

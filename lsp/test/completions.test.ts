@@ -399,6 +399,14 @@ describe("PlazaQL Completions", () => {
       }
     });
 
+    it("suggests origins and destinations for matrix(", () => {
+      const src = "$$ = matrix(";
+      const items = getCompletions(src, 1, src.length + 1);
+      expect(items.some((i) => i.label === "origins")).toBe(true);
+      expect(items.some((i) => i.label === "destinations")).toBe(true);
+      expect(items.some((i) => i.label === "sources")).toBe(false);
+    });
+
     it("suggests mode values for isochrone(mode: )", () => {
       const items = getCompletions("$$ = isochrone(center: point(0,0), time: 600, mode: ", 1, 53);
       expect(items.some((i) => i.label === '"auto"')).toBe(true);

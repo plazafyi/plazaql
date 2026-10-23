@@ -441,6 +441,25 @@ defmodule PlazaQL.CompilerTest do
       assert {:ev_route, %{exclude: "toll,motorway", depart_at: "now"}} = plan.computation
     end
 
+    test "matrix accepts origins and destinations as keywords" do
+      plan =
+        first_plan(
+          ~s|$$ = matrix(origins: [point(40.71, -74.00), point(40.72, -74.01)], destinations: [point(40.75, -73.98)]);|
+        )
+
+      assert {:matrix, params} = plan.computation
+      assert {:list, [{:point, 40.71, -74.00, _}, {:point, 40.72, -74.01, _}], _} = params.origins
+      assert {:list, [{:point, 40.75, -73.98, _}], _} = params.destinations
+    end
+
+    test "map_match and elevation accept points as a keyword" do
+      plan = first_plan(~s|$$ = map_match(points: [point(40.71, -74.00), point(40.72, -74.01)]);|)
+      assert {:map_match, %{points: {:list, [_, _], _}}} = plan.computation
+
+      plan = first_plan(~s|$$ = elevation(points: [point(40.71, -74.00)]);|)
+      assert {_elevation, %{points: {:list, [{:point, 40.71, -74.00, _}], _}}} = plan.computation
+    end
+
     test "unknown keyword names are still rejected" do
       {:ok, ast} = Parser.parse(~s|$$ = route(point(1.0, 2.0), point(1.1, 2.1), bogus: 1);|)
       assert {:error, [%{message: message}]} = Compiler.compile(ast)

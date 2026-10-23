@@ -454,17 +454,17 @@ nearest(point: point(40.71, -74.00))
 | `radius`  | number  | Search radius in meters (optional) |
 | `type`    | string  | Element type filter (optional) |
 
-### `matrix(sources:, destinations:, mode:?)`
+### `matrix(origins:, destinations:, mode:?)`
 
 Compute a distance/duration matrix between sets of points.
 
 ```plazaql
-matrix(sources: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [point(40.75, -73.98)])
+matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [point(40.75, -73.98)])
 ```
 
 | Parameter      | Type     | Description                    |
 |----------------|----------|--------------------------------|
-| `sources`      | Point[]  | Origin points                  |
+| `origins`      | Point[]  | Origin points                  |
 | `destinations` | Point[]  | Destination points             |
 | `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"` (optional) |
 
@@ -475,6 +475,11 @@ Snap a GPS trace to the road network.
 ```plazaql
 map_match(points: [point(40.71, -74.00), point(40.72, -73.99)], mode: "auto")
 ```
+
+| Parameter | Type    | Description                                |
+|-----------|---------|--------------------------------------------|
+| `points`  | Point[] | GPS trace, two or more points in order     |
+| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"` (optional) |
 
 ### `optimize(points..., mode:)`
 
@@ -508,6 +513,16 @@ Look up elevation at a single point.
 ```plazaql
 elevation(point(27.9881, 86.9250))
 ```
+
+Pass `points:` to look up several points at once:
+
+```plazaql
+elevation(points: [point(27.9881, 86.9250), point(28.5983, 83.9311)])
+```
+
+| Parameter | Type    | Description                               |
+|-----------|---------|-------------------------------------------|
+| `points`  | Point[] | Points to look up (instead of one point)  |
 
 ### `elevation_profile(linestring)`
 
