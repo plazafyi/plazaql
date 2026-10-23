@@ -718,13 +718,29 @@ defmodule PlazaQL.Compiler do
 
   defp compile_kwargs(opts) do
     Map.new(opts, fn
-      {:kwarg, key, {:number, n, _}} -> {safe_to_atom!(key), n}
-      {:kwarg, key, {:string, s, _}} -> {safe_to_atom!(key), s}
-      {:kwarg, key, {:bool, b, _}} -> {safe_to_atom!(key), b}
-      {:kwarg, key, {:atom, a, _}} -> {safe_to_atom!(key), a}
-      {:kwarg, key, value} -> {safe_to_atom!(key), value}
+      {:kwarg, key, {:number, n, _}} -> {kwarg_name!(key), n}
+      {:kwarg, key, {:string, s, _}} -> {kwarg_name!(key), s}
+      {:kwarg, key, {:bool, b, _}} -> {kwarg_name!(key), b}
+      {:kwarg, key, {:atom, a, _}} -> {kwarg_name!(key), a}
+      {:kwarg, key, value} -> {kwarg_name!(key), value}
       other -> other
     end)
+  end
+
+  # Keyword names computations accept beyond @known_atoms (which also lists
+  # atom *values*). Kept separate so adding a computation option never makes a
+  # new atom value legal.
+  @computation_kwarg_names Map.new(
+                             ~w(alternatives battery battery_capacity_wh connector_types
+                                initial_charge_pct min_charge_pct min_power_kw waypoints)a,
+                             &{Atom.to_string(&1), &1}
+                           )
+
+  defp kwarg_name!(name) do
+    case Map.fetch(@computation_kwarg_names, name) do
+      {:ok, atom} -> atom
+      :error -> safe_to_atom!(name)
+    end
   end
 
   defp normalize_point_kwarg(kwargs, key) do

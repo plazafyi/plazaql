@@ -933,8 +933,18 @@ function transformTagFilter(node: SyntaxNode): TagFilter | null {
     return transformTagFilterValue(key, valueNode)
   }
   if (node.type === "regex_key_filter") {
-    // Not directly supported in old AST, skip for now
-    return null
+    // ~"pattern": value — the key side is a regex over tag keys.
+    const patternNode = node.childForFieldName("key_pattern")
+    const valueNode = node.childForFieldName("value")
+    if (!patternNode) {
+      return null
+    }
+
+    const key = unquoteString(patternNode.text)
+    const filter: TagFilter = valueNode
+      ? transformTagFilterValue(key, valueNode)
+      : { op: "exists", key }
+    return { ...filter, keyRegex: true }
   }
   return null
 }
