@@ -16,6 +16,7 @@ defmodule PlazaQL.TypeChecker do
   """
 
   alias PlazaQL.Error
+  alias PlazaQL.GeometryRef
   alias PlazaQL.Types
 
   @type scope :: %{String.t() => %{type: Types.pql_type(), line: pos_integer(), col: pos_integer()}}
@@ -132,7 +133,7 @@ defmodule PlazaQL.TypeChecker do
   # ── Statement checking ────────────────────────────────────────────
 
   defp check_statement({:directive, :filter_expr, expr, pos}, scope) do
-    errors = check_filter_expr(expr, pos)
+    errors = check_filter_expr(expr, pos, scope)
     typed = {:directive, :filter_expr, expr, pos}
     {typed, errors, scope}
   end
@@ -226,8 +227,9 @@ defmodule PlazaQL.TypeChecker do
   defp check_expr({:computation, comp_type, args, opts, pos}, scope) do
     type = computation_type(comp_type)
     arg_errors = check_var_refs_in_args(args ++ opts, scope)
+    kwarg_errors = check_computation_kwargs(comp_type, opts, pos)
     typed = {:computation, comp_type, args, opts, Map.put(pos, :type, type)}
-    {typed, type, arg_errors}
+    {typed, type, arg_errors ++ kwarg_errors}
   end
 
   defp check_expr({:point, lat, lng, pos}, _scope) do
@@ -400,11 +402,11 @@ defmodule PlazaQL.TypeChecker do
   end
 
   # Sort with expression argument: {:method, :sort_expr, expr, order, pos}
-  defp check_method({:method, :sort_expr, expr, order, pos}, ctx, _scope) do
+  defp check_method({:method, :sort_expr, expr, order, pos}, ctx, scope) do
     group = Types.method_group(:sort)
     ordering_errors = check_ordering(:sort, group, ctx, pos)
     {output_type, compat_errors} = check_method_compat(:sort, ctx.current_type, pos)
-    expr_errors = check_filter_expr(expr, pos)
+    expr_errors = check_filter_expr(expr, pos, scope)
 
     all_errors = List.flatten([ordering_errors, compat_errors, expr_errors])
 
@@ -426,7 +428,7 @@ defmodule PlazaQL.TypeChecker do
   # Expression-argument methods: sum, min, max, avg, group_by — expr is an expression tree, not arg list
   @expr_arg_methods [:sum, :min, :max, :avg, :group_by]
 
-  defp check_method({:method, name, expr, pos}, ctx, _scope)
+  defp check_method({:method, name, expr, pos}, ctx, scope)
        when name in @expr_arg_methods and not is_list(expr) do
     group = Types.method_group(name)
 
@@ -436,7 +438,7 @@ defmodule PlazaQL.TypeChecker do
       if Types.output_mode?(name), do: check_output_exclusivity(name, ctx, pos), else: []
 
     {output_type, compat_errors} = check_method_compat(name, ctx.current_type, pos)
-    expr_errors = check_filter_expr(expr, pos)
+    expr_errors = check_filter_expr(expr, pos, scope)
 
     all_errors = List.flatten([ordering_errors, output_errors, compat_errors, expr_errors])
 
@@ -456,7 +458,7 @@ defmodule PlazaQL.TypeChecker do
   end
 
   # Expression filter: {:method, :filter_expr, expr, pos} — expr is an expression tree, not arg list
-  defp check_method({:method, :filter_expr, expr, pos}, ctx, _scope) do
+  defp check_method({:method, :filter_expr, expr, pos}, ctx, scope) do
     name = :filter_expr
     group = Types.method_group(name)
 
@@ -464,7 +466,7 @@ defmodule PlazaQL.TypeChecker do
     {output_type, compat_errors} = check_method_compat(name, ctx.current_type, pos)
 
     # Type-check the expression tree (validate it produces a boolean)
-    expr_errors = check_filter_expr(expr, pos)
+    expr_errors = check_filter_expr(expr, pos, scope)
 
     all_errors = List.flatten([ordering_errors, compat_errors, expr_errors])
 
@@ -503,6 +505,9 @@ defmodule PlazaQL.TypeChecker do
     # 6. Contextual requirements
     context_errors = check_contextual(name, args, ctx, pos)
 
+    # 7. Reference-geometry args (.overlap_fraction(geom))
+    geom_ref_errors = check_geometry_ref_method(name, args, pos, scope)
+
     all_errors =
       List.flatten([
         ordering_errors,
@@ -510,7 +515,8 @@ defmodule PlazaQL.TypeChecker do
         compat_errors,
         spatial_errors,
         ref_errors,
-        context_errors
+        context_errors,
+        geom_ref_errors
       ])
 
     new_group =
@@ -963,31 +969,155 @@ defmodule PlazaQL.TypeChecker do
 
   # Basic structural validation of filter expression trees.
   # We don't do deep type inference here — the executor handles runtime types.
-  # We check for obviously invalid constructs.
-  defp check_filter_expr({:bin_op, _op, left, right, _pos}, parent_pos) do
-    check_filter_expr(left, parent_pos) ++ check_filter_expr(right, parent_pos)
+  # We check for obviously invalid constructs and overlap_fraction() references.
+  defp check_filter_expr({:bin_op, _op, left, right, _pos}, parent_pos, scope) do
+    check_filter_expr(left, parent_pos, scope) ++ check_filter_expr(right, parent_pos, scope)
   end
 
-  defp check_filter_expr({:unary_op, _op, operand, _pos}, parent_pos) do
-    check_filter_expr(operand, parent_pos)
+  defp check_filter_expr({:unary_op, _op, operand, _pos}, parent_pos, scope) do
+    check_filter_expr(operand, parent_pos, scope)
   end
 
-  defp check_filter_expr({:coerce_func, _func, arg, _pos}, parent_pos) do
-    check_filter_expr(arg, parent_pos)
+  defp check_filter_expr({:coerce_func, _func, arg, _pos}, parent_pos, scope) do
+    check_filter_expr(arg, parent_pos, scope)
   end
 
-  defp check_filter_expr({:str_func, _func, arg1, arg2, _pos}, parent_pos) do
-    check_filter_expr(arg1, parent_pos) ++
-      if(arg2, do: check_filter_expr(arg2, parent_pos), else: [])
+  defp check_filter_expr({:str_func, _func, arg1, arg2, _pos}, parent_pos, scope) do
+    check_filter_expr(arg1, parent_pos, scope) ++
+      if(arg2, do: check_filter_expr(arg2, parent_pos, scope), else: [])
   end
 
-  defp check_filter_expr({:tag_access, _key, _pos}, _parent_pos), do: []
-  defp check_filter_expr({:prop_access, _prop, _pos}, _parent_pos), do: []
-  defp check_filter_expr({:geom_func, _func, _pos}, _parent_pos), do: []
-  defp check_filter_expr({:number, _, _}, _parent_pos), do: []
-  defp check_filter_expr({:string, _, _}, _parent_pos), do: []
-  defp check_filter_expr({:bool, _, _}, _parent_pos), do: []
-  defp check_filter_expr(_, _parent_pos), do: []
+  defp check_filter_expr({:geom_func, :overlap_fraction, ref, pos}, parent_pos, scope) do
+    check_geometry_ref(ref, pos || parent_pos, scope, report_undefined: true)
+  end
+
+  defp check_filter_expr(_, _parent_pos, _scope), do: []
+
+  # ── Reference geometry validation (overlap_fraction) ────────────
+
+  @geometry_ref_hint "pass `polygon(point(lat, lng), ...)`, `bbox(s, w, n, e)`, `$var`, or `$$.name`"
+  @geometry_ref_message "`overlap_fraction()` expects a polygon(...), bbox(...), or a variable holding polygons"
+
+  # Variable types that cannot hold polygons
+  @non_polygonal_types [
+    :point,
+    :linestring,
+    :point_set,
+    :line_set,
+    :route,
+    :matrix,
+    :elevation,
+    :scalar,
+    :value_set,
+    :grouped_set
+  ]
+
+  defp check_geometry_ref_method(:overlap_fraction, args, pos, scope) do
+    case args do
+      [{:posarg, geom}] ->
+        ref =
+          case GeometryRef.from_ast(geom) do
+            {:ok, ref} -> ref
+            :error -> {:invalid, geom}
+          end
+
+        # Undefined variables are already reported by check_var_refs_in_args
+        check_geometry_ref(ref, pos, scope, report_undefined: false)
+
+      _ ->
+        [
+          %Error{
+            line: pos.line,
+            col: pos.col,
+            message: "`.overlap_fraction()` takes exactly one geometry argument",
+            hint: @geometry_ref_hint
+          }
+        ]
+    end
+  end
+
+  defp check_geometry_ref_method(_name, _args, _pos, _scope), do: []
+
+  defp check_geometry_ref({:polygon, _rings}, _pos, _scope, _opts), do: []
+
+  defp check_geometry_ref({:set_ref, "$$." <> name = key}, pos, scope, opts) do
+    case Map.get(scope, key) do
+      nil ->
+        if opts[:report_undefined], do: check_output_var_ref(name, pos, scope), else: []
+
+      %{type: type} ->
+        check_ref_type(key, type, pos)
+    end
+  end
+
+  defp check_geometry_ref({:set_ref, name}, pos, scope, opts) do
+    key = "$" <> name
+
+    case Map.get(scope, key) do
+      nil -> if opts[:report_undefined], do: check_var_ref(key, pos, scope), else: []
+      %{type: type} -> check_ref_type(key, type, pos)
+    end
+  end
+
+  defp check_geometry_ref(_invalid, pos, _scope, _opts) do
+    [%Error{line: pos.line, col: pos.col, message: @geometry_ref_message, hint: @geometry_ref_hint}]
+  end
+
+  defp check_ref_type(var_name, type, pos) when type in @non_polygonal_types do
+    [
+      %Error{
+        line: pos.line,
+        col: pos.col,
+        message: "#{@geometry_ref_message}, but `#{var_name}` is #{Types.display_name(type)}",
+        hint: @geometry_ref_hint
+      }
+    ]
+  end
+
+  defp check_ref_type(_var_name, _type, _pos), do: []
+
+  # ── Computation keyword arguments ───────────────────────────────
+
+  @reverse_geocode_includes ["census"]
+
+  defp check_computation_kwargs(:reverse_geocode, opts, pos) do
+    Enum.flat_map(opts, fn
+      {:kwarg, "include", {:string, value, _}} ->
+        check_include_value(value, pos)
+
+      {:kwarg, "include", {:list, items, _}} ->
+        Enum.flat_map(items, fn
+          {:string, value, _} -> check_include_value(value, pos)
+          _ -> include_error("`include:` list items must be strings", pos)
+        end)
+
+      {:kwarg, "include", _} ->
+        include_error("`include:` must be a string or a list of strings", pos)
+
+      _ ->
+        []
+    end)
+  end
+
+  defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
+
+  defp check_include_value(value, _pos) when value in @reverse_geocode_includes, do: []
+
+  defp check_include_value(value, pos),
+    do: include_error("unknown `include:` value #{inspect(value)} for `reverse_geocode()`", pos)
+
+  defp include_error(message, pos) do
+    supported = Enum.map_join(@reverse_geocode_includes, ", ", &inspect/1)
+
+    [
+      %Error{
+        line: pos.line,
+        col: pos.col,
+        message: message,
+        hint: "supported values: #{supported}"
+      }
+    ]
+  end
 
   # ── AST position extraction ───────────────────────────────────────
 

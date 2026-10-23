@@ -4,7 +4,11 @@ import { parse } from "./parser.js"
 import type { Scope } from "./type-checker.js"
 import { typeCheck } from "./type-checker.js"
 import type { Statement } from "./types.js"
-import { FUNCTION_SIGNATURES, METHOD_CATALOG } from "./types.js"
+import {
+  EXPRESSION_FUNCTIONS,
+  FUNCTION_SIGNATURES,
+  METHOD_CATALOG,
+} from "./types.js"
 
 export interface HoverResult {
   contents: string
@@ -62,6 +66,18 @@ export function getHover(
   // Variable hover
   if (token.startsWith("$")) {
     return getVarHover(token, scope, source, ast)
+  }
+
+  // Expression function hover (not after a dot), e.g. overlap_fraction($a)
+  const exprFn = EXPRESSION_FUNCTIONS[token]
+  if (exprFn && !isAfterDot(source, line, col)) {
+    const params = exprFn.params.map((p) => `${p.name}: ${p.type}`).join(", ")
+    return {
+      contents: [
+        `${exprFn.name}(${params}) → ${exprFn.returnType}`,
+        `  ${exprFn.description}`,
+      ].join("\n"),
+    }
   }
 
   // Method hover (after a dot)
@@ -233,6 +249,16 @@ function getTokenAtPosition(
   }
 
   return currentLine.slice(start, end)
+}
+
+// Is the identifier under the cursor directly preceded by "." (a method call)?
+function isAfterDot(source: string, line: number, col: number): boolean {
+  const currentLine = source.split("\n")[line - 1] ?? ""
+  let start = col - 1
+  while (start > 0 && isIdentChar(currentLine[start - 1] as string)) {
+    start--
+  }
+  return start > 0 && currentLine[start - 1] === "."
 }
 
 function findIdentEnd(line: string, start: number): number {

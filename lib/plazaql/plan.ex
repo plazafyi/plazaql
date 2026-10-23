@@ -79,10 +79,30 @@ defmodule PlazaQL.Plan do
 
   @type filter_expr :: term()
 
+  @typedoc """
+  Geometry argument of a spatial predicate. Coordinates are `{lng, lat}`.
+
+  `{:set_ref, name}` references a named set resolved by the executor at run
+  time: `"name"` for `$name`, `"$$.name"` for `$$.name`.
+  """
   @type geometry ::
           {:point, float(), float()}
           | {:polygon, [[{float(), float()}]]}
           | {:linestring, [{float(), float()}]}
+          | {:set_ref, String.t()}
+
+  @typedoc """
+  Reference geometry for `overlap_fraction`: a closed `{lng, lat}` polygon ring
+  or a named set ref (see `PlazaQL.GeometryRef`).
+  """
+  @type geometry_ref :: PlazaQL.GeometryRef.t()
+
+  @typedoc """
+  Computed column: `{alias, expr}`. Built-ins are `{:elevation_m, ...}`,
+  `{:length_m, ...}`, `{:area_m2, ...}`, `{:distance_m, {:geom_func, :distance, {lat, lng}, nil}}`,
+  and `{:overlap_fraction, {:geom_func, :overlap_fraction, geometry_ref(), nil}}`.
+  """
+  @type computed_column :: {atom(), term()}
 
   @type recurse_direction :: :down | :up | :down_full | :up_full
 
@@ -104,7 +124,7 @@ defmodule PlazaQL.Plan do
           filter_exprs: [filter_expr()],
           output_mode: output_mode(),
           output_options: OutputOptions.t() | nil,
-          computed_columns: [{atom(), term()}],
+          computed_columns: [computed_column()],
           distinct: boolean(),
           limit: non_neg_integer() | nil,
           offset: non_neg_integer() | nil,

@@ -44,21 +44,24 @@ defmodule PlazaQL.SQL do
     {:error, %NotCompilable{reason: comp_type, plan: plan}}
   end
 
-  def to_sql(%Plan{kind: :query, set_ops: []} = plan, schema) do
-    {sql, params} =
-      if plan.output_mode in @aggregation_modes and length(plan.element_types) > 1 do
-        build_aggregation_query(plan, schema)
-      else
-        build_union_all_query(plan, schema)
-      end
-
-    {:ok, %Query{sql: sql, params: params, plan: plan}}
-  end
-
   def to_sql(%Plan{kind: :query} = plan, schema) do
-    {sql, params} = build_set_ops_query(plan, schema)
+    {sql, params} = build_query(plan, schema)
     {:ok, %Query{sql: sql, params: params, plan: plan}}
+  rescue
+    # Raised by SQL builders for parts of the plan that need executor-side
+    # resolution first (e.g. {:set_ref, name} geometries)
+    e in NotCompilable -> {:error, %{e | plan: plan}}
   end
+
+  defp build_query(%Plan{set_ops: []} = plan, schema) do
+    if plan.output_mode in @aggregation_modes and length(plan.element_types) > 1 do
+      build_aggregation_query(plan, schema)
+    else
+      build_union_all_query(plan, schema)
+    end
+  end
+
+  defp build_query(plan, schema), do: build_set_ops_query(plan, schema)
 
   # ── UNION ALL (multi-type, non-aggregation) ──────────────────────
 

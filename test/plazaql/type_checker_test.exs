@@ -588,7 +588,7 @@ defmodule PlazaQL.TypeCheckerTest do
       errors = check_errors(~s|$$ = search(node).within($missing);|)
       error = Enum.find(errors, &(&1.message =~ "undefined"))
       assert error.line == 1
-      assert error.col == 25
+      assert error.col == 26
       assert error.severity == :error
       assert error.hint =~ "define it first"
     end

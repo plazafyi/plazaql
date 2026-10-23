@@ -1390,6 +1390,10 @@
         },
         {
           "type": "STRING",
+          "value": "overlap_fraction"
+        },
+        {
+          "type": "STRING",
           "value": "node"
         },
         {
@@ -1739,6 +1743,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "overlap_fraction_function"
+        },
+        {
+          "type": "SYMBOL",
           "name": "coerce_function"
         },
         {
@@ -1976,6 +1984,27 @@
         }
       ]
     },
+    "overlap_fraction_function": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "overlap_fraction"
+        },
+        {
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_primary_expression"
+        },
+        {
+          "type": "STRING",
+          "value": ")"
+        }
+      ]
+    },
     "coerce_function": {
       "type": "SEQ",
       "members": [
@@ -2129,6 +2158,27 @@
               {
                 "type": "STRING",
                 "value": "distance"
+              },
+              {
+                "type": "STRING",
+                "value": "("
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_primary_expression"
+              },
+              {
+                "type": "STRING",
+                "value": ")"
+              }
+            ]
+          },
+          {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "overlap_fraction"
               },
               {
                 "type": "STRING",

@@ -106,6 +106,12 @@ defmodule PlazaQL.Formatter do
 
   defp format_expr({:geom_func, func, _pos}), do: "#{func}()"
 
+  defp format_expr({:geom_func, :distance, {lat, lng}, _pos}),
+    do: "distance(point(#{format_number(lat)}, #{format_number(lng)}))"
+
+  defp format_expr({:geom_func, :overlap_fraction, ref, _pos}),
+    do: "overlap_fraction(#{format_geometry_ref(ref)})"
+
   defp format_expr({:coerce_func, func, arg, _pos}), do: "#{func}(#{format_expr(arg)})"
 
   defp format_expr({:str_func, :size, arg, nil, _pos}), do: "size(#{format_expr(arg)})"
@@ -147,6 +153,23 @@ defmodule PlazaQL.Formatter do
   defp format_expr({:bool, value, _pos}), do: to_string(value)
   defp format_expr({:atom, value, _pos}), do: ":#{value}"
   defp format_expr({:identifier, name, _pos}), do: name
+
+  # ── Reference geometries (overlap_fraction) ──────────────────────
+
+  defp format_geometry_ref({:set_ref, "$$." <> name}), do: "$$.#{name}"
+  defp format_geometry_ref({:set_ref, name}), do: "$#{name}"
+  defp format_geometry_ref({:invalid, nil}), do: ""
+  defp format_geometry_ref({:invalid, ast}), do: format_expr(ast)
+
+  # A closed axis-aligned rectangle ring is what bbox(s, w, n, e) parses to
+  defp format_geometry_ref({:polygon, [[{w, s}, {e, s}, {e, n}, {w, n}, {w, s}]]}) do
+    "bbox(#{format_number(s)}, #{format_number(w)}, #{format_number(n)}, #{format_number(e)})"
+  end
+
+  defp format_geometry_ref({:polygon, [ring]}) do
+    points = Enum.map_join(ring, ", ", fn {lng, lat} -> format_expr({:point, lat, lng, nil}) end)
+    "polygon(#{points})"
+  end
 
   # ── Search head ───────────────────────────────────────────────────
 

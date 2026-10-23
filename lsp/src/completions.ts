@@ -69,7 +69,7 @@ export function getCompletions(
     case "inside_filter":
       switch (context.subContext) {
         case "tag_key":
-          return getTagCompletions()
+          return [...getTagCompletions(), ...getExpressionFunctionCompletions()]
         case "tag_value":
           return getTagValueCompletions(context.tagKey ?? "")
         default:
@@ -88,6 +88,10 @@ export function getCompletions(
         )
       }
       return getMethodParamCompletions(context.methodName)
+    case "inside_expression":
+      return getSortExpressionCompletions()
+    case "inside_overlap_fraction":
+      return getGeometryRefCompletions(source)
     case "top_level":
       return getTopLevelCompletions()
     case "after_out":
@@ -120,6 +124,8 @@ type AnalyzedContext =
     }
   | { kind: "inside_function_params"; functionName: string; paramName?: string }
   | { kind: "inside_method_params"; methodName: string; paramName?: string }
+  | { kind: "inside_expression" }
+  | { kind: "inside_overlap_fraction" }
   | { kind: "top_level" }
   | { kind: "after_out" }
   | { kind: "unknown" }
@@ -164,6 +170,8 @@ function analyzeContext(
   const allCallNames = [
     "filter",
     "search",
+    "overlap_fraction",
+    ...EXPRESSION_METHODS,
     ...Object.keys(METHOD_PARAM_VALUES),
     ...Object.keys(FUNCTION_SIGNATURES).filter((n) => n !== "search"),
   ]
@@ -171,6 +179,12 @@ function analyzeContext(
 
   if (innermost === "filter") {
     return analyzeTagFilterContext(textUpTo, "filter")
+  }
+  if (innermost === "overlap_fraction") {
+    return { kind: "inside_overlap_fraction" }
+  }
+  if (innermost && EXPRESSION_METHODS.includes(innermost)) {
+    return { kind: "inside_expression" }
   }
   if (innermost === "search") {
     return analyzeSearchContext(textUpTo)
@@ -601,6 +615,41 @@ function getParamValueCompletions(
   }))
 }
 
+// Methods whose argument is a value expression (t["key"], number(...), …)
+const EXPRESSION_METHODS = ["sum", "min", "max", "avg", "group_by"]
+
+// Expression functions offered alongside tag keys inside .filter(
+function getExpressionFunctionCompletions(): CompletionItem[] {
+  return getSortExpressionCompletions().filter((i) => i.kind === "function")
+}
+
+// Arguments for overlap_fraction(: polygon(...), bbox(...), or a polygon variable
+function getGeometryRefCompletions(source: string): CompletionItem[] {
+  const items: CompletionItem[] = [
+    {
+      label: "polygon(",
+      kind: "function",
+      detail: "polygon(point(lat, lng), ...) → Polygon",
+      documentation:
+        "Reference polygon from three or more points (auto-closed)",
+      insertText: "polygon(",
+      sortText: "b1",
+    },
+    {
+      label: "bbox(",
+      kind: "function",
+      detail: "bbox(s, w, n, e) → Polygon",
+      documentation: "Reference rectangle (south, west, north, east)",
+      insertText: "bbox(",
+      sortText: "b2",
+    },
+  ]
+  for (const v of getVariableCompletions(source, 0)) {
+    items.push({ ...v, insertText: v.label, sortText: `a${v.label}` })
+  }
+  return items
+}
+
 function getSortExpressionCompletions(): CompletionItem[] {
   return [
     {
@@ -637,6 +686,15 @@ function getSortExpressionCompletions(): CompletionItem[] {
       detail: "Elevation at point",
       insertText: "elevation()",
       sortText: "a5",
+    },
+    {
+      label: "overlap_fraction(",
+      kind: "function",
+      detail: "overlap_fraction(geometry) → number",
+      documentation:
+        "Fraction (0..1) of each feature's area inside a reference polygon, bbox, or polygon variable",
+      insertText: "overlap_fraction(",
+      sortText: "a55",
     },
     {
       label: "number(",

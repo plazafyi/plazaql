@@ -112,6 +112,10 @@ function formatExpr(expr: Expr): string {
       return expr.name ? `$$.${expr.name}` : "$$"
     case "identifier":
       return expr.name
+    case "overlap_fraction":
+      return `overlap_fraction(${expr.arg ? formatExpr(expr.arg) : ""})`
+    case "expression":
+      return expr.text
     default: {
       const _exhaustive: never = expr
       return String(_exhaustive)
@@ -167,12 +171,17 @@ function formatWithMethods(baseStr: string, methods: MethodNode[]): string {
 }
 
 function formatMethod(method: MethodNode): string {
-  if (method.name === "filter") {
+  if (method.name === "filter" && !isArgList(method.args)) {
     const filters = method.args as TagFilter[]
     return `filter(${filters.map(formatTagFilter).join(", ")})`
   }
   const args = method.args as Arg[]
   return `${method.name}(${formatArgList(args)})`
+}
+
+function isArgList(args: Arg[] | TagFilter[]): args is Arg[] {
+  const first = args[0]
+  return first !== undefined && "type" in first
 }
 
 function formatArgList(args: Arg[]): string {

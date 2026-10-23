@@ -372,13 +372,51 @@ Forward geocode — address string to point features.
 geocode("1600 Pennsylvania Avenue, Washington DC")
 ```
 
-### `reverse_geocode(point)`
+### `reverse_geocode(point, include:?)`
 
 Reverse geocode — coordinates to address.
 
 ```plazaql
 reverse_geocode(point(38.8977, -77.0365))
 ```
+
+| Parameter | Type                  | Description                                   |
+|-----------|-----------------------|-----------------------------------------------|
+| `point`   | Point                 | Coordinates to reverse geocode                |
+| `include` | string or string list | Extra data to attach: `"census"` (optional)   |
+
+`include: "census"` (or `include: ["census"]`) attaches the US Census geographies that contain the point:
+
+```plazaql
+reverse_geocode(point(40.7484, -73.9856), include: "census")
+```
+
+The result gains a `census` object with GEOIDs and names for the state, county, tract, block group, ZCTA, place, CBSA, and congressional district. A field is `null` when the point isn't covered by that geography (outside the US, or not in any CBSA, for example). The shape, with illustrative values:
+
+```json
+"census": {
+  "geoid_state": "36",
+  "geoid_county": "36061",
+  "geoid_tract": "36061007600",
+  "geoid_block_group": "360610076001",
+  "zcta": "10118",
+  "place_geoid": "3651000",
+  "cbsa_geoid": "35620",
+  "cd_geoid": "3612",
+  "names": {
+    "state": "New York",
+    "county": "New York County",
+    "tract": "Census Tract 76",
+    "block_group": "Block Group 1",
+    "zcta": "10118",
+    "place": "New York city",
+    "cbsa": "New York-Newark-Jersey City, NY-NJ",
+    "cd": "Congressional District 12"
+  }
+}
+```
+
+Any other `include:` value is a type error.
 
 ### `autocomplete(text)`
 
@@ -472,6 +510,14 @@ Reference a named dataset as a search source.
 search(dataset("my_data"), name: *)
 ```
 
+Plaza also publishes curated datasets, such as the US Census geographies `dataset("census-counties")` and `dataset("census-tracts")`. Their attributes are feature properties, so you read them with `t["key"]` like any tag:
+
+```plazaql
+search(dataset("census-counties"))
+  .filter(t["state_abbr"] == "NY")
+  .sum(number(t["population"]));
+```
+
 ---
 
 ## Geometry Constructors
@@ -545,6 +591,15 @@ search(node, amenity: "cafe")
   .around(200, point(40.74, -73.98));
 ```
 
+The geometry argument of `.within()`, `.intersects()`, `.contains()`, `.crosses()`, `.touches()`, and their `not_` forms can be a constructor (`point(...)`, `polygon(...)`, `bbox(...)`) or a variable holding geometry, either `$var` or `$$.name`. The executor resolves the variable's geometry when the query runs:
+
+```plazaql
+$walk = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
+search(dataset("census-tracts")).intersects($walk);
+```
+
+`.within()` and `.not_within()` keep their type rule with variables: the variable must hold a `Boundary`, `Isochrone`, `Polygon` or `PolygonSet`. For a variable holding a general feature set (for example a `dataset(...)` search), use `.intersects($var)`.
+
 ### Tag Filter (Phase 3b)
 
 | Method | Signature | Description |
@@ -578,10 +633,18 @@ search(way, building: "yes").centroid();      // building center points
 | `.distance(point)` | `GeoSet → GeoSet` | Add distance from reference point |
 | `.area()` | `GeoSet → GeoSet` | Compute area of polygon features |
 | `.length()` | `GeoSet → GeoSet` | Compute length of linear features |
+| `.overlap_fraction(geom)` | `GeoSet → GeoSet` | Add `overlap_fraction`: the share (0 to 1) of each feature's area inside `geom` |
 
 ```plazaql
 search(node, natural: "peak").elevation().sort(elevation());
 search(node, amenity: "hospital").distance(point(40.71, -74.00)).sort(distance(point(40.71, -74.00)));
+```
+
+`.overlap_fraction(geom)` takes a `polygon(...)`, a `bbox(...)`, or a variable (`$var` / `$$.name`) holding polygons, like an isochrone or a boundary. Each result gets an `overlap_fraction` property:
+
+```plazaql
+$walk = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
+search(dataset("census-tracts")).intersects($walk).overlap_fraction($walk);
 ```
 
 ### Output Shape (Phase 6)
@@ -955,6 +1018,37 @@ search(way, leisure: "park")
 
 **Important:** `length()` is always geometric (meters). For string character count, use `size()`.
 
+### Overlap Fraction
+
+`overlap_fraction(geom)` returns the share (0 to 1) of the feature's area that lies inside a reference polygon. It returns null for features with no area. `geom` must be a `polygon(...)`, a `bbox(s, w, n, e)`, or a variable holding polygons (`$var` or `$$.name`). Anything else is a type error.
+
+Use it for area-weighted apportionment. If a census tract is 40% inside your area, it contributes 40% of its population:
+
+```plazaql
+search(dataset("census-tracts"))
+  .intersects(polygon(point(40.70, -74.02), point(40.70, -73.97), point(40.75, -73.97), point(40.75, -74.02)))
+  .sum(number(t["population"]) * overlap_fraction(polygon(point(40.70, -74.02), point(40.70, -73.97), point(40.75, -73.97), point(40.75, -74.02))));
+```
+
+With a variable:
+
+```plazaql
+$area = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
+search(dataset("census-tracts")).intersects($area).sum(number(t["population"]) * overlap_fraction($area));
+```
+
+It works anywhere an expression does: `.filter()`, `.sort()`, `.sum()`/`.min()`/`.max()`/`.avg()`, and `.group_by()`:
+
+```plazaql
+$area = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
+search(dataset("census-tracts"))
+  .intersects($area)
+  .filter(overlap_fraction($area) > 0.5)
+  .sort(overlap_fraction($area), order: :desc);
+```
+
+To return the fraction as a property on each feature instead, use the [`.overlap_fraction(geom)`](#computed-columns-phase-5) method.
+
 ### Type Coercion
 
 | Function | Description |
@@ -1275,7 +1369,7 @@ add_expr       = mul_expr (("+" | "-") mul_expr)* ;
 mul_expr       = unary (("*" | "/") unary)* ;
 unary          = "!" unary | expr_primary ;
 expr_primary   = tag_access | prop_access | geom_func | distance_func
-               | coerce_func | string_func | size_func
+               | overlap_func | coerce_func | string_func | size_func
                | constructor | variable | output_ref | attr_access
                | output_bracket_ref | atom
                | NUMBER | STRING | BOOL
@@ -1284,6 +1378,7 @@ tag_access     = "t" "[" STRING "]" ;
 prop_access    = ("id" | "type" | "lat" | "lon") "(" ")" ;
 geom_func      = ("length" | "area" | "elevation" | "is_closed") "(" ")" ;
 distance_func  = "distance" "(" value ")" ;
+overlap_func   = "overlap_fraction" "(" value ")" ;  /* polygon, bbox, $var, $$.name */
 size_func      = "size" "(" filter_expr ")" ;
 coerce_func    = ("number" | "is_number") "(" filter_expr ")" ;
 string_func    = ("starts_with" | "ends_with" | "str_contains")

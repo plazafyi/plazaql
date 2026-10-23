@@ -385,7 +385,7 @@ defmodule PlazaQL.CompilerTest do
     test "ev_route with battery" do
       plan =
         first_plan(
-          ~s|$$ = ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60_000);|
+          ~s|$$ = ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000);|
         )
 
       assert plan.kind == :computation

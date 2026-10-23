@@ -75,6 +75,7 @@
 
 "size" @function.builtin
 "distance" @function.builtin
+"overlap_fraction" @function.builtin
 
 ; ── Keyword arguments ───────────────────────────────────────────
 (keyword_argument
