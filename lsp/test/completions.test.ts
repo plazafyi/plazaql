@@ -399,6 +399,14 @@ describe("PlazaQL Completions", () => {
       }
     });
 
+    it("suggests points for map_match( and elevation(", () => {
+      for (const fn of ["map_match", "elevation"]) {
+        const src = `$$ = ${fn}(`;
+        const items = getCompletions(src, 1, src.length + 1);
+        expect(items.some((i) => i.label === "points")).toBe(true);
+      }
+    });
+
     it("suggests origins and destinations for matrix(", () => {
       const src = "$$ = matrix(";
       const items = getCompletions(src, 1, src.length + 1);
