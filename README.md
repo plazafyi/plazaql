@@ -350,6 +350,20 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 
 **Modes:** `"auto"`, `"foot"`, `"bicycle"`
 
+| Parameter       | Type            | Description                                                                 |
+|-----------------|-----------------|-----------------------------------------------------------------------------|
+| `origin`        | Point           | Start point                                                                 |
+| `destination`   | Point           | End point                                                                   |
+| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"` (optional)                                  |
+| `waypoints`     | Point[]         | Points to visit in order (optional)                                         |
+| `depart_at`     | string          | ISO 8601 departure time or `"now"`, for time-of-day traffic (optional)      |
+| `traffic_model` | string          | `"best_guess"` (default), `"optimistic"`, `"pessimistic"`; needs `depart_at` (optional) |
+| `exclude`       | string[]/string | Road types to avoid: `"toll"`, `"ferry"`, `"unpaved"`, `"motorway"`, `"trunk"`, `"primary"`, `"secondary"`, `"tertiary"`; a list or a comma-separated string (optional) |
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), depart_at: "2026-03-16T08:00:00Z", traffic_model: "pessimistic", exclude: ["toll", "ferry"])
+```
+
 ### `isochrone(center:, time:, mode:)`
 
 Compute a travel-time polygon.
@@ -485,6 +499,7 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `battery`            | number  | Battery capacity in watt-hours (required) |
 | `initial_charge_pct` | number  | Initial charge percentage (optional)     |
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
+| `depart_at`, `traffic_model`, `exclude` | | Same as `route()` (optional) |
 
 ### `elevation(point)`
 

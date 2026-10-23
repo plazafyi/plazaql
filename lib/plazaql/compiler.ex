@@ -754,15 +754,31 @@ defmodule PlazaQL.Compiler do
     compile_kwargs(opts)
   end
 
+  # Keywords whose `[...]` value compiles to a plain list of strings.
+  @string_list_kwargs ["include", "exclude"]
+
   defp compile_kwargs(opts) do
     Map.new(opts, fn
-      {:kwarg, "include", {:list, items, _}} -> {:include, Enum.map(items, &include_item!/1)}
-      {:kwarg, key, {:number, n, _}} -> {kwarg_name!(key), n}
-      {:kwarg, key, {:string, s, _}} -> {kwarg_name!(key), s}
-      {:kwarg, key, {:bool, b, _}} -> {kwarg_name!(key), b}
-      {:kwarg, key, {:atom, a, _}} -> {kwarg_name!(key), a}
-      {:kwarg, key, value} -> {kwarg_name!(key), value}
-      other -> other
+      {:kwarg, key, {:list, items, _}} when key in @string_list_kwargs ->
+        {kwarg_name!(key), Enum.map(items, &string_item!(key, &1))}
+
+      {:kwarg, key, {:number, n, _}} ->
+        {kwarg_name!(key), n}
+
+      {:kwarg, key, {:string, s, _}} ->
+        {kwarg_name!(key), s}
+
+      {:kwarg, key, {:bool, b, _}} ->
+        {kwarg_name!(key), b}
+
+      {:kwarg, key, {:atom, a, _}} ->
+        {kwarg_name!(key), a}
+
+      {:kwarg, key, value} ->
+        {kwarg_name!(key), value}
+
+      other ->
+        other
     end)
   end
 
@@ -771,7 +787,8 @@ defmodule PlazaQL.Compiler do
   # new atom value legal.
   @computation_kwarg_names Map.new(
                              ~w(alternatives battery battery_capacity_wh connector_types
-                                include initial_charge_pct min_charge_pct min_power_kw waypoints)a,
+                                depart_at exclude include initial_charge_pct min_charge_pct
+                                min_power_kw traffic_model waypoints)a,
                              &{Atom.to_string(&1), &1}
                            )
 
@@ -782,13 +799,13 @@ defmodule PlazaQL.Compiler do
     end
   end
 
-  defp include_item!({:string, s, _}), do: s
+  defp string_item!(_key, {:string, s, _}), do: s
 
-  defp include_item!(other) do
+  defp string_item!(key, other) do
     throw(
       {:compile_error,
        %Error{
-         message: "`include:` list items must be strings, got #{inspect(other)}",
+         message: "`#{key}:` list items must be strings, got #{inspect(other)}",
          line: 0,
          col: 0
        }}

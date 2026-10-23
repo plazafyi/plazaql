@@ -1050,6 +1050,31 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           { value: '"car"' },
         ],
       },
+      {
+        name: "depart_at",
+        type: "string",
+        optional: true,
+        description:
+          'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now") for time-of-day traffic',
+      },
+      {
+        name: "traffic_model",
+        type: '"best_guess" | "optimistic" | "pessimistic"',
+        optional: true,
+        description: "Traffic speed assumption; applies when depart_at is set",
+        enumValues: [
+          { value: '"best_guess"' },
+          { value: '"optimistic"' },
+          { value: '"pessimistic"' },
+        ],
+      },
+      {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
     ],
     returnType: "Route",
     description: "Compute a route between waypoints.",
@@ -1228,6 +1253,31 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "number",
         optional: true,
         description: "Battery capacity",
+      },
+      {
+        name: "depart_at",
+        type: "string",
+        optional: true,
+        description:
+          'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now") for time-of-day traffic',
+      },
+      {
+        name: "traffic_model",
+        type: '"best_guess" | "optimistic" | "pessimistic"',
+        optional: true,
+        description: "Traffic speed assumption; applies when depart_at is set",
+        enumValues: [
+          { value: '"best_guess"' },
+          { value: '"optimistic"' },
+          { value: '"pessimistic"' },
+        ],
+      },
+      {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
     ],
     returnType: "Route",
