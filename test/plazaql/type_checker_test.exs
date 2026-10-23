@@ -977,4 +977,17 @@ defmodule PlazaQL.TypeCheckerTest do
       assert error.message =~ "stairs"
     end
   end
+
+  describe "point-list computation keywords" do
+    test "matrix takes origins and destinations as point lists" do
+      check!(
+        ~s|matrix(origins: [point(40.71, -74.00), point(40.72, -74.01)], destinations: [point(40.75, -73.98)]);|
+      )
+    end
+
+    test "map_match and elevation take points" do
+      check!(~s|map_match(points: [point(40.71, -74.00), point(40.72, -74.01)]);|)
+      check!(~s|elevation(points: [point(40.71, -74.00)]);|)
+    end
+  end
 end
