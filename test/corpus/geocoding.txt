@@ -1,0 +1,78 @@
+================
+Structured geocode keywords
+================
+
+geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC", postalcode: "20500");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string)))))
+
+================
+Geocode with layers list and boundary_gid
+================
+
+geocode("Main Street", layers: ["address", "poi"], boundary_gid: "osm:relation:62422");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (string)
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (list_literal
+          (string)
+          (string)))
+      arguments: (keyword_argument
+        key: (identifier)
+        value: (string)))))
+
+================
+Place lookup by GID
+================
+
+place_lookup("osm:node:123", "osm:way:456");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      name: (computation_name)
+      arguments: (string)
+      arguments: (string))))
+
+================
+Place tag key is still a plain identifier
+================
+
+search(node, place: "city");
+
+---
+
+(program
+  (bare_statement
+    (search_expression
+      type: (element_type)
+      (tag_filter_list
+        (tag_filter
+          key: (identifier)
+          value: (string))))))
