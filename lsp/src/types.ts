@@ -1280,6 +1280,129 @@ const ACTIVE_PARAMS: ParamInfo[] = [
   },
 ]
 
+// Road costing options of route(), ev_route() and matrix() (isochrone()
+// takes the speed overrides only), as Plaza's REST costing options. Plaza
+// checks which modes take which.
+export const COSTING_PREFERENCES = [
+  "use_highways",
+  "use_tolls",
+  "use_ferries",
+  "use_living_streets",
+  "use_tracks",
+]
+export const COSTING_SPEEDS = ["top_speed", "fixed_speed"]
+export const COSTING_PENALTIES = ["maneuver_penalty", "service_penalty"]
+export const COSTING_OPTIONS = [
+  ...COSTING_PREFERENCES,
+  "shortest",
+  ...COSTING_SPEEDS,
+  ...COSTING_PENALTIES,
+]
+// Per-point route() options: one entry per point (origin, waypoints,
+// destination), as a list or a ";"-separated string.
+export const LOCATION_OPTIONS = [
+  "location_types",
+  "headings",
+  "heading_tolerances",
+  "preferred_sides",
+]
+
+const preferenceParam = (name: string, what: string, modes: string) => ({
+  name,
+  type: "number",
+  optional: true,
+  description: `How much to use ${what}, 0 (avoid) to 1 (prefer); 0.5 or leaving it out prices them as usual. Steers the route, not its duration. ${modes}.`,
+})
+
+const SPEED_PARAMS: ParamInfo[] = [
+  {
+    name: "top_speed",
+    type: "number",
+    optional: true,
+    description:
+      'Highest speed the vehicle drives, whole km/h from 10 to 252 (mode "auto" or "truck")',
+  },
+  {
+    name: "fixed_speed",
+    type: "number",
+    optional: true,
+    description:
+      'Drive every road at this speed, whole km/h from 1 to 252, ignoring class, limits, surface, grade and traffic (mode "auto" or "truck")',
+  },
+]
+
+const COSTING_PARAMS: ParamInfo[] = [
+  preferenceParam(
+    "use_highways",
+    "motorways and trunk roads",
+    'Mode "auto" or "truck"',
+  ),
+  preferenceParam("use_tolls", "toll roads", 'Mode "auto" or "truck"'),
+  preferenceParam("use_ferries", "ferries", "Every mode"),
+  preferenceParam("use_living_streets", "living streets", "Every mode"),
+  preferenceParam("use_tracks", "tracks", 'Mode "foot" or "bicycle"'),
+  {
+    name: "shortest",
+    type: "boolean",
+    optional: true,
+    description:
+      "Minimise distance instead of time; not with the use_* or penalty options",
+  },
+  ...SPEED_PARAMS,
+  {
+    name: "maneuver_penalty",
+    type: "number",
+    optional: true,
+    description:
+      'Seconds added at each intersection the route arrives at, 0 to 3600 (mode "auto" or "truck"); steers, not part of the duration',
+  },
+  {
+    name: "service_penalty",
+    type: "number",
+    optional: true,
+    description:
+      'Seconds added for each service road used, 0 to 3600 (mode "auto" or "truck"); steers, not part of the duration',
+  },
+]
+
+const LOCATION_PARAMS: ParamInfo[] = [
+  {
+    name: "location_types",
+    type: "string[] | string",
+    optional: true,
+    description:
+      'One per point: "break" (a stop; default, required at both ends), "through" (pass without stopping or turning back) or "via" (pass, may turn back)',
+  },
+  {
+    name: "headings",
+    type: "number[] | string",
+    optional: true,
+    description:
+      'Direction of travel at each point, degrees from north; a ";"-separated string leaves points out ("90;;")',
+  },
+  {
+    name: "heading_tolerances",
+    type: "number[] | string",
+    optional: true,
+    description:
+      "Largest difference from each heading accepted, degrees (default 60)",
+  },
+  {
+    name: "preferred_sides",
+    type: "string[] | string",
+    optional: true,
+    description:
+      'Side of the road for each point: "same" (driving side), "opposite" or "either" (default)',
+  },
+  {
+    name: "recostings",
+    type: "string[]",
+    optional: true,
+    description:
+      'Price the route under other costing models: "name: key=value, ...", e.g. ["no_tolls: use_tolls=0", "walk: mode=foot"]',
+  },
+]
+
 export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   search: {
     name: "search",
@@ -1406,6 +1529,8 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       ...TRUCK_PARAMS,
       ...TRANSIT_PARAMS,
       ...ACTIVE_PARAMS,
+      ...COSTING_PARAMS,
+      ...LOCATION_PARAMS,
       {
         name: "steps",
         type: "boolean",
@@ -1537,6 +1662,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           'Departure time for mode "transit" (ISO 8601 with an offset, local time at the feed without one, or "now"; default now)',
       },
       ...TRANSIT_PARAMS,
+      ...SPEED_PARAMS,
       {
         name: "avoid_datasets",
         type: "string | string[]",
@@ -1782,6 +1908,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       ...TRUCK_PARAMS,
       ...ACTIVE_PARAMS,
+      ...COSTING_PARAMS,
       {
         name: "avoid_datasets",
         type: "string | string[]",
@@ -1873,6 +2000,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
+      ...COSTING_PARAMS,
       {
         name: "steps",
         type: "boolean",
@@ -2195,9 +2323,13 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     ...TRUCK_OPTION_KWARGS,
     ...TRANSIT_OPTIONS,
     ...ACTIVE_OPTIONS,
+    ...COSTING_OPTIONS,
+    ...LOCATION_OPTIONS,
+    "recostings",
   ],
   ev_route: [
     ...ROUTE_KWARGS,
+    ...COSTING_OPTIONS,
     "battery",
     "battery_capacity_wh",
     "initial_charge_pct",
@@ -2216,6 +2348,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     ...TRUCK_OPTION_KWARGS,
     ...TRANSIT_OPTIONS,
     ...ACTIVE_OPTIONS,
+    ...COSTING_SPEEDS,
   ],
   geocode: [
     "query",
@@ -2250,6 +2383,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
+    ...COSTING_OPTIONS,
   ],
   map_match: ["points", "mode", "radiuses"],
   optimize: ["waypoints", "mode", "roundtrip"],

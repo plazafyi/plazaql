@@ -616,6 +616,25 @@ defmodule PlazaQL.CompilerTest do
       assert {:isochrone, %{mode: "transit", depart_at: "now", use_rail: 0}} = plan.computation
     end
 
+    test "route passes the costing, per-point and recosting keywords through" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), waypoints: [point(40.72, -74.00)], use_tolls: 0, shortest: false, top_speed: 90, maneuver_penalty: 5, location_types: ["break", "via", "break"], headings: "90;;", preferred_sides: ["", "", "same"], recostings: ["walk: mode=foot"]);|
+        )
+
+      assert {:route,
+              %{
+                use_tolls: 0,
+                shortest: false,
+                top_speed: 90,
+                maneuver_penalty: 5,
+                location_types: ["break", "via", "break"],
+                headings: "90;;",
+                preferred_sides: ["", "", "same"],
+                recostings: ["walk: mode=foot"]
+              }} = plan.computation
+    end
+
     test "route and ev_route accept steps, lang, units and verbal like POST /route" do
       plan =
         first_plan(

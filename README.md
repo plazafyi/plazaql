@@ -461,6 +461,46 @@ isochrone(center: point(42.3601, -71.0589), time: [900, 1800], mode: "transit", 
 
 The options need `mode: "transit"` and are only accepted by these two functions. Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck, bicycle and pedestrian options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
 
+#### Costing options
+
+`route()`, `ev_route()` and `matrix()` take the costing options of Plaza's REST routing endpoints; `isochrone()` takes `top_speed` and `fixed_speed` only, because its budget is travel time. Preferences and penalties change which route is chosen, not its `duration_s`. Plaza checks which modes take each option and rejects the rest.
+
+| Parameter            | Type    | Description |
+|----------------------|---------|-------------|
+| `use_highways`       | number  | 0 to 1. Motorways and trunk roads: 0.5 (or leaving it out) is neutral, 0 avoids them (cost x10), 1 favours them (x0.9). `"auto"`, `"truck"` |
+| `use_tolls`          | number  | The same for toll roads. `"auto"`, `"truck"` |
+| `use_ferries`        | number  | The same for ferries. Every mode |
+| `use_living_streets` | number  | The same for living streets (x5 at 0). Every mode |
+| `use_tracks`         | number  | The same for tracks (x15 at 0). `"foot"`, `"bicycle"` |
+| `shortest`           | boolean | Minimise distance instead of time; not with the `use_*` or penalty options |
+| `top_speed`          | integer | Highest speed driven, km/h (10-252). `"auto"`, `"truck"` |
+| `fixed_speed`        | integer | Drive every road at this speed, km/h (1-252), ignoring class, limits, surface, grade and traffic. `"auto"`, `"truck"` |
+| `maneuver_penalty`   | number  | Seconds (0-3600) added at each intersection the route arrives at. `"auto"`, `"truck"` |
+| `service_penalty`    | number  | Seconds (0-3600) added for each service road used. `"auto"`, `"truck"` |
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), use_tolls: 0, use_highways: 0.3, top_speed: 100)
+matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], shortest: true)
+```
+
+#### Per-point options and recostings
+
+`route()` takes one entry per point (origin, each waypoint, destination) for these, as a list or a `;`-separated string where an empty entry means "not set". PlazaQL has no `null`, so use the string form to leave a point out of `headings`.
+
+| Parameter            | Type              | Description |
+|----------------------|-------------------|-------------|
+| `location_types`     | string[]/string   | `"break"` (a stop, the default; required at both ends), `"through"` (pass without stopping or turning back: no leg boundary, no arrival step) or `"via"` (like `"through"`, but may turn back) |
+| `headings`           | number[]/string   | Direction of travel at the point, degrees from north. The point snaps to the nearest road it can be travelled along that way |
+| `heading_tolerances` | number[]/string   | Largest difference from the heading accepted, degrees (default 60) |
+| `preferred_sides`    | string[]/string   | `"same"` (the point on the driving side), `"opposite"` or `"either"` (default) |
+| `recostings`         | string[]          | Price the route found under other costing models: `"name: key=value, ..."` with any costing option and an optional `mode=auto`, `foot` or `bicycle` (at most 5) |
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), waypoints: [point(40.73, -73.99)], location_types: ["break", "through", "break"], headings: "90;;", preferred_sides: ";;same", recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);
+```
+
+The route reports each recosting under `properties.recostings.<name>` as `duration_s` and `cost`, both null when that mode cannot travel the path. REST takes the same recostings as objects (`{"name": "no_tolls", "use_tolls": 0}`) or as these strings.
+
 Turn-by-turn steps in French, with spoken variants:
 
 ```plazaql
@@ -502,6 +542,7 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 | `time`    | integer or integer[] | Travel time in seconds; a list returns one polygon per time |
 | `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"transit"` (with the [transit options](#transit-options)) |
 | `depart_at` | string | Departure time for `mode: "transit"`, as in `route()` (optional) |
+| `top_speed`, `fixed_speed` | integer | The [speed overrides](#costing-options), as in `route()` (optional) |
 | `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` is a list (optional) |
 | `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` is a list (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
@@ -663,6 +704,7 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 | `annotations`  | string or string[] | `"duration"` (always) and `"distance"` (optional) |
 | `fallback_speed` | number | km/h used to estimate pairs with no route, which are otherwise null (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
+| the [costing options](#costing-options) | | As in `route()`; durations stay travel time (optional) |
 
 The two lists can be positional: `matrix([point(40.71, -74.00)], [point(40.75, -73.98)])`.
 
@@ -713,7 +755,7 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `battery`            | number  | Battery capacity in watt-hours (required) |
 | `initial_charge_pct` | number  | Initial charge percentage (optional)     |
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
-| `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names` | | Same as `route()` (optional) |
+| `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names`, the [costing options](#costing-options) | | Same as `route()` (optional) |
 
 ### `centroid(locations:, mode:?, metric:?, exclude:?)`
 

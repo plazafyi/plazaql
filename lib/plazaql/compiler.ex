@@ -1244,7 +1244,10 @@ defmodule PlazaQL.Compiler do
     "addresses",
     "datasets",
     "avoid_datasets",
-    "waypoint_names"
+    "waypoint_names",
+    "location_types",
+    "preferred_sides",
+    "recostings"
   ]
 
   defp compile_kwargs(opts) do
@@ -1290,7 +1293,10 @@ defmodule PlazaQL.Compiler do
                                 max_transfers bicycle_type cycling_speed use_roads use_hills
                                 avoid_bad_surfaces walking_speed use_lit walkway_factor
                                 sidewalk_factor step_penalty max_hiking_difficulty
-                                wheelchair)a,
+                                wheelchair use_highways use_tolls use_ferries
+                                use_living_streets use_tracks shortest top_speed fixed_speed
+                                maneuver_penalty service_penalty location_types headings
+                                heading_tolerances preferred_sides recostings)a,
                              &{Atom.to_string(&1), &1}
                            )
 

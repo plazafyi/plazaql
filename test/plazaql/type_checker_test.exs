@@ -1223,6 +1223,66 @@ defmodule PlazaQL.TypeCheckerTest do
     end
   end
 
+  describe "costing options" do
+    @route ~s|route(origin: point(40.71, -74.00), destination: point(40.75, -73.98)|
+
+    test "route, matrix and ev_route take the costing options; isochrone the speed overrides" do
+      check!(
+        @route <>
+          ~s|, use_highways: 0.2, use_tolls: 0, use_ferries: 1, use_living_streets: 0.5, top_speed: 100, fixed_speed: 60, maneuver_penalty: 5, service_penalty: 15);|
+      )
+
+      check!(@route <> ~s|, mode: "foot", use_tracks: 1, shortest: true);|)
+
+      check!(
+        ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], use_tolls: 0);|
+      )
+
+      check!(
+        ~s|ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, use_tolls: 0);|
+      )
+
+      check!(~s|isochrone(center: point(40.71, -74.00), time: 600, top_speed: 50);|)
+
+      [error] = check_errors(~s|isochrone(center: point(40.71, -74.00), time: 600, use_tolls: 0);|)
+      assert error.message == "`isochrone()` does not accept `use_tolls:`"
+    end
+
+    test "per-point options and recostings on route()" do
+      check!(
+        @route <>
+          ~s|, waypoints: [point(40.72, -74.00)], location_types: ["break", "through", "break"], headings: [90, 0, 180], heading_tolerances: "45;;", preferred_sides: ["", "", "same"], recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);|
+      )
+
+      [error] =
+        check_errors(
+          ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], headings: [90]);|
+        )
+
+      assert error.message == "`matrix()` does not accept `headings:`"
+    end
+
+    test "values must have the right shape" do
+      for {kwargs, message} <- [
+            {"use_tolls: 2", "`use_tolls:` must be a number from 0"},
+            {"shortest: 1", "`shortest:` must be true or false"},
+            {"top_speed: 5", "`top_speed:` must be a speed cap in whole km/h from 10 to 252"},
+            {"fixed_speed: 50.5", "`fixed_speed:` must be the speed on every road in whole km/h"},
+            {"maneuver_penalty: -1", "`maneuver_penalty:` must be seconds from 0 to 3600"},
+            {~s|location_types: ["stop", "break"]|,
+             "`location_types:` must be one entry per point"},
+            {~s|preferred_sides: ["left", ""]|, "`preferred_sides:` must be one entry per point"},
+            {"headings: [400, 0]", "`headings:` must be a heading in degrees from 0 to 360"},
+            {"recostings: [1]", "`recostings:` must be a list of strings"}
+          ] do
+        [error] = check_errors(@route <> ", " <> kwargs <> ");")
+        assert error.message =~ message
+      end
+
+      check!(@route <> ", fixed_speed: 50.0);")
+    end
+  end
+
   describe "centroid options" do
     @locations ~s|locations: [point(48.858, 2.294), point(48.87, 2.35)]|
 

@@ -378,6 +378,44 @@ describe("PlazaQL Type Checker", () => {
     });
   });
 
+  describe("costing options", () => {
+    const route = "origin: point(40.71, -74.00), destination: point(40.75, -73.98)";
+    const messages = (src: string) => check(src).errors.map((e) => e.message);
+
+    it("accepts them on route, ev_route and matrix, and the speeds on isochrone", () => {
+      for (const src of [
+        `$$ = route(${route}, use_highways: 0.2, use_tolls: 0, use_ferries: 1, use_living_streets: 0.5, top_speed: 100, fixed_speed: 60, maneuver_penalty: 5, service_penalty: 15);`,
+        `$$ = route(${route}, mode: "foot", use_tracks: 1, shortest: true);`,
+        `$$ = route(${route}, waypoints: [point(40.72, -74.00)], location_types: ["break", "through", "break"], headings: [90, 0, 180], heading_tolerances: "45;;", preferred_sides: ["", "", "same"], recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);`,
+        "$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], use_tolls: 0);",
+        "$$ = ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, use_tolls: 0);",
+        "$$ = isochrone(center: point(40.71, -74.00), time: 600, top_speed: 50);",
+      ]) {
+        expect(check(src).errors, src).toHaveLength(0);
+      }
+      expect(messages("$$ = isochrone(center: point(40.71, -74.00), time: 600, use_tolls: 0);")).toContain(
+        "`isochrone()` does not accept `use_tolls:`"
+      );
+    });
+
+    it("checks value shapes like the Elixir type checker", () => {
+      for (const [kwargs, message] of [
+        ["use_tolls: 2", "`use_tolls:` must be a number from 0 (avoid) through 0.5 (neutral) to 1 (prefer)"],
+        ["shortest: 1", "`shortest:` must be true or false"],
+        ["top_speed: 5", "`top_speed:` must be a speed cap in whole km/h from 10 to 252"],
+        ["maneuver_penalty: -1", "`maneuver_penalty:` must be seconds from 0 to 3600"],
+        [
+          'location_types: ["stop", "break"]',
+          '`location_types:` must be one entry per point (origin, waypoints, destination): "break", "through" or "via", or a ";"-separated string',
+        ],
+        ["headings: [400, 0]", "`headings:` must be a heading in degrees from 0 to 360 per point, or a \";\"-separated string with empty entries for points without one"],
+        ["recostings: [1]", '`recostings:` must be a list of strings such as ["no_tolls: use_tolls=0", "walk: mode=foot"]'],
+      ]) {
+        expect(messages(`$$ = route(${route}, ${kwargs});`), kwargs).toContain(message);
+      }
+    });
+  });
+
   describe("truck options", () => {
     const route = "origin: point(40.71, -74.00), destination: point(40.75, -73.98)";
 
