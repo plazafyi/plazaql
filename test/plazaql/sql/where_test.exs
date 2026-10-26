@@ -290,10 +290,9 @@ defmodule PlazaQL.SQL.WhereTest do
 
       # Index-friendly bounding-box prefilter, then the exact distance test
       assert sql =~ "geom && ST_Expand(ST_GeomFromEWKT($1), $2 / GREATEST(cos(radians("
-      assert sql =~ "ST_DWithin(geom::geography, ST_GeomFromEWKT($5)::geography, $6)"
-
-      assert [collection_wkt, radius_deg, collection_wkt, collection_wkt, collection_wkt, 500.0] =
-               params
+      assert sql =~ "ST_DWithin(geom::geography, ST_GeomFromEWKT($1)::geography, $3)"
+      # One parameter for the collection, used everywhere
+      assert [collection_wkt, radius_deg, 500.0] = params
 
       assert radius_deg == 500.0 / 110_000.0
       assert collection_wkt =~ "GEOMETRYCOLLECTION"

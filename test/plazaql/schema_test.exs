@@ -251,4 +251,16 @@ defmodule PlazaQL.SchemaTest do
       end
     end
   end
+
+  describe "srid" do
+    test "must be a positive integer (it is written into SQL)" do
+      assert Schema.new(srid: 3857).srid == 3857
+
+      for bad <- ["4326); DROP TABLE x; --", 4326.0, 0, nil] do
+        assert_raise ArgumentError, ~r/srid must be a positive integer/, fn ->
+          Schema.new(srid: bad)
+        end
+      end
+    end
+  end
 end

@@ -84,8 +84,8 @@ Every row query is totally ordered: by the sort, then by the branch's key
 columns (`osm_id`, or a source's `keys`). A sorted query also selects the
 sort value as `sort_key`. Rows of several branches merge on
 `(sort_key, rank, keys)`. In `to_sql/2` that merge is an outer `ORDER BY`
-over the `UNION ALL`. Each branch fetches `(offset + limit) * 2` rows, and
-the outer query applies the limit and offset once.
+over the `UNION ALL`. Each branch fetches its first `offset + limit` rows,
+and the outer query applies the limit and offset once.
 
 `plan.seek = {sort_value, rank, keys}` is the last row of the previous
 page. Each branch adds the condition that keeps only rows after it: a branch
@@ -148,7 +148,11 @@ that source only.
 
 In `to_sql/2`, `a + b`, `a - b` and `a & b` become a `base` CTE plus one CTE
 per operand, combined with `UNION`, `NOT EXISTS` or `EXISTS` on
-`(id, __type__)`. An operand without a spatial filter inherits its parent's.
+`(id, __type__)`. Operations apply left to right to the running result:
+`a + b - c` is `(a + b) - c`, with the intermediate result as a
+`combined_N` CTE. An operand that is itself a combination (`a + (b - c)`)
+compiles to a nested `WITH`. An operand without a spatial filter inherits
+its parent's.
 Counts and aggregates over several branches wrap the branches in an outer
 query: `SUM(cnt)`, `SUM/MIN/MAX(value)`, or a row-weighted average.
 

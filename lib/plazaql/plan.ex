@@ -117,7 +117,8 @@ defmodule PlazaQL.Plan do
   @typedoc """
   An extra WHERE condition with its own `$1..$n` parameters (renumbered when
   spliced in). The three-element form applies to one branch only: an element
-  type or a source name.
+  type or a source name. Renumbering rewrites every `$N` in the text,
+  including inside string literals, so pass such values as parameters.
   """
   @type custom_clause ::
           {String.t(), [term()]} | {element_type() | String.t(), String.t(), [term()]}

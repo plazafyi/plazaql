@@ -137,11 +137,11 @@ defmodule PlazaQL.SQL do
         {sql, params}
 
       branches ->
-        # Each branch fetches limit + offset (twice over, so the merge has
-        # room); the merged rows are ordered and cut once.
+        # Each branch fetches its first offset + limit rows; the merged rows
+        # are ordered and cut once.
         branch_plan =
           if plan.limit,
-            do: %{plan | limit: ((plan.offset || 0) + plan.limit) * 2, offset: nil},
+            do: %{plan | limit: (plan.offset || 0) + plan.limit, offset: nil},
             else: %{plan | offset: nil}
 
         {parts, all_params, next_idx} =
@@ -241,30 +241,39 @@ defmodule PlazaQL.SQL do
 
   # ── Set operations via CTEs ─────────────────────────────────────
 
-  # Operands are combined as sets, so they are not sorted.
+  # Operands are combined as sets, so they are not sorted. Each operation
+  # applies to the running result, left to right: `a + b - c` is
+  # `(a + b) - c`. Every operand is a CTE; every intermediate result is a
+  # CTE too, and the last operation is the final SELECT.
   defp build_set_ops_query(plan, schema) do
+    {sql, params, _next_idx} = build_set_ops_query(plan, schema, 1)
+    {sql, params}
+  end
+
+  defp build_set_ops_query(plan, schema, start_idx) do
     plan = unsorted(plan)
-    base_plan = %{plan | set_ops: []}
-    {base_sql, base_params, next_idx} = build_multi_type_raw(base_plan, schema, 1)
+    {base_sql, base_params, next_idx} = build_operand(%{plan | set_ops: []}, schema, start_idx)
+    last = length(plan.set_ops) - 1
 
-    {ctes, final_select, all_params, _next_idx} =
-      Enum.reduce(
-        Enum.with_index(plan.set_ops),
-        {[{"base", base_sql}], nil, base_params, next_idx},
-        fn
-          {{:difference, [_left, right]}, i}, {ctes, _sel, params, idx} ->
-            right = unsorted(inherit_spatial(right, plan))
-            {sub_sql, sub_params, next_idx} = build_multi_type_raw(right, schema, idx)
-            cte_name = "difference_#{i}"
-            final = set_op_select(:difference, cte_name, schema)
-            {ctes ++ [{cte_name, sub_sql}], final, params ++ sub_params, next_idx}
+    {ctes, final_select, all_params, next_idx, _acc} =
+      plan.set_ops
+      |> Enum.with_index()
+      |> Enum.reduce(
+        {[{"base", base_sql}], nil, base_params, next_idx, "base"},
+        fn {set_op, i}, {ctes, _final, params, idx, acc} ->
+          {op, operand} = set_op_operand(set_op)
+          operand = unsorted(inherit_spatial(operand, plan))
+          {sub_sql, sub_params, next_idx} = build_operand(operand, schema, idx)
+          operand_name = "#{op}_#{i}"
+          select = set_op_select(op, acc, operand_name, schema)
+          ctes = ctes ++ [{operand_name, sub_sql}]
 
-          {{op, sub_plan}, i}, {ctes, _sel, params, idx} ->
-            sub_plan = unsorted(inherit_spatial(sub_plan, plan))
-            {sub_sql, sub_params, next_idx} = build_multi_type_raw(sub_plan, schema, idx)
-            cte_name = "#{op}_#{i}"
-            final = set_op_select(op, cte_name, schema)
-            {ctes ++ [{cte_name, sub_sql}], final, params ++ sub_params, next_idx}
+          if i == last do
+            {ctes, select, params ++ sub_params, next_idx, acc}
+          else
+            step = "combined_#{i}"
+            {ctes ++ [{step, select}], nil, params ++ sub_params, next_idx, step}
+          end
         end
       )
 
@@ -273,26 +282,36 @@ defmodule PlazaQL.SQL do
         "#{name} AS (\n#{sql}\n)"
       end)
 
-    full_sql = "WITH #{cte_parts}\n#{final_select}"
-    {full_sql, all_params}
+    {"WITH #{cte_parts}\n#{final_select}", all_params, next_idx}
   end
 
-  defp set_op_select(:union, cte_name, _schema) do
-    "SELECT * FROM base\nUNION\nSELECT * FROM #{cte_name}"
+  # The compiler stores `left - right` as [left, right]; `left` is the
+  # running result already.
+  defp set_op_operand({:difference, [_left, right]}), do: {:difference, right}
+  defp set_op_operand({op, operand}), do: {op, operand}
+
+  # An operand can be a combination itself (`a + (b - c)`).
+  defp build_operand(%Plan{set_ops: [_ | _]} = operand, schema, idx),
+    do: build_set_ops_query(operand, schema, idx)
+
+  defp build_operand(operand, schema, idx), do: build_multi_type_raw(operand, schema, idx)
+
+  defp set_op_select(:union, acc, operand, _schema) do
+    "SELECT * FROM #{acc}\nUNION\nSELECT * FROM #{operand}"
   end
 
-  defp set_op_select(:difference, cte_name, schema) do
+  defp set_op_select(:difference, acc, operand, schema) do
     id = schema.columns.id
 
-    "SELECT b.* FROM base b\n" <>
-      "WHERE NOT EXISTS (SELECT 1 FROM #{cte_name} x WHERE x.#{id} = b.#{id} AND x.__type__ = b.__type__)"
+    "SELECT b.* FROM #{acc} b\n" <>
+      "WHERE NOT EXISTS (SELECT 1 FROM #{operand} x WHERE x.#{id} = b.#{id} AND x.__type__ = b.__type__)"
   end
 
-  defp set_op_select(:intersection, cte_name, schema) do
+  defp set_op_select(:intersection, acc, operand, schema) do
     id = schema.columns.id
 
-    "SELECT b.* FROM base b\n" <>
-      "WHERE EXISTS (SELECT 1 FROM #{cte_name} i WHERE i.#{id} = b.#{id} AND i.__type__ = b.__type__)"
+    "SELECT b.* FROM #{acc} b\n" <>
+      "WHERE EXISTS (SELECT 1 FROM #{operand} i WHERE i.#{id} = b.#{id} AND i.__type__ = b.__type__)"
   end
 
   defp unsorted(%Plan{output_options: %OutputOptions{} = opts} = plan),

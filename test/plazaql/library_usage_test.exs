@@ -54,7 +54,7 @@ defmodule PlazaQL.LibraryUsageTest do
   end
 
   test "a variable reference compiles once the caller resolves it" do
-    {:ok, %{plans: [plan]}} =
+    {:ok, %{plans: [%Plan{} = plan]}} =
       PlazaQL.compile(~s|$area = boundary(name: "Paris"); search(node).within($area);|)
 
     assert {:error, %PlazaQL.NotCompilable{}} = PlazaQL.to_sql(plan)

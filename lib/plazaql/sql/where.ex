@@ -126,12 +126,14 @@ defmodule PlazaQL.SQL.Where do
     geom = schema.columns.geometry
     collection = build_geometry_collection_wkt(ewkts, schema.srid)
 
-    sql =
-      "#{geom} && ST_Expand(ST_GeomFromEWKT($#{idx}), $#{idx + 1} / GREATEST(cos(radians(LEAST(89.0, " <>
-        "GREATEST(abs(ST_YMin(ST_GeomFromEWKT($#{idx + 2}))), abs(ST_YMax(ST_GeomFromEWKT($#{idx + 3}))))))), 0.01))" <>
-        " AND ST_DWithin(#{geom}::geography, ST_GeomFromEWKT($#{idx + 4})::geography, $#{idx + 5})"
+    ref = "ST_GeomFromEWKT($#{idx})"
 
-    {sql, [collection, radius / 110_000.0, collection, collection, collection, radius], idx + 6}
+    sql =
+      "#{geom} && ST_Expand(#{ref}, $#{idx + 1} / GREATEST(cos(radians(LEAST(89.0, " <>
+        "GREATEST(abs(ST_YMin(#{ref})), abs(ST_YMax(#{ref})))))), 0.01))" <>
+        " AND ST_DWithin(#{geom}::geography, #{ref}::geography, $#{idx + 2})"
+
+    {sql, [collection, radius / 110_000.0, radius], idx + 3}
   end
 
   defp spatial_filter_sql({:predicate, predicate, geometry}, branch, idx),

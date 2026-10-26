@@ -123,8 +123,16 @@ defmodule PlazaQL.Schema do
   defp put_option({:sources, sources}, acc) when is_list(sources) or is_map(sources),
     do: %{acc | sources: Map.merge(acc.sources, new_sources(sources))}
 
+  # The SRID is written into SQL (ST_MakeEnvelope(..., 4326)), so it must be
+  # an integer.
+  defp put_option({:srid, srid}, acc) when is_integer(srid) and srid > 0,
+    do: %{acc | srid: srid}
+
+  defp put_option({:srid, srid}, _acc),
+    do: raise(ArgumentError, "srid must be a positive integer, got: #{inspect(srid)}")
+
   defp put_option({key, value}, acc)
-       when key in [:srid, :elevation_table, :elevation_resolution_column, :partitioned],
+       when key in [:elevation_table, :elevation_resolution_column, :partitioned],
        do: Map.put(acc, key, value)
 
   defp put_option({key, _value}, _acc),
