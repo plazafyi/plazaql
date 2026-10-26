@@ -13,6 +13,7 @@ import type {
 } from "./types.js"
 import {
   CENTROID_METRICS,
+  COMPUTATION_KWARGS,
   computationType,
   EXPANSION_ACTIONS,
   EXPANSION_PROPERTIES,
@@ -812,7 +813,38 @@ function checkOverlapFractionMethod(
 
 // ── Computation keyword arguments ────────────────────────────────────
 
+function checkKwargNames(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const accepted = COMPUTATION_KWARGS[name] ?? []
+  const hint = `accepted keywords: ${accepted.map((k) => `\`${k}:\``).join(", ")}`
+  return args.flatMap((arg) =>
+    arg.type === "kwarg" && !accepted.includes(arg.name)
+      ? [
+          {
+            line: pos.line,
+            col: pos.col,
+            message: `\`${name}()\` does not accept \`${arg.name}:\``,
+            hint,
+            severity: "error" as const,
+          },
+        ]
+      : [],
+  )
+}
+
 function checkComputationKwargs(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const nameErrors = checkKwargNames(name, args, pos)
+  return [...nameErrors, ...checkComputationOptions(name, args, pos)]
+}
+
+function checkComputationOptions(
   name: string,
   args: Arg[],
   pos: Pos,

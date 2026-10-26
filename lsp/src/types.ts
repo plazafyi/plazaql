@@ -345,7 +345,13 @@ const COMPUTED_METHODS = [
   "length",
   "overlap_fraction",
 ]
-const OUTPUT_SHAPE_METHODS = ["fields", "include", "precision", "expand"]
+const OUTPUT_SHAPE_METHODS = [
+  "fields",
+  "include",
+  "precision",
+  "expand",
+  "geometry",
+]
 const ORDERING_METHODS = ["sort", "limit", "offset"]
 const OUTPUT_MODE_METHODS = [
   "count",
@@ -761,8 +767,18 @@ export const METHOD_CATALOG: MethodInfo[] = [
   },
   {
     name: "include",
-    signature: ".include(extra1, extra2, ...)",
-    description: "Include additional data (e.g., geometry, metadata).",
+    signature: '.include("bbox" | "center" | "distance", ...)',
+    description:
+      'Add computed fields to each feature: `"bbox"` (feature bounding box), `"center"` (`center_lat`/`center_lng`), `"distance"` (`distance_m`, with `.distance()` or `.around()`).',
+    phase: "Output Shape",
+    ordinal: 6,
+    group: "freely_orderable",
+  },
+  {
+    name: "geometry",
+    signature: ".geometry(keep: boolean)",
+    description:
+      "`.geometry(false)` returns properties only, with a null geometry on each feature.",
     phase: "Output Shape",
     ordinal: 6,
     group: "freely_orderable",
@@ -1668,6 +1684,78 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
 
 /** Values accepted by `reverse_geocode(include: ...)`. */
 export const REVERSE_GEOCODE_INCLUDES = ["census"]
+
+const ROUTE_KWARGS = [
+  "origin",
+  "destination",
+  "mode",
+  "steps",
+  "alternatives",
+  "waypoints",
+  "depart_at",
+  "traffic_model",
+  "exclude",
+]
+const GEOCODE_FILTER_KWARGS = [
+  "focus",
+  "country_code",
+  "bbox",
+  "layers",
+  "boundary_gid",
+  "limit",
+]
+
+/**
+ * Keywords each computation accepts: the parameters of the REST endpoint it
+ * stands in for. Mirrors `@computation_kwargs` in lib/plazaql/type_checker.ex.
+ */
+export const COMPUTATION_KWARGS: Record<string, string[]> = {
+  route: ROUTE_KWARGS,
+  ev_route: [
+    ...ROUTE_KWARGS,
+    "battery",
+    "battery_capacity_wh",
+    "initial_charge_pct",
+    "min_charge_pct",
+    "connector_types",
+    "min_power_kw",
+  ],
+  isochrone: ["center", "time", "mode"],
+  geocode: [
+    "query",
+    "address",
+    "neighbourhood",
+    "locality",
+    "county",
+    "region",
+    "postalcode",
+    "country",
+    ...GEOCODE_FILTER_KWARGS,
+  ],
+  autocomplete: ["query", ...GEOCODE_FILTER_KWARGS],
+  text_search: ["query", "limit", "bbox", "focus"],
+  reverse_geocode: ["point", "radius", "limit", "include"],
+  nearest: ["point", "radius"],
+  matrix: ["origins", "destinations", "mode"],
+  map_match: ["points", "mode"],
+  optimize: ["waypoints", "mode", "roundtrip"],
+  elevation: ["point", "points"],
+  elevation_profile: ["points"],
+  centroid: ["locations", "mode", "metric", "exclude"],
+  expansion: [
+    "action",
+    "origin",
+    "destination",
+    "center",
+    "time",
+    "origins",
+    "destinations",
+    "mode",
+    "exclude",
+    "expansion_properties",
+  ],
+  place_lookup: ["ids"],
+}
 
 /** Values accepted by `centroid(metric: ...)`. */
 export const CENTROID_METRICS = ["time", "distance"]

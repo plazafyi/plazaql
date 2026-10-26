@@ -2026,3 +2026,27 @@ search(way, building: "yes").centroid();
             (string))))
       (method
         (identifier)))))
+
+================
+Property access alias p[]
+================
+
+search(node).filter(number(p["capacity"]) > 50);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (filter_cmp_expression
+            (coerce_function
+              name: (identifier)
+              (filter_expression
+                (tag_access
+                  (string))))
+            (number)))))))

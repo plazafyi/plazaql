@@ -229,7 +229,8 @@ defmodule PlazaQL.TypeChecker do
     arg_errors = check_var_refs_in_args(args ++ opts, scope)
 
     kwarg_errors =
-      check_computation_kwargs(comp_type, opts, pos) ++
+      check_kwarg_names(comp_type, opts, pos) ++
+        check_computation_kwargs(comp_type, opts, pos) ++
         check_computation_args(comp_type, args, opts, pos) ++
         check_truck_kwargs(comp_type, opts, pos)
 
@@ -1085,6 +1086,53 @@ defmodule PlazaQL.TypeChecker do
   defp check_ref_type(_var_name, _type, _pos), do: []
 
   # ── Computation keyword arguments ───────────────────────────────
+
+  # The keywords each computation accepts: the parameters of the REST endpoint
+  # it stands in for. Anything else is a type error naming the computation, so
+  # a misspelt or misplaced keyword is never silently dropped.
+  @route_kwargs ~w(origin destination mode steps alternatives waypoints depart_at traffic_model exclude)
+  @geocode_filter_kwargs ~w(focus country_code bbox layers boundary_gid limit)
+
+  @computation_kwargs %{
+    route: @route_kwargs,
+    ev_route:
+      @route_kwargs ++
+        ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
+    isochrone: ~w(center time mode),
+    geocode:
+      ~w(query address neighbourhood locality county region postalcode country) ++
+        @geocode_filter_kwargs,
+    autocomplete: ["query" | @geocode_filter_kwargs],
+    text_search: ~w(query limit bbox focus),
+    reverse_geocode: ~w(point radius limit include),
+    nearest: ~w(point radius),
+    matrix: ~w(origins destinations mode),
+    map_match: ~w(points mode),
+    optimize: ~w(waypoints mode roundtrip),
+    elevation: ~w(point points),
+    elevation_profile: ~w(points),
+    centroid: ~w(locations mode metric exclude),
+    expansion:
+      ~w(action origin destination center time origins destinations mode exclude expansion_properties),
+    place_lookup: ~w(ids)
+  }
+
+  @doc false
+  @spec computation_kwargs() :: %{atom() => [String.t()]}
+  def computation_kwargs(), do: @computation_kwargs
+
+  defp check_kwarg_names(comp_type, opts, pos) do
+    accepted = Map.get(@computation_kwargs, comp_type, [])
+
+    for {:kwarg, key, _value} <- opts, key not in accepted do
+      %Error{
+        line: pos.line,
+        col: pos.col,
+        message: "`#{comp_type}()` does not accept `#{key}:`",
+        hint: "accepted keywords: #{Enum.map_join(accepted, ", ", &"`#{&1}:`")}"
+      }
+    end
+  end
 
   @reverse_geocode_includes ["census"]
   @traffic_models ["best_guess", "optimistic", "pessimistic"]

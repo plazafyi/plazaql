@@ -313,6 +313,8 @@ mixed & mixed             → GeoSet
 
 ## Functions
 
+Each computation (`route()`, `geocode()`, `matrix()`, ...) accepts only the keywords listed in its table below, the parameters of the REST endpoint it stands in for. Any other keyword is a type error that names the computation and lists the keywords it takes, for example "`route()` does not accept `points:`". Positional arguments a computation has no use for are errors too; they are never dropped.
+
 ### `search(element_type?, tag_filters...)`
 
 Search for OpenStreetMap features by element type and tag filters.
@@ -359,6 +361,8 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 | `destination`   | Point           | End point                                                                   |
 | `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (optional)                       |
 | `waypoints`     | Point[]         | Points to visit in order (optional)                                         |
+| `alternatives`  | number          | Number of alternative routes to return (optional)                           |
+| `steps`         | boolean         | Include turn-by-turn steps (optional)                                       |
 | `depart_at`     | string          | ISO 8601 departure time or `"now"`, for time-of-day traffic (optional)      |
 | `traffic_model` | string          | `"best_guess"` (default), `"optimistic"`, `"pessimistic"`; needs `depart_at` (optional) |
 | `exclude`       | string[]/string | Road types to avoid: `"toll"`, `"ferry"`, `"unpaved"`, `"motorway"`, `"trunk"`, `"primary"`, `"secondary"`, `"tertiary"`; a list or a comma-separated string (optional) |
@@ -398,7 +402,7 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 | Parameter | Type    | Description                    |
 |-----------|---------|--------------------------------|
 | `center`  | Point   | Origin point                   |
-| `time`    | integer | Travel time in seconds         |
+| `time`    | integer or integer[] | Travel time in seconds; a list returns one polygon per time |
 | `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)) |
 
 ### `geocode(address)` / `geocode(address:, locality:, ...)`
@@ -506,7 +510,7 @@ Autocomplete partial place names.
 autocomplete("Eiffel Tow")
 ```
 
-### `nearest(point:, radius:?, type:?)`
+### `nearest(point:, radius:?)`
 
 Find the nearest features to a point.
 
@@ -518,7 +522,6 @@ nearest(point: point(40.71, -74.00))
 |-----------|---------|--------------------------------|
 | `point`   | Point   | Reference point                |
 | `radius`  | number  | Search radius in meters (optional) |
-| `type`    | string  | Element type filter (optional) |
 
 ### `matrix(origins:, destinations:, mode:?)`
 
@@ -542,6 +545,8 @@ Snap a GPS trace to the road network.
 map_match(points: [point(40.71, -74.00), point(40.72, -73.99)], mode: "auto")
 ```
 
+A `linestring(...)` works as the trace too: `map_match(linestring(point(40.71, -74.00), point(40.72, -73.99)))`.
+
 | Parameter | Type    | Description                                |
 |-----------|---------|--------------------------------------------|
 | `points`  | Point[] | GPS trace, two or more points in order     |
@@ -554,6 +559,14 @@ Solve the traveling salesman problem — optimal visit order.
 ```plazaql
 optimize(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98), mode: "auto")
 ```
+
+The positional points are the waypoints; `waypoints: [...]` is the keyword form.
+
+| Parameter   | Type    | Description                                     |
+|-------------|---------|-------------------------------------------------|
+| `waypoints` | Point[] | Points to visit, 2 to 50 (or pass them positionally) |
+| `mode`      | string  | `"auto"`, `"foot"`, `"bicycle"` (optional)      |
+| `roundtrip` | boolean | Return to the first point (optional)            |
 
 ### `ev_route(origin:, destination:, battery:)`
 
@@ -633,7 +646,7 @@ Look up elevation at a single point.
 elevation(point(27.9881, 86.9250))
 ```
 
-Pass `points:` to look up several points at once:
+Pass several points, positionally or as `points:`, to look them up at once:
 
 ```plazaql
 elevation(points: [point(27.9881, 86.9250), point(28.5983, 83.9311)])
@@ -740,7 +753,7 @@ search(node, amenity: "cafe")
   .around(200, point(40.74, -73.98));
 ```
 
-The geometry argument of `.within()`, `.intersects()`, `.contains()`, `.crosses()`, `.touches()`, and their `not_` forms can be a constructor (`point(...)`, `polygon(...)`, `bbox(...)`) or a variable holding geometry, either `$var` or `$$.name`. The executor resolves the variable's geometry when the query runs:
+The geometry argument of `.within()`, `.intersects()`, `.contains()`, `.crosses()`, `.touches()`, and their `not_` forms can be a constructor (`point(...)`, `linestring(...)`, `polygon(...)`, `bbox(...)`) or a variable holding geometry, either `$var` or `$$.name`. The executor resolves the variable's geometry when the query runs:
 
 ```plazaql
 $walk = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
@@ -801,14 +814,18 @@ search(dataset("census-tracts")).intersects($walk).overlap_fraction($walk);
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `.fields(f1, f2, ...)` | `GeoSet → GeoSet` | Select specific tag fields |
-| `.include(what)` | `GeoSet → GeoSet` | Include extra output data (`:bbox`, `:center`) |
+| `.include(what, ...)` | `GeoSet → GeoSet` | Add computed fields: `"bbox"` (a GeoJSON `bbox` on each feature), `"center"` (`center_lat` and `center_lng` properties), `"distance"` (`distance_m`, when `.distance()` or `.around()` gives a reference point) |
 | `.precision(n)` | `GeoSet → GeoSet` | Coordinate decimal places |
+| `.geometry(false)` | `GeoSet → GeoSet` | Return properties only; each feature's `geometry` is `null` |
 
 ```plazaql
 search(node, amenity: "cafe").fields("name", "cuisine", "opening_hours");
-search(way, highway: "motorway").include(:center);
+search(way, highway: "motorway").include("bbox", "center");
 search(node, amenity: *).precision(4);
+search(node, amenity: "cafe").geometry(false);
 ```
+
+These match the REST `output.fields`, `output.include`, `output.precision` and `output.geometry` options. Any other `.include()` value is a compile error.
 
 ### Ordering (Phase 7)
 
@@ -821,6 +838,8 @@ search(node, amenity: *).precision(4);
 ```plazaql
 search(node, amenity: "cafe").sort(t["name"]).limit(10).offset(20);
 ```
+
+`.sort(by: :osm_id)` and `.sort(by: :name)` are the REST `output.sort=osm_id` and `output.sort=name`; see also `.sort(by: :qt)` below. Sorting by a string literal (`.sort("name")`) is a compile error, since it would sort every row by the same constant: write `.sort(t["name"])` or `.sort(by: :name)`.
 
 ### Output Mode (Phase 8) — Terminal
 
@@ -1124,6 +1143,12 @@ Access tag values by key. Returns the string value of the tag, or null if the ta
 t["name"]            // → "Starbucks"
 t["population"]      // → "3677000" (string — use number() for arithmetic)
 t["cuisine"]         // → "italian"
+```
+
+`p["key"]` is the same accessor under another name, for reading dataset feature properties where "tag" reads oddly. The formatter writes it back as `t["key"]`.
+
+```plazaql
+search(dataset("census-tracts")).filter(number(p["population"]) > 5000);
 ```
 
 ### Property Accessors

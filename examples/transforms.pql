@@ -67,10 +67,10 @@ search(node, amenity: "restaurant")
   .sort(number(t["capacity"]), order: :desc)
   .limit(20);
 
-// Include extra output data (bounding box, center point)
+// Add a bounding box and center point to each feature
 search(way, highway: "motorway")
   .within(boundary(name: "California, United States"))
-  .include(:center)
+  .include("bbox", "center")
   .simplify(500)
   .limit(10);
 

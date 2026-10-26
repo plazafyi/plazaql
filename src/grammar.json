@@ -1872,8 +1872,17 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "STRING",
-          "value": "t"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "t"
+            },
+            {
+              "type": "STRING",
+              "value": "p"
+            }
+          ]
         },
         {
           "type": "STRING",
