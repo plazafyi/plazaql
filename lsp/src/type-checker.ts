@@ -569,7 +569,12 @@ function checkSpatialArgs(
   const validTypes = validSpatialArgTypes(methodName)
   const errors: TypeCheckError[] = []
 
-  for (const expr of extractGeometryExprs(args)) {
+  // `.around(distance, geometry)`: the first positional argument is the
+  // distance (a number or a number variable), never the geometry.
+  const geometryArgs =
+    methodName === "around" && args[0]?.type === "posarg" ? args.slice(1) : args
+
+  for (const expr of extractGeometryExprs(geometryArgs)) {
     const argType = inferArgType(expr, scope, outputScope)
     if (argType !== null && !validTypes.includes(argType)) {
       errors.push({

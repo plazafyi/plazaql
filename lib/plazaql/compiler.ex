@@ -23,6 +23,9 @@ defmodule PlazaQL.Compiler do
 
   @max_osm_ids 10_000
 
+  # Sort modes: `.sort(by: :osm_id)`, `.sort(:name)`, ...
+  @sort_atoms [:osm_id, :name, :distance, :qt]
+
   # Inline set expressions a spatial predicate can take as its geometry.
   @inline_sets [:boundary, :computation, :search]
 
@@ -248,8 +251,8 @@ defmodule PlazaQL.Compiler do
     end
   end
 
-  defp compile_expr({:computation, comp_type, args, opts, _pos}, env) do
-    params = compile_computation_params(comp_type, args, opts, env)
+  defp compile_expr({:computation, comp_type, args, opts, pos}, env) do
+    params = at_position(pos, fn -> compile_computation_params(comp_type, args, opts, env) end)
     %Plan{kind: :computation, element_types: [], computation: {comp_type, params}}
   end
 
@@ -289,6 +292,23 @@ defmodule PlazaQL.Compiler do
     Map.get(env.variables, "$$." <> name, %Plan{})
   end
 
+  # `$z = point(...); $z;` or a bare `point(...);`: a shape is an argument,
+  # not a query.
+  defp compile_expr(geom, _env) when elem(geom, 0) in @geometry_literals do
+    pos = elem(geom, tuple_size(geom) - 1)
+    kind = if elem(geom, 0) == :number, do: "number", else: "#{elem(geom, 0)}(...)"
+
+    throw(
+      {:compile_error,
+       %Error{
+         message:
+           "a #{kind} is a value, not a query to output; use it as an argument, e.g. `search(...).within(...)`, `.around(...)` or `route(origin: ...)`",
+         line: Map.get(pos, :line, 0),
+         col: Map.get(pos, :col, 0)
+       }}
+    )
+  end
+
   defp compile_expr(expr, _env) do
     throw(
       {:compile_error,
@@ -306,8 +326,25 @@ defmodule PlazaQL.Compiler do
   # ── Method application ────────────────────────────────────────────
 
   defp apply_methods(plan, methods, env) do
-    Enum.reduce(methods, plan, &apply_method(&2, &1, env))
+    Enum.reduce(methods, plan, fn method, acc ->
+      at_position(method_pos(method), fn -> apply_method(acc, method, env) end)
+    end)
   end
+
+  defp method_pos({:method, _name, _args, pos}), do: pos
+  defp method_pos({:method, _name, _expr, _order, pos}), do: pos
+  defp method_pos(_method), do: nil
+
+  # Errors thrown below know what is wrong but not where; give them the
+  # position of the method or computation they came from.
+  defp at_position(%{line: line, col: col}, fun) when is_integer(line) do
+    fun.()
+  catch
+    {:compile_error, %Error{line: 0} = error} ->
+      throw({:compile_error, %{error | line: line, col: col}})
+  end
+
+  defp at_position(_pos, fun), do: fun.()
 
   defp apply_directives(plan, [], _env), do: plan
 
@@ -437,25 +474,14 @@ defmodule PlazaQL.Compiler do
 
   # `.sort(:osm_id)` is `.sort(by: :osm_id)`; other atoms would sort by a
   # constant.
-  @sort_atoms [:osm_id, :name, :distance, :qt]
-
   defp apply_method(plan, {:method, :sort_expr, {:atom, mode, _}, _order, _pos}, _env)
        when mode in @sort_atoms do
     opts = ensure_output_options(plan)
     %{plan | output_options: %{opts | sort: mode}}
   end
 
-  defp apply_method(_plan, {:method, :sort_expr, {:atom, atom, _}, _order, _pos}, _env) do
-    throw(
-      {:compile_error,
-       %Error{
-         message:
-           "`.sort(:#{atom})` is not a sort mode; use :osm_id, :name, :distance or :qt, or an expression such as `t[\"key\"]`",
-         line: 0,
-         col: 0
-       }}
-    )
-  end
+  defp apply_method(_plan, {:method, :sort_expr, {:atom, _, _} = atom, _order, _pos}, _env),
+    do: sort_mode_error!(atom)
 
   defp apply_method(plan, {:method, :sort_expr, expr, order, _pos}, _env) do
     %{plan | sort_expr: {expr, order}}
@@ -757,11 +783,22 @@ defmodule PlazaQL.Compiler do
 
   defp extract_sort_value(args) do
     case extract_single_value(args) do
-      {:atom, a, _} -> a
-      {:identifier, s, _} -> safe_to_atom!(s)
-      {:string, s, _} -> safe_to_atom!(s)
-      _ -> nil
+      {:atom, a, _} when a in @sort_atoms -> a
+      other -> sort_mode_error!(other)
     end
+  end
+
+  @spec sort_mode_error!(term()) :: no_return()
+  defp sort_mode_error!(got) do
+    throw(
+      {:compile_error,
+       %Error{
+         message:
+           "`.sort(by: ...)` takes :osm_id, :name, :distance or :qt, or an expression such as `t[\"key\"]`; got #{inspect(got)}",
+         line: 0,
+         col: 0
+       }}
+    )
   end
 
   defp extract_single_value([{:posarg, val}]), do: val

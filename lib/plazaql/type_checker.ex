@@ -630,6 +630,20 @@ defmodule PlazaQL.TypeChecker do
     :touches
   ]
 
+  # `.around(distance, geometry)`: the first positional argument is the
+  # distance (a number or a number variable such as `$r = 100`), never the
+  # geometry.
+  defp check_spatial_args(:around, [{:posarg, _distance} | rest], pos, scope),
+    do: check_spatial_args(:around_geometry, rest, pos, scope)
+
+  defp check_spatial_args(:around_geometry, args, pos, scope) do
+    valid_types = Types.valid_spatial_arg_types(:around)
+
+    args
+    |> extract_geometry_exprs()
+    |> Enum.flat_map(&validate_spatial_arg(&1, :around, valid_types, pos, scope))
+  end
+
   defp check_spatial_args(name, args, pos, scope) when name in @spatial_with_geometry do
     valid_types = Types.valid_spatial_arg_types(name)
 

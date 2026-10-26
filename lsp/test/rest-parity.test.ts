@@ -74,6 +74,16 @@ describe("output shape and accessors", () => {
     ).toHaveLength(0)
   })
 
+  it("accepts geometry and number variables", () => {
+    expect(
+      check("$r = 100; $p = point(1, 2); search(node).around($r, $p);").errors,
+    ).toHaveLength(0)
+    expect(
+      check("$z = polygon(point(1, 2), point(1, 3), point(2, 3)); search(node).within($z);")
+        .errors,
+    ).toHaveLength(0)
+  })
+
   it("accepts .crosses(linestring(...))", () => {
     expect(
       check("search(way).crosses(linestring(point(1, 2), point(3, 4)));")

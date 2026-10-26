@@ -296,6 +296,29 @@ defmodule PlazaQL.RestParityTest do
     end
   end
 
+  describe "error positions and messages" do
+    test "compile errors point at the method or computation" do
+      error = error!(~s|search(node)\n  .include("nodes");|)
+      assert error.line == 2
+
+      error = error!("route(origin: point(1, 2), destination: point(3, 4));\nmatrix(point(1, 2));")
+      assert {error.line, error.col} == {2, 1}
+    end
+
+    test "outputting a geometry variable says why it can't be" do
+      assert error!("$z = point(1, 2); $z;").message =~ "a point(...) is a value, not a query"
+    end
+
+    test "a number variable is the positional around distance" do
+      assert {:around, 1, 2, 100} =
+               plan!("$r = 100; search(node).around($r, point(1, 2));").spatial_filter
+    end
+
+    test "an unknown sort mode is an error" do
+      assert error!("search(node).sort(by: :height);").message =~ "`.sort(by: ...)` takes :osm_id"
+    end
+  end
+
   describe "output shape" do
     test ".include() takes the REST output.include values" do
       plan = plan!(~s|search(node).include("bbox", "center", "distance");|)
@@ -322,7 +345,7 @@ defmodule PlazaQL.RestParityTest do
 
     test ".sort(:osm_id) is .sort(by: :osm_id); other atoms are errors" do
       assert plan!("search(node).sort(:osm_id);").output_options.sort == :osm_id
-      assert error!("search(node).sort(:height);").message =~ "is not a sort mode"
+      assert error!("search(node).sort(:height);").message =~ "`.sort(by: ...)` takes :osm_id"
     end
 
     test ".sort(id()) sorts by the element id" do
