@@ -1093,6 +1093,63 @@ defmodule PlazaQL.TypeCheckerTest do
     end
   end
 
+  describe "transit options" do
+    @route ~s|route(origin: point(40.71, -74.00), destination: point(40.75, -73.98)|
+
+    test "route and isochrone take the transit options with mode transit" do
+      check!(
+        @route <>
+          ~s|, mode: "transit", depart_at: "2026-03-16T08:00:00-04:00", use_bus: 0.5, use_rail: 1, use_transfers: 0, max_walk_m: 800, max_transfers: 2);|
+      )
+
+      check!(
+        ~s|isochrone(center: point(40.71, -74.00), time: [900, 1800], mode: "transit", depart_at: "now", max_walk_m: 500);|
+      )
+
+      check!(@route <> ~s|, mode: "transit");|)
+    end
+
+    test "transit options need mode transit" do
+      [error] = check_errors(@route <> ~s|, max_walk_m: 500);|)
+      assert error.message =~ ~s|need `mode: "transit"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "foot", use_bus: 0);|)
+      assert error.message =~ ~s|need `mode: "transit"`|
+
+      # A mode from a variable is checked when the query runs.
+      check!(~s|$m = "transit"; | <> @route <> ~s|, mode: $m, use_rail: 0.5);|)
+    end
+
+    test "other computations have no transit options" do
+      [error] =
+        check_errors(
+          ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], max_transfers: 1);|
+        )
+
+      assert error.message =~ "`matrix()` has no transit options"
+    end
+
+    test "values must have the right type" do
+      [error] = check_errors(@route <> ~s|, mode: "transit", use_bus: 2);|)
+      assert error.message == "`use_bus:` must be a number from 0 to 1"
+
+      [error] = check_errors(@route <> ~s|, mode: "transit", max_walk_m: "far");|)
+      assert error.message == "`max_walk_m:` must be a non-negative number of meters"
+
+      check!(@route <> ~s|, mode: "transit", max_transfers: 2.0);|)
+
+      [error] = check_errors(@route <> ~s|, mode: "transit", max_transfers: 1.5);|)
+      assert error.message == "`max_transfers:` must be a whole number"
+
+      [error] =
+        check_errors(
+          ~s|isochrone(center: point(40.71, -74.00), time: 600, mode: "transit", depart_at: 8);|
+        )
+
+      assert error.message =~ "`depart_at:` must be an ISO 8601 datetime"
+    end
+  end
+
   describe "centroid options" do
     @locations ~s|locations: [point(48.858, 2.294), point(48.87, 2.35)]|
 

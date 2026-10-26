@@ -1094,6 +1094,57 @@ const TRUCK_MODE_VALUES = [
   { value: '"truck"' },
 ]
 
+// Options of route() and isochrone() with mode: "transit" (Plaza's
+// pedestrian + public transit routing over GTFS feeds). Plaza checks the
+// upper bounds.
+export const TRANSIT_PREFERENCES = ["use_bus", "use_rail", "use_transfers"]
+export const TRANSIT_OPTIONS = [
+  ...TRANSIT_PREFERENCES,
+  "max_walk_m",
+  "max_transfers",
+]
+export const TRANSIT_COMPUTATIONS = ["route", "isochrone"]
+
+const TRANSIT_PARAMS: ParamInfo[] = [
+  {
+    name: "use_bus",
+    type: "number",
+    optional: true,
+    description:
+      'Bus preference, 0 to 1 (mode: "transit"; default 1). 0 never rides a bus; lower values count bus time more.',
+  },
+  {
+    name: "use_rail",
+    type: "number",
+    optional: true,
+    description:
+      'Rail preference (tram, subway, rail), 0 to 1 (mode: "transit"; default 1). 0 never rides rail.',
+  },
+  {
+    name: "use_transfers",
+    type: "number",
+    optional: true,
+    description:
+      'Transfer willingness, 0 to 1 (mode: "transit"; default 1). 0 allows no transfer; lower values add a penalty per transfer.',
+  },
+  {
+    name: "max_walk_m",
+    type: "number",
+    optional: true,
+    description:
+      'Longest walk in meters to the first stop, between stops and from the last stop (mode: "transit"; default 1000, at most 3000)',
+  },
+  {
+    name: "max_transfers",
+    type: "number",
+    optional: true,
+    description:
+      'Most changes between vehicles (mode: "transit"; default 3, at most 4)',
+  },
+]
+
+const TRANSIT_MODE_VALUE = { value: '"transit"' }
+
 export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   search: {
     name: "search",
@@ -1180,7 +1231,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       {
         name: "mode",
-        type: '"auto" | "car" | "bicycle" | "foot" | "truck"',
+        type: '"auto" | "car" | "bicycle" | "foot" | "truck" | "transit"',
         optional: true,
         description: "Travel mode",
         enumValues: [
@@ -1188,6 +1239,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           { value: '"foot"' },
           { value: '"bicycle"' },
           { value: '"truck"' },
+          TRANSIT_MODE_VALUE,
           { value: '"car"' },
         ],
       },
@@ -1196,7 +1248,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description:
-          'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now") for time-of-day traffic',
+          'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now") for time-of-day traffic; with mode "transit", a time without an offset is local time at the transit feed',
       },
       {
         name: "traffic_model",
@@ -1217,6 +1269,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
       ...TRUCK_PARAMS,
+      ...TRANSIT_PARAMS,
       {
         name: "steps",
         type: "boolean",
@@ -1336,9 +1389,17 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description: "Travel mode",
-        enumValues: TRUCK_MODE_VALUES,
+        enumValues: [...TRUCK_MODE_VALUES, TRANSIT_MODE_VALUE],
       },
       ...TRUCK_PARAMS,
+      {
+        name: "depart_at",
+        type: "string",
+        optional: true,
+        description:
+          'Departure time for mode "transit" (ISO 8601 with an offset, local time at the feed without one, or "now"; default now)',
+      },
+      ...TRANSIT_PARAMS,
       {
         name: "avoid_datasets",
         type: "string | string[]",
@@ -1991,7 +2052,7 @@ const TRUCK_OPTION_KWARGS = [
 ]
 
 export const COMPUTATION_KWARGS: Record<string, string[]> = {
-  route: [...ROUTE_KWARGS, ...TRUCK_OPTION_KWARGS],
+  route: [...ROUTE_KWARGS, ...TRUCK_OPTION_KWARGS, ...TRANSIT_OPTIONS],
   ev_route: [
     ...ROUTE_KWARGS,
     "battery",
@@ -2008,7 +2069,9 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "denoise",
     "generalize",
     "avoid_datasets",
+    "depart_at",
     ...TRUCK_OPTION_KWARGS,
+    ...TRANSIT_OPTIONS,
   ],
   geocode: [
     "query",

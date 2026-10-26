@@ -306,6 +306,47 @@ describe("PlazaQL Type Checker", () => {
 
   // ── centroid() and expansion() ─────────────────────────────────
 
+  describe("transit options", () => {
+    const route = "origin: point(40.71, -74.00), destination: point(40.75, -73.98)";
+
+    it("accepts the transit options on route and isochrone with mode transit", () => {
+      for (const src of [
+        `$$ = route(${route}, mode: "transit", depart_at: "2026-03-16T08:00:00-04:00", use_bus: 0.5, use_rail: 1, use_transfers: 0, max_walk_m: 800, max_transfers: 2);`,
+        '$$ = isochrone(center: point(40.71, -74.00), time: [900, 1800], mode: "transit", depart_at: "now", max_walk_m: 500);',
+        `$$ = route(${route}, mode: "transit", max_transfers: 2.0);`,
+      ]) {
+        expect(check(src).errors).toHaveLength(0);
+      }
+    });
+
+    it("needs mode transit", () => {
+      const result = check(`$$ = route(${route}, mode: "foot", use_bus: 0);`);
+      expect(result.errors.some((e) => e.message.includes('need `mode: "transit"`'))).toBe(true);
+      const fromVar = check(`$m = "transit"; $$ = route(${route}, mode: $m, use_rail: 0.5);`);
+      expect(fromVar.errors.some((e) => e.message.includes("transit options"))).toBe(false);
+    });
+
+    it("rejects transit options on other computations", () => {
+      const result = check(
+        "$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], max_transfers: 1);"
+      );
+      expect(result.errors.some((e) => e.message.includes("`matrix()` has no transit options"))).toBe(true);
+    });
+
+    it("checks value types like the Elixir type checker", () => {
+      const messages = (src: string) => check(src).errors.map((e) => e.message);
+      expect(messages(`$$ = route(${route}, mode: "transit", use_bus: 2);`)).toContain(
+        "`use_bus:` must be a number from 0 to 1"
+      );
+      expect(messages(`$$ = route(${route}, mode: "transit", max_walk_m: "far");`)).toContain(
+        "`max_walk_m:` must be a non-negative number of meters"
+      );
+      expect(messages(`$$ = route(${route}, mode: "transit", max_transfers: 1.5);`)).toContain(
+        "`max_transfers:` must be a whole number"
+      );
+    });
+  });
+
   describe("truck options", () => {
     const route = "origin: point(40.71, -74.00), destination: point(40.75, -73.98)";
 

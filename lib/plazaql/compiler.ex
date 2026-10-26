@@ -1256,7 +1256,8 @@ defmodule PlazaQL.Compiler do
                                 roundtrip overview geometries annotations denoise generalize
                                 fallback_speed radiuses lang layer addresses units verbal
                                 voice_instructions banner_instructions roundabout_exits voice_units
-                                waypoint_names)a,
+                                waypoint_names use_bus use_rail use_transfers max_walk_m
+                                max_transfers)a,
                              &{Atom.to_string(&1), &1}
                            )
 

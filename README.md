@@ -355,13 +355,13 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98))
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "foot")
 ```
 
-**Modes:** `"auto"`, `"foot"`, `"bicycle"`, `"truck"`
+**Modes:** `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"transit"`
 
 | Parameter       | Type            | Description                                                                 |
 |-----------------|-----------------|-----------------------------------------------------------------------------|
 | `origin`        | Point           | Start point                                                                 |
 | `destination`   | Point           | End point                                                                   |
-| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (optional)                       |
+| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"transit"` (with the [transit options](#transit-options)) (optional) |
 | `waypoints`     | Point[]         | Points to visit in order (optional)                                         |
 | `alternatives`  | number          | Number of alternative routes to return (optional)                           |
 | `overview`      | string/false    | Route geometry detail: `"full"` (default), `"simplified"`, or `false` for none (optional) |
@@ -411,6 +411,25 @@ route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "tr
 
 The options need `mode: "truck"` and are only accepted by these three functions. A truck route's properties include `mode`, the `truck` it was planned for and `warnings` about restrictions it exceeds on roads next to the route.
 
+#### Transit options
+
+With `mode: "transit"`, `route()` and `isochrone()` plan walking plus public transit over the GTFS feeds Plaza has loaded (REST: `mode: "transit"` on `POST /route` and `POST /isochrone`). `depart_at` with an offset (`"...Z"`, `"...-04:00"`) is an instant; without one it is local time at the feed; `"now"` is the default.
+
+| Parameter       | Type    | Description                                                                  |
+|-----------------|---------|------------------------------------------------------------------------------|
+| `use_bus`       | number  | 0 to 1, default 1. 0 never rides a bus; lower values count bus time more     |
+| `use_rail`      | number  | 0 to 1, default 1. The same for tram, subway and rail                        |
+| `use_transfers` | number  | 0 to 1, default 1. 0 allows no transfer; lower values add a penalty per transfer |
+| `max_walk_m`    | number  | Longest walk in meters to the first stop, between stops and from the last stop; default 1000, at most 3000 |
+| `max_transfers` | integer | Most changes between vehicles; default 3, at most 4                          |
+
+```plazaql
+route(origin: point(42.3601, -71.0589), destination: point(42.3736, -71.1190), mode: "transit", depart_at: "2026-03-16T08:00:00-04:00", max_walk_m: 800)
+isochrone(center: point(42.3601, -71.0589), time: [900, 1800], mode: "transit", depart_at: "2026-03-16T08:00:00")
+```
+
+The options need `mode: "transit"` and are only accepted by these two functions. Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
+
 Turn-by-turn steps in French, with spoken variants:
 
 ```plazaql
@@ -450,7 +469,8 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 |-----------|---------|--------------------------------|
 | `center`  | Point   | Origin point                   |
 | `time`    | integer or integer[] | Travel time in seconds; a list returns one polygon per time |
-| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)) |
+| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"transit"` (with the [transit options](#transit-options)) |
+| `depart_at` | string | Departure time for `mode: "transit"`, as in `route()` (optional) |
 | `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` is a list (optional) |
 | `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` is a list (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |

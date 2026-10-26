@@ -482,6 +482,31 @@ defmodule PlazaQL.CompilerTest do
               }} = plan.computation
     end
 
+    test "route and isochrone pass the transit keywords through" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "transit", depart_at: "2026-03-16T08:00:00-04:00", use_bus: 0.5, use_rail: 1, use_transfers: 0.25, max_walk_m: 800, max_transfers: 2);|
+        )
+
+      assert {:route,
+              %{
+                mode: "transit",
+                depart_at: "2026-03-16T08:00:00-04:00",
+                use_bus: 0.5,
+                use_rail: 1,
+                use_transfers: 0.25,
+                max_walk_m: 800,
+                max_transfers: 2
+              }} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = isochrone(center: point(40.71, -74.00), time: 900, mode: "transit", depart_at: "now", use_rail: 0);|
+        )
+
+      assert {:isochrone, %{mode: "transit", depart_at: "now", use_rail: 0}} = plan.computation
+    end
+
     test "route and ev_route accept steps, lang, units and verbal like POST /route" do
       plan =
         first_plan(
