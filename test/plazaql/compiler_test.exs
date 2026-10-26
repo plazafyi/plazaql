@@ -530,6 +530,16 @@ defmodule PlazaQL.CompilerTest do
       assert {:geocode, %{county: "Sangamon", neighbourhood: "Enos Park"}} = plan.computation
     end
 
+    test "autocomplete and text_search keep their positional query text" do
+      plan = first_plan(~s|$$ = autocomplete("Cafe de", boundary_gid: "osm:relation:1", limit: 5);|)
+
+      assert {:autocomplete, %{query: "Cafe de", boundary_gid: "osm:relation:1", limit: 5}} =
+               plan.computation
+
+      plan = first_plan(~s|$$ = text_search("pizza");|)
+      assert {:text_search, %{query: "pizza"}} = plan.computation
+    end
+
     test "place_lookup collects positional GIDs and ids: into ids" do
       plan = first_plan(~s|$$ = place_lookup("osm:node:123", "osm:way:456");|)
       assert {:place_lookup, %{ids: ["osm:node:123", "osm:way:456"]}} = plan.computation

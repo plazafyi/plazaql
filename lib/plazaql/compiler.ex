@@ -692,7 +692,11 @@ defmodule PlazaQL.Compiler do
     Map.merge(base, kwargs)
   end
 
-  defp compile_computation_params(:geocode, args, opts, _env) do
+  # geocode("..."), autocomplete("...") and text_search("..."): the
+  # positional string is the query text.
+  @text_computations [:geocode, :autocomplete, :text_search]
+
+  defp compile_computation_params(type, args, opts, _env) when type in @text_computations do
     base =
       case args do
         [{:posarg, {:string, query, _}} | _] -> %{query: query}
