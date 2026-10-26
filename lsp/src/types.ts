@@ -1204,7 +1204,12 @@ export const PEDESTRIAN_OPTIONS = [
 ]
 // Transit walks take the pedestrian options (wheelchair included).
 export const TRANSIT_ACTIVE_OPTIONS = PEDESTRIAN_OPTIONS
-export const MOTORCYCLE_OPTIONS = ["style", "use_trails", "use_curves"]
+export const MOTORCYCLE_OPTIONS = [
+  "style",
+  "use_trails",
+  "use_curves",
+  "lane_splitting",
+]
 export const MOTOR_SCOOTER_OPTIONS = ["use_primary", "use_hills"]
 export const ACTIVE_OPTIONS = [
   ...new Set([
@@ -1342,6 +1347,13 @@ const ACTIVE_PARAMS: ParamInfo[] = [
     optional: true,
     description:
       'Preference for curvy roads, 0 (avoid) to 1 (seek); 0.5 is neutral (mode: "motorcycle"; default 0.5 touring, 0.8 adventure). Steers the route, not its duration.',
+  },
+  {
+    name: "lane_splitting",
+    type: "boolean",
+    optional: true,
+    description:
+      'Whether the rider filters between lanes of queued traffic (mode: "motorcycle"; default false). Legal only in some places. With depart_at, urban multi-lane main roads count half their rush-hour slowdown. Steers the route, not its duration.',
   },
   {
     name: "use_primary",
@@ -2163,6 +2175,19 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description: "Battery capacity",
       },
       {
+        name: "mode",
+        type: '"auto" | "car" | "motorcycle" | "motor_scooter"',
+        optional: true,
+        description:
+          "Vehicle: an electric car (default), motorcycle (about 80 Wh/km) or motor scooter (about 40 Wh/km). Two-wheelers charge only at sockets they can use unless connector_types is given.",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"motorcycle"' },
+          { value: '"motor_scooter"' },
+          { value: '"car"' },
+        ],
+      },
+      {
         name: "depart_at",
         type: "string",
         optional: true,
@@ -2188,6 +2213,10 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           'Road types to avoid: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
       ...COSTING_PARAMS,
+      // Electric motorcycles and scooters (mode: "motorcycle" / "motor_scooter").
+      ...ACTIVE_PARAMS.filter((param) =>
+        [...MOTORCYCLE_OPTIONS, ...MOTOR_SCOOTER_OPTIONS].includes(param.name),
+      ),
       {
         name: "steps",
         type: "boolean",
@@ -2556,6 +2585,8 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
   ev_route: [
     ...ROUTE_KWARGS,
     ...COSTING_OPTIONS,
+    ...MOTORCYCLE_OPTIONS,
+    ...MOTOR_SCOOTER_OPTIONS,
     "battery",
     "battery_capacity_wh",
     "initial_charge_pct",

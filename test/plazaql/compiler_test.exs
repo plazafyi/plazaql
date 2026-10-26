@@ -534,6 +534,23 @@ defmodule PlazaQL.CompilerTest do
       assert {:matrix, %{mode: "truck", hazmat: false}} = plan.computation
     end
 
+    test "lane_splitting and ev_route's rider keywords pass through" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "motorcycle", lane_splitting: true);|
+        )
+
+      assert {:route, %{mode: "motorcycle", lane_splitting: true}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = ev_route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), battery: 15000, mode: "motorcycle", style: "adventure");|
+        )
+
+      assert {:ev_route, %{mode: "motorcycle", style: "adventure", battery_capacity_wh: 15_000}} =
+               plan.computation
+    end
+
     test "route, isochrone and matrix pass the motorcycle and motor scooter keywords through" do
       plan =
         first_plan(

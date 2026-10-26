@@ -1224,13 +1224,40 @@ defmodule PlazaQL.TypeCheckerTest do
     end
 
     test "other computations have no bicycle, pedestrian or motorcycle options" do
-      [error] =
-        check_errors(
-          ~s|ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, mode: "foot", walking_speed: 4);|
-        )
+      [error] = check_errors(~s|nearest(point: point(48.858, 2.294), style: "touring");|)
 
       assert error.message =~
-               "`ev_route()` has no bicycle, pedestrian or motorcycle options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
+               "`nearest()` has no bicycle, pedestrian or motorcycle options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
+    end
+
+    test "ev_route takes the motorcycle and motor scooter options, not the others" do
+      ev =
+        ~s|ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 15000|
+
+      check!(ev <> ~s|, mode: "motorcycle", style: "touring", lane_splitting: true);|)
+      check!(ev <> ~s|, mode: "scooter", use_primary: 0, use_hills: 0.5);|)
+
+      [error] = check_errors(ev <> ~s|, mode: "foot", walking_speed: 4);|)
+
+      assert error.message ==
+               ~s|`ev_route()` has no `walking_speed:`; it takes the motorcycle and motor scooter options, with `mode: "motorcycle"` or `"motor_scooter"`|
+
+      [error] = check_errors(ev <> ~s|, style: "adventure");|)
+      assert error.message == ~s|`style:` need `mode: "motorcycle"`|
+
+      # use_hills on ev_route belongs to the scooter alone.
+      [error] = check_errors(ev <> ~s|, mode: "auto", use_hills: 0.2);|)
+      assert error.message == ~s|`use_hills:` need `mode: "motor_scooter"`|
+    end
+
+    test "lane_splitting is a motorcycle flag" do
+      check!(@route <> ~s|, mode: "motorcycle", lane_splitting: false);|)
+
+      [error] = check_errors(@route <> ~s|, mode: "motorcycle", lane_splitting: "yes");|)
+      assert error.message == "`lane_splitting:` must be `true` or `false`"
+
+      [error] = check_errors(@route <> ~s|, mode: "scooter", lane_splitting: true);|)
+      assert error.message == ~s|`lane_splitting:` need `mode: "motorcycle"`|
     end
 
     test "optimize, centroid, expansion and map_match take the rider and walker options" do

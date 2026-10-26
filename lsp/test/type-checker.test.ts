@@ -607,10 +607,33 @@ describe("PlazaQL Type Checker", () => {
     });
 
     it("rejects them on other computations", () => {
-      const result = check(`$$ = ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, mode: "foot", walking_speed: 4);`);
+      const result = check(`$$ = nearest(point: point(48.858, 2.294), style: "touring");`);
       expect(
-        result.errors.some((e) => e.message.includes("`ev_route()` has no bicycle, pedestrian or motorcycle options"))
+        result.errors.some((e) => e.message.includes("`nearest()` has no bicycle, pedestrian or motorcycle options"))
       ).toBe(true);
+    });
+
+    it("takes the motorcycle and motor scooter options on ev_route", () => {
+      const ev = "ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 15000";
+      expect(check(`$$ = ${ev}, mode: "motorcycle", style: "touring", lane_splitting: true);`).errors).toHaveLength(0);
+      expect(check(`$$ = ${ev}, mode: "scooter", use_primary: 0, use_hills: 0.5);`).errors).toHaveLength(0);
+      expect(messages(`$$ = ${ev}, style: "adventure");`)).toContain('`style:` need `mode: "motorcycle"`');
+      expect(messages(`$$ = ${ev}, mode: "auto", use_hills: 0.2);`)).toContain(
+        '`use_hills:` need `mode: "motor_scooter"`'
+      );
+      expect(messages(`$$ = ${ev}, mode: "foot", walking_speed: 4);`)).toContain(
+        '`ev_route()` has no `walking_speed:`; it takes the motorcycle and motor scooter options, with `mode: "motorcycle"` or `"motor_scooter"`'
+      );
+    });
+
+    it("checks lane_splitting", () => {
+      expect(check(`$$ = route(${route}, mode: "motorcycle", lane_splitting: false);`).errors).toHaveLength(0);
+      expect(messages(`$$ = route(${route}, mode: "motorcycle", lane_splitting: "yes");`)).toContain(
+        "`lane_splitting:` must be `true` or `false`"
+      );
+      expect(messages(`$$ = route(${route}, mode: "scooter", lane_splitting: true);`)).toContain(
+        '`lane_splitting:` need `mode: "motorcycle"`'
+      );
     });
 
     it("accepts them on optimize, centroid, expansion and map_match", () => {
