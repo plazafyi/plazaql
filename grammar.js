@@ -292,6 +292,7 @@ module.exports = grammar({
       choice(
         "reverse_geocode",
         "elevation_profile",
+        "place_lookup",
         "text_search",
         "map_match",
         "autocomplete",

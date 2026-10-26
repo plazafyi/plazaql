@@ -212,6 +212,7 @@ export type ComputationName =
   | "nearest"
   | "centroid"
   | "expansion"
+  | "place_lookup"
 
 export interface MethodNode {
   kind: "method"
@@ -554,6 +555,8 @@ const COMPUTATION_TYPES: Record<string, PqlType> = {
   elevation_profile: "Elevation",
   centroid: "PointSet",
   expansion: "LineSet",
+  // biome-ignore lint/style/useNamingConvention: PQL name
+  place_lookup: "PointSet",
 }
 
 export function computationType(name: string): PqlType {
@@ -957,6 +960,36 @@ export interface FunctionSignature {
   description: string
 }
 
+/** Values accepted by `geocode(layers: ...)` and `autocomplete(layers: ...)`. */
+export const GEOCODE_LAYERS = [
+  "address",
+  "admin",
+  "place",
+  "poi",
+  "street",
+  "postalcode",
+  "neighbourhood",
+  "locality",
+  "county",
+  "region",
+  "country",
+]
+
+/** Structured components accepted by `geocode(...)`. */
+export const STRUCTURED_GEOCODE_COMPONENTS = [
+  "address",
+  "neighbourhood",
+  "locality",
+  "county",
+  "region",
+  "postalcode",
+  "country",
+]
+
+const GEOCODE_LAYER_VALUES = GEOCODE_LAYERS.map((layer) => ({
+  value: `"${layer}"`,
+}))
+
 export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   search: {
     name: "search",
@@ -1120,11 +1153,112 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       {
         name: "query",
         type: "string",
-        description: "Address or place name to geocode",
+        optional: true,
+        description:
+          "Address or place name to geocode. Leave it out and pass structured components instead.",
+      },
+      {
+        name: "address",
+        type: "string",
+        optional: true,
+        description:
+          'Structured: house number and street ("1600 Pennsylvania Ave" or "Rue de Rivoli 99")',
+      },
+      {
+        name: "neighbourhood",
+        type: "string",
+        optional: true,
+        description: "Structured: neighbourhood or suburb",
+      },
+      {
+        name: "locality",
+        type: "string",
+        optional: true,
+        description: "Structured: city, town or village",
+      },
+      {
+        name: "county",
+        type: "string",
+        optional: true,
+        description: "Structured: county or district",
+      },
+      {
+        name: "region",
+        type: "string",
+        optional: true,
+        description: "Structured: state, province or region",
+      },
+      {
+        name: "postalcode",
+        type: "string",
+        optional: true,
+        description: "Structured: postal or ZIP code",
+      },
+      {
+        name: "country",
+        type: "string",
+        optional: true,
+        description:
+          'Structured: ISO 3166-1 alpha-2 code ("US") or country name',
+      },
+      {
+        name: "focus",
+        type: "Point",
+        optional: true,
+        description: "Bias results toward this point",
+      },
+      {
+        name: "country_code",
+        type: "string",
+        optional: true,
+        description: "ISO 3166-1 alpha-2 code to restrict results",
+      },
+      {
+        name: "bbox",
+        type: "Polygon",
+        optional: true,
+        description: "Restrict results to bbox(south, west, north, east)",
+      },
+      {
+        name: "layers",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Only return these layers: "address" (addresses, streets, postal codes), "poi", "admin", or single layers ("street", "postalcode", "neighbourhood", "locality", "county", "region", "country")',
+        enumValues: GEOCODE_LAYER_VALUES,
+      },
+      {
+        name: "boundary_gid",
+        type: "string",
+        optional: true,
+        description:
+          'Only return results inside this way or relation polygon, e.g. "osm:relation:62422"',
+      },
+      {
+        name: "limit",
+        type: "number",
+        optional: true,
+        description: "Maximum number of results",
       },
     ],
     returnType: "PointSet",
-    description: "Geocode an address to coordinates.",
+    description:
+      'Geocode an address to coordinates: free text, or structured components (address:, locality:, region:, postalcode:, ...). Results carry gid, layer, confidence, match_type and accuracy; when nothing matches, coarser layers are returned with match_type "fallback".',
+  },
+  // biome-ignore lint/style/useNamingConvention: PQL name
+  place_lookup: {
+    name: "place_lookup",
+    params: [
+      {
+        name: "ids",
+        type: "string | string[]",
+        description:
+          'Up to 50 Plaza GIDs, positional or as ids: [...], e.g. "osm:node:123", "osm:way:456", "osm:relation:789"',
+      },
+    ],
+    returnType: "PointSet",
+    description:
+      "Look up places by GID (the gid of any geocoding result), with admin hierarchy and categories.",
   },
   // biome-ignore lint/style/useNamingConvention: PQL name
   reverse_geocode: {
@@ -1165,6 +1299,21 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "Point",
         optional: true,
         description: "Bias results toward this point",
+      },
+      {
+        name: "layers",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Only return these layers: "address" (addresses, streets, postal codes), "poi", "admin", or single layers ("street", "postalcode", "neighbourhood", "locality", "county", "region", "country")',
+        enumValues: GEOCODE_LAYER_VALUES,
+      },
+      {
+        name: "boundary_gid",
+        type: "string",
+        optional: true,
+        description:
+          'Only return results inside this way or relation polygon, e.g. "osm:relation:62422"',
       },
     ],
     returnType: "PointSet",

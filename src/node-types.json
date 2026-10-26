@@ -4609,6 +4609,10 @@
     "named": false
   },
   {
+    "type": "place_lookup",
+    "named": false
+  },
+  {
     "type": "point",
     "named": false
   },
