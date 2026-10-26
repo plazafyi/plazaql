@@ -16,12 +16,14 @@ import {
   computationType,
   EXPANSION_ACTIONS,
   EXPANSION_PROPERTIES,
+  GEOCODE_LAYERS,
   isOutputMode,
   methodCategory,
   methodGroup,
   methodOutputType,
   methodPhase,
   REVERSE_GEOCODE_INCLUDES,
+  STRUCTURED_GEOCODE_COMPONENTS,
   searchBaseType,
   unionType,
   validSpatialArgTypes,
@@ -809,6 +811,15 @@ function checkComputationKwargs(
   args: Arg[],
   pos: Pos,
 ): TypeCheckError[] {
+  if (name === "geocode" || name === "autocomplete") {
+    return [
+      ...checkGeocodeOptions(args, pos),
+      ...(name === "geocode" ? checkGeocodeInput(args, pos) : []),
+    ]
+  }
+  if (name === "place_lookup") {
+    return checkPlaceLookupArgs(args, pos)
+  }
   if (name === "centroid") {
     return checkCentroidKwargs(args, pos)
   }
@@ -950,6 +961,168 @@ function checkExpansionProperties(value: Expr, pos: Pos): TypeCheckError[] {
         hint,
       ),
     ]
+  })
+}
+
+// ── Geocoding ────────────────────────────────────────────────────────
+
+const BOUNDARY_GID = /^osm:(way|relation):[1-9][0-9]*$/
+const GID = /^osm:(node|way|relation|address|place):[1-9][0-9]*$/
+const MAX_PLACE_IDS = 50
+const STRUCTURED_REQUIRED = ["address", "locality", "region", "postalcode"]
+const GID_HINT =
+  'GIDs look like "osm:node:123", "osm:way:456" or "osm:relation:789"'
+
+function geocodeError(
+  message: string,
+  pos: Pos,
+  hint?: string,
+): TypeCheckError {
+  return { line: pos.line, col: pos.col, message, hint, severity: "error" }
+}
+
+const LAYERS_HINT = `supported: ${GEOCODE_LAYERS.map((v) => `"${v}"`).join(", ")}`
+const BOUNDARY_HINT =
+  'a way or relation GID, e.g. `boundary_gid: "osm:relation:62422"`'
+
+function checkLayerValue(value: string, pos: Pos): TypeCheckError[] {
+  return GEOCODE_LAYERS.includes(value)
+    ? []
+    : [geocodeError(`unknown \`layers:\` value "${value}"`, pos, LAYERS_HINT)]
+}
+
+function checkLayersOption(value: Expr, pos: Pos): TypeCheckError[] {
+  if (value.kind === "string") {
+    return value.value
+      .split(",")
+      .map((v) => v.trim())
+      .filter((v) => v !== "")
+      .flatMap((v) => checkLayerValue(v, pos))
+  }
+  if (value.kind === "list") {
+    return value.items.flatMap((item) =>
+      item.kind === "string"
+        ? checkLayerValue(item.value, pos)
+        : [
+            geocodeError(
+              "`layers:` list items must be strings",
+              pos,
+              LAYERS_HINT,
+            ),
+          ],
+    )
+  }
+  return [
+    geocodeError(
+      "`layers:` must be a string or a list of strings",
+      pos,
+      LAYERS_HINT,
+    ),
+  ]
+}
+
+function checkBoundaryGidOption(value: Expr, pos: Pos): TypeCheckError[] {
+  if (value.kind !== "string") {
+    return [
+      geocodeError("`boundary_gid:` must be a string", pos, BOUNDARY_HINT),
+    ]
+  }
+  return BOUNDARY_GID.test(value.value)
+    ? []
+    : [
+        geocodeError(
+          `invalid \`boundary_gid:\` "${value.value}"`,
+          pos,
+          BOUNDARY_HINT,
+        ),
+      ]
+}
+
+function checkComponentOption(
+  name: string,
+  value: Expr,
+  pos: Pos,
+): TypeCheckError[] {
+  if (
+    value.kind === "string" ||
+    (name === "postalcode" && value.kind === "number")
+  ) {
+    return []
+  }
+  return [geocodeError(`\`${name}:\` must be a string`, pos)]
+}
+
+function checkGeocodeOptions(args: Arg[], pos: Pos): TypeCheckError[] {
+  return args.flatMap((arg): TypeCheckError[] => {
+    if (arg.type !== "kwarg") {
+      return []
+    }
+    if (arg.name === "layers") {
+      return checkLayersOption(arg.value, pos)
+    }
+    if (arg.name === "boundary_gid") {
+      return checkBoundaryGidOption(arg.value, pos)
+    }
+    if (STRUCTURED_GEOCODE_COMPONENTS.includes(arg.name)) {
+      return checkComponentOption(arg.name, arg.value, pos)
+    }
+    return []
+  })
+}
+
+function checkGeocodeInput(args: Arg[], pos: Pos): TypeCheckError[] {
+  const hasQuery = args.some(
+    (arg) =>
+      (arg.type === "posarg" && arg.value.kind === "string") ||
+      (arg.type === "kwarg" && arg.name === "query"),
+  )
+  const hasComponent = args.some(
+    (arg) => arg.type === "kwarg" && STRUCTURED_REQUIRED.includes(arg.name),
+  )
+  if (hasQuery || hasComponent) {
+    return []
+  }
+  return [
+    geocodeError(
+      "`geocode()` needs an address string or one of `address:`, `locality:`, `region:`, `postalcode:`",
+      pos,
+      'e.g. `geocode("1600 Pennsylvania Ave, Washington DC")` or `geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC")`',
+    ),
+  ]
+}
+
+function checkPlaceLookupArgs(args: Arg[], pos: Pos): TypeCheckError[] {
+  const gids: Expr[] = args.flatMap((arg): Expr[] => {
+    if (arg.type === "posarg") {
+      return [arg.value]
+    }
+    if (arg.name !== "ids") {
+      return []
+    }
+    return arg.value.kind === "list" ? arg.value.items : [arg.value]
+  })
+
+  if (gids.length === 0) {
+    return [
+      geocodeError("`place_lookup()` needs at least one GID", pos, GID_HINT),
+    ]
+  }
+  if (gids.length > MAX_PLACE_IDS) {
+    return [
+      geocodeError(
+        `\`place_lookup()\` takes at most ${MAX_PLACE_IDS} GIDs`,
+        pos,
+        GID_HINT,
+      ),
+    ]
+  }
+  return gids.flatMap((gid) => {
+    if (gid.kind !== "string") {
+      return [geocodeError("`place_lookup()` takes GID strings", pos, GID_HINT)]
+    }
+    return GID.test(gid.value)
+      ? []
+      : [geocodeError(`invalid GID "${gid.value}"`, pos, GID_HINT)]
   })
 }
 
