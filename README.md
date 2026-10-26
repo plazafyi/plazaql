@@ -912,6 +912,7 @@ search(node, amenity: "cafe").sort(t["name"]).limit(10).offset(20);
 | `.tags()` | `GeoSet → GeoSet` | Return only tags (no geometry) |
 | `.skel()` | `GeoSet → GeoSet` | Minimal geometry, no tags |
 | `.geom()` | `GeoSet → GeoSet` | Full geometry, no tags |
+| `.tile(z, x, y, layers?:)` | `GeoSet → Scalar` | One Mapbox Vector Tile of the results (see below) |
 
 ```plazaql
 search(node, amenity: "cafe").within(boundary(name: "Paris")).count();
@@ -920,6 +921,32 @@ search(way, building: "yes").within(boundary(name: "Manhattan")).geom();
 ```
 
 Only one output mode per chain. These are terminal — no further chaining allowed.
+
+### Vector Tiles
+
+`.tile(z, x, y)` renders the results as one Mapbox Vector Tile at slippy-map coordinates `z/x/y`, the same tile `GET /api/v1/tiles/{z}/{x}/{y}` returns for the same filters. The tile itself sets the area, so the chain takes no spatial methods. What carries over:
+
+| PlazaQL | REST query parameter |
+|---------|----------------------|
+| `search(node, ...)`, `search(way, ...)`, `search(nwr, ...)` | `element_types=node,way` |
+| `key: "value"` | `tags[key]=value` |
+| `key: *` | `tags[key]=*` |
+| `.fields("name", "cuisine")` | `properties=name,cuisine` |
+| `layers: ["pois", "buildings"]` | `layers=pois,buildings` |
+
+```plazaql
+// Restaurants with a cuisine tag, as one tile over lower Manhattan
+search(node, amenity: "restaurant", cuisine: *)
+  .fields("name", "cuisine")
+  .tile(14, 4823, 6157);
+```
+
+```plazaql
+// Shortbread layers instead of the filtered `features` layer
+search(nwr, building: *).tile(15, 9647, 12314, layers: ["buildings", "addresses"]);
+```
+
+Tag filters are limited to `key: "value"` and `key: *`, the two forms the REST endpoint takes. The server decides the zoom range it serves and the layer names it knows.
 
 ### Quadtile Sort (Phase 7)
 

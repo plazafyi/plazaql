@@ -29,7 +29,7 @@ defmodule PlazaQL.TreeSitter do
                      elevation expand fields filter filter_expr first geom geometry group_by h3
                      has_member ids include index intersects last length limit max min
                      member_of not_contains not_intersects not_within offset overlap_fraction
-                     precision simplify skel sort sort_expr sum tags touches within)a,
+                     precision simplify skel sort sort_expr sum tags tile touches within)a,
                   &{Atom.to_string(&1), &1}
                 )
 

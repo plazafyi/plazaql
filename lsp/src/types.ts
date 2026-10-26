@@ -359,6 +359,7 @@ const OUTPUT_MODE_METHODS = [
   "tags",
   "skel",
   "geom",
+  "tile",
   "sum",
   "min",
   "max",
@@ -479,6 +480,7 @@ const METHOD_OUTPUT_OVERRIDES: Record<string, PqlType> = {
   tags: "Scalar",
   skel: "Scalar",
   geom: "Scalar",
+  tile: "Scalar",
   first: "GeoElement",
   last: "GeoElement",
   index: "GeoElement",
@@ -495,6 +497,12 @@ export function methodOutputType(
   method: string,
   inputType: PqlType,
 ): { ok: true; type: PqlType } | { ok: false; error: string } {
+  if (method === "tile" && !isGeoSet(inputType)) {
+    return {
+      ok: false,
+      error: `\`.tile()\` cannot be applied to ${inputType} — it renders the results of a \`search(...)\` as a vector tile`,
+    }
+  }
   const override = METHOD_OUTPUT_OVERRIDES[method]
   if (override) {
     const allowGroupedSet =
@@ -863,6 +871,15 @@ export const METHOD_CATALOG: MethodInfo[] = [
     name: "geom",
     signature: ".geom()",
     description: "Full geometry, no tags",
+    phase: "Output Mode",
+    ordinal: 8,
+    group: "terminal",
+  },
+  {
+    name: "tile",
+    signature: ".tile(z, x, y, layers?: [string])",
+    description:
+      "Render the results as one Mapbox Vector Tile at z/x/y, like GET /api/v1/tiles/{z}/{x}/{y}",
     phase: "Output Mode",
     ordinal: 8,
     group: "terminal",

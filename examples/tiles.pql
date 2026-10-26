@@ -1,0 +1,9 @@
+// Vector tiles: one Mapbox Vector Tile at z/x/y, same as GET /api/v1/tiles/{z}/{x}/{y}
+
+// Restaurants with a cuisine tag, as one tile over lower Manhattan
+search(node, amenity: "restaurant", cuisine: *)
+  .fields("name", "cuisine")
+  .tile(14, 4823, 6157);
+
+// Buildings and addresses as Shortbread layers
+search(nwr, building: *).tile(15, 9647, 12314, layers: ["buildings", "addresses"]);

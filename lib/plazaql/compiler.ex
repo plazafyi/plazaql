@@ -505,6 +505,20 @@ defmodule PlazaQL.Compiler do
   defp apply_method(plan, {:method, :skel, _args, _pos}, _env), do: %{plan | output_mode: :skel}
   defp apply_method(plan, {:method, :geom, _args, _pos}, _env), do: %{plan | output_mode: :full}
 
+  # .tile(z, x, y, layers: [...]) — arguments are validated by the type checker
+  defp apply_method(plan, {:method, :tile, args, _pos}, _env) do
+    [z, x, y] = for {:posarg, {:number, n, _}} <- args, do: n
+
+    layers =
+      Enum.find_value(args, fn
+        {:kwarg, "layers", {:list, items, _}} -> Enum.map(items, fn {:string, s, _} -> s end)
+        {:kwarg, "layers", {:string, s, _}} -> String.split(s, ",", trim: true)
+        _ -> nil
+      end)
+
+    %{plan | output_mode: :tile, tile: %{z: z, x: x, y: y, layers: layers}}
+  end
+
   # -- Computed column methods --
 
   defp apply_method(plan, {:method, :elevation, _args, _pos}, _env) do

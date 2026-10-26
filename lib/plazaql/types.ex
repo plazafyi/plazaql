@@ -49,7 +49,7 @@ defmodule PlazaQL.Types do
   @narrowing_methods [:first, :last, :index]
   @ordering_methods [:sort, :limit, :offset]
   @aggregation_methods [:sum, :min, :max, :avg]
-  @output_mode_methods [:count, :ids, :tags, :skel, :geom] ++ @aggregation_methods
+  @output_mode_methods [:count, :ids, :tags, :skel, :geom, :tile] ++ @aggregation_methods
 
   @display_names %{
     point: "Point",
@@ -140,6 +140,14 @@ defmodule PlazaQL.Types do
   def method_output_type(:centroid, t) when t in @chainable_types, do: {:ok, :point_set}
   def method_output_type(:buffer, t) when t in @chainable_types, do: {:ok, :polygon_set}
   def method_output_type(:count, t) when t in @chainable_types, do: {:ok, :scalar}
+
+  # .tile(z, x, y): a vector tile of the search's elements, rendered by the server
+  def method_output_type(:tile, t) when t in @geo_set_types, do: {:ok, :scalar}
+
+  def method_output_type(:tile, t),
+    do:
+      {:error,
+       "`.tile()` cannot be applied to #{display_name(t)} — it renders the results of a `search(...)` as a vector tile"}
 
   # Aggregation methods on chainable types → scalar
   def method_output_type(m, t) when m in [:sum, :min, :max, :avg] and t in @chainable_types,

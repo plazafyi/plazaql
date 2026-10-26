@@ -44,6 +44,17 @@ defmodule PlazaQL.SQL do
     {:error, %NotCompilable{reason: comp_type, plan: plan}}
   end
 
+  # `.tile(z, x, y)` output is a Mapbox Vector Tile the server renders
+  # (ST_AsMVT per layer), not a row set.
+  def to_sql(%Plan{output_mode: :tile} = plan, _schema) do
+    {:error,
+     %NotCompilable{
+       reason: :tile,
+       plan: plan,
+       message: "`.tile()` output is rendered by the server as a vector tile, not SQL rows"
+     }}
+  end
+
   def to_sql(%Plan{kind: :query} = plan, schema) do
     {sql, params} = build_query(plan, schema)
     {:ok, %Query{sql: sql, params: params, plan: plan}}
