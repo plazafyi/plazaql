@@ -804,8 +804,11 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `origin`             | Point   | Start point                              |
 | `destination`        | Point   | End point                                |
 | `battery`            | number  | Battery capacity in watt-hours (required) |
-| `initial_charge_pct` | number  | Initial charge percentage (optional)     |
-| `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
+| `battery_capacity_wh` | number | Same as `battery`, under the REST name; pass one or the other |
+| `initial_charge_pct` | number  | Starting charge as a fraction, above 0 and at most 1, default 0.8 (optional) |
+| `min_charge_pct`     | number  | Reserve to keep as a fraction, default 0.1 (optional) |
+| `connector_types`    | string[] | Connectors the car accepts, matched against OSM `socket:<type>` keys, e.g. `["type2_combo", "chademo"]` (optional) |
+| `min_power_kw`       | number  | Minimum charger output in kW; chargers without a readable `socket:*:output` are skipped when set (optional) |
 | `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names`, the [costing options](#costing-options) | | Same as `route()` (optional) |
 
 ### `centroid(locations:, mode:?, metric:?, exclude:?, avoid_datasets:?)`
