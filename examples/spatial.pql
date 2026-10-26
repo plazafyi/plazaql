@@ -20,13 +20,14 @@ search(node, amenity: "bench")
   .within($manhattan)
   .not_within($central_park);
 
-// Search within a custom polygon
-search(node, shop: *).within(polygon(
+// Search within a custom polygon held in a variable
+$zone = polygon(
   point(40.71, -74.01),
   point(40.71, -73.99),
   point(40.73, -73.99),
   point(40.73, -74.01)
-));
+);
+search(node, shop: *).within($zone);
 
 // Intersects — features whose geometry crosses a line
 search(way, bridge: "yes").intersects(linestring(
@@ -38,11 +39,12 @@ search(way, bridge: "yes").intersects(linestring(
 search(way, landuse: "forest")
   .contains(point(47.6, -122.3));
 
-// Crosses — features that cross a geometry
-search(way, highway: "primary").crosses(linestring(
+// Crosses — features that cross a line held in a variable
+$river = linestring(
   point(40.70, -74.02),
   point(40.75, -73.97)
-));
+);
+search(way, highway: "primary").crosses($river);
 
 // Touches — features that touch but don't overlap
 search(way, boundary: "administrative").touches(polygon(

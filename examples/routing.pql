@@ -94,9 +94,8 @@ ev_route(
 
 // Distance matrix between multiple points
 matrix(
-  point(40.7128, -74.0060),
-  point(40.7484, -73.9856),
-  point(40.7580, -73.9855)
+  origins: [point(40.7128, -74.0060), point(40.7484, -73.9856)],
+  destinations: [point(40.7580, -73.9855)]
 );
 
 // Meeting point for three friends on foot, then cafes near it

@@ -1047,7 +1047,7 @@ defmodule PlazaQL.CompilerTest do
       ]
 
       assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
-      assert msg =~ "unknown atom value"
+      assert msg =~ "`.sort(by: ...)` takes"
       assert msg =~ "invalid_sort_key"
     end
 
@@ -1061,7 +1061,7 @@ defmodule PlazaQL.CompilerTest do
       ]
 
       assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
-      assert msg =~ "unknown atom value"
+      assert msg =~ "`.include()` takes"
       assert msg =~ "nonexistent_option"
     end
 
@@ -1077,7 +1077,7 @@ defmodule PlazaQL.CompilerTest do
       ]
 
       assert {:error, [%PlazaQL.Error{message: msg}]} = Compiler.compile(ast)
-      assert msg =~ "unknown atom value"
+      assert msg =~ "`.sort(by: ...)` takes"
       assert msg =~ "xyzzy"
     end
   end

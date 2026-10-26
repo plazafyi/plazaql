@@ -13,6 +13,7 @@ import type {
 } from "./types.js"
 import {
   CENTROID_METRICS,
+  COMPUTATION_KWARGS,
   computationType,
   EXPANSION_ACTIONS,
   EXPANSION_PROPERTIES,
@@ -568,7 +569,12 @@ function checkSpatialArgs(
   const validTypes = validSpatialArgTypes(methodName)
   const errors: TypeCheckError[] = []
 
-  for (const expr of extractGeometryExprs(args)) {
+  // `.around(distance, geometry)`: the first positional argument is the
+  // distance (a number or a number variable), never the geometry.
+  const geometryArgs =
+    methodName === "around" && args[0]?.type === "posarg" ? args.slice(1) : args
+
+  for (const expr of extractGeometryExprs(geometryArgs)) {
     const argType = inferArgType(expr, scope, outputScope)
     if (argType !== null && !validTypes.includes(argType)) {
       errors.push({
@@ -812,7 +818,41 @@ function checkOverlapFractionMethod(
 
 // ── Computation keyword arguments ────────────────────────────────────
 
+function checkKwargNames(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const accepted = COMPUTATION_KWARGS[name] ?? []
+  const hint = `accepted keywords: ${accepted.map((k) => `\`${k}:\``).join(", ")}`
+  // Truck options elsewhere get checkTruckOptions' own message.
+  return args.flatMap((arg) =>
+    arg.type === "kwarg" &&
+    !accepted.includes(arg.name) &&
+    !TRUCK_OPTIONS.includes(arg.name)
+      ? [
+          {
+            line: pos.line,
+            col: pos.col,
+            message: `\`${name}()\` does not accept \`${arg.name}:\``,
+            hint,
+            severity: "error" as const,
+          },
+        ]
+      : [],
+  )
+}
+
 function checkComputationKwargs(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const nameErrors = checkKwargNames(name, args, pos)
+  return [...nameErrors, ...checkComputationOptions(name, args, pos)]
+}
+
+function checkComputationOptions(
   name: string,
   args: Arg[],
   pos: Pos,
@@ -1178,7 +1218,8 @@ function checkGeocodeInput(args: Arg[], pos: Pos): TypeCheckError[] {
   const hasQuery = args.some(
     (arg) =>
       (arg.type === "posarg" && arg.value.kind === "string") ||
-      (arg.type === "kwarg" && arg.name === "query"),
+      (arg.type === "kwarg" &&
+        (arg.name === "query" || arg.name === "addresses")),
   )
   const hasComponent = args.some(
     (arg) => arg.type === "kwarg" && STRUCTURED_REQUIRED.includes(arg.name),

@@ -26,7 +26,7 @@ defmodule PlazaQL.TreeSitter do
   # Safe atom allowlists (same as in the NimbleParsec parser)
   @method_atoms Map.new(
                   ~w(area around avg bbox buffer centroid contains count crosses distance
-                     elevation expand fields filter filter_expr first geom group_by h3
+                     elevation expand fields filter filter_expr first geom geometry group_by h3
                      has_member ids include index intersects last length limit max min
                      member_of not_contains not_intersects not_within offset overlap_fraction
                      precision simplify skel sort sort_expr sum tags touches within)a,
@@ -451,6 +451,17 @@ defmodule PlazaQL.TreeSitter do
 
       :keyword_argument ->
         transform_kwarg(el)
+
+      # `[1, 2]` after a keyword: the grammar reads a number list as an id
+      # list (`id: [1, 2]`); anywhere else it is a plain list of numbers.
+      :tag_id_list ->
+        items =
+          el
+          |> named_children()
+          |> Enum.filter(&(elem_name(&1) == :number))
+          |> Enum.map(&transform_expression/1)
+
+        {:list, items, make_pos(el)}
 
       other ->
         raise "Unknown CST node type: #{inspect(other)} at #{inspect(make_pos(el))}"

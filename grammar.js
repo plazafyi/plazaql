@@ -429,7 +429,9 @@ module.exports = grammar({
 
     filter_paren_expression: ($) => seq("(", $.filter_expression, ")"),
 
-    tag_access: ($) => seq("t", "[", $.string, "]"),
+    // `t["key"]` reads a tag; `p["key"]` is the same accessor, spelled for
+    // dataset feature properties.
+    tag_access: ($) => seq(choice("t", "p"), "[", $.string, "]"),
 
     prop_accessor: ($) =>
       seq(field("name", alias(choice("id", "type", "lat", "lon"), $.identifier)), "(", ")"),
