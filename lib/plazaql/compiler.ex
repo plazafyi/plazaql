@@ -23,6 +23,9 @@ defmodule PlazaQL.Compiler do
 
   @max_osm_ids 10_000
 
+  # Inline set expressions a spatial predicate can take as its geometry.
+  @inline_sets [:boundary, :computation, :search]
+
   # Predicate spatial methods
   @predicate_methods ~w(within intersects contains crosses touches not_within not_intersects not_contains)a
   @max_datasets 20
@@ -63,7 +66,7 @@ defmodule PlazaQL.Compiler do
 
     result =
       ast
-      |> hoist_inline_boundaries()
+      |> hoist_inline_sets()
       |> Enum.reduce(env, &process_top_level/2)
 
     plans = Enum.reverse(result.plans)
@@ -76,14 +79,15 @@ defmodule PlazaQL.Compiler do
     {:compile_error, %Error{} = error} -> {:error, [error]}
   end
 
-  # ── Inline boundaries ─────────────────────────────────────────────
+  # ── Inline geometry sets ──────────────────────────────────────────
 
-  # `.within(boundary(name: "X"))` and the other predicates: the boundary is a
-  # search the executor must run to get the geometry, exactly like
-  # `$b = boundary(name: "X"); ... .within($b)`. Hoist each inline boundary
-  # into such a step (named `boundary#N`, which no PlazaQL identifier can
-  # collide with) so it resolves the same way.
-  defp hoist_inline_boundaries(ast) do
+  # `.within(boundary(name: "X"))`, `.within(isochrone(...))`,
+  # `.intersects(search(...))` and the other predicates: the inline expression
+  # must run to supply the geometry, exactly like
+  # `$b = boundary(name: "X"); ... .within($b)`. Hoist each one into such a
+  # step (named `boundary#N`, `computation#N`, `search#N`, which no PlazaQL
+  # identifier can collide with) so it resolves the same way.
+  defp hoist_inline_sets(ast) do
     {nodes, _count} =
       Enum.flat_map_reduce(ast, 0, fn node, count ->
         {node, {hoisted, count}} = hoist(node, {[], count})
@@ -95,12 +99,14 @@ defmodule PlazaQL.Compiler do
 
   defp hoist({:directive, _, _, _} = node, acc), do: {node, acc}
 
-  defp hoist({:method, name, [{:posarg, {:boundary, _, pos} = boundary}], mpos}, {hoisted, count})
-       when name in @predicate_methods do
-    count = count + 1
-    var = "$boundary#" <> Integer.to_string(count)
-    step = {:var_assign, var, boundary, pos}
-    {{:method, name, [{:posarg, {:var_ref, var, pos}}], mpos}, {[step | hoisted], count}}
+  defp hoist({:method, name, [{:posarg, geom}], mpos}, acc)
+       when name in @predicate_methods and elem(geom, 0) in @inline_sets do
+    hoist_geometry(name, geom, mpos, acc)
+  end
+
+  defp hoist({:method, name, [{:kwarg, "geometry", geom}], mpos}, acc)
+       when name in @predicate_methods and elem(geom, 0) in @inline_sets do
+    hoist_geometry(name, geom, mpos, acc)
   end
 
   defp hoist(tuple, acc) when is_tuple(tuple) do
@@ -114,6 +120,16 @@ defmodule PlazaQL.Compiler do
 
   defp hoist(list, acc) when is_list(list), do: Enum.map_reduce(list, acc, &hoist/2)
   defp hoist(other, acc), do: {other, acc}
+
+  defp hoist_geometry(name, geom, mpos, {hoisted, count}) do
+    # Hoist anything nested in the inline expression first.
+    {geom, {hoisted, count}} = hoist(geom, {hoisted, count})
+    count = count + 1
+    pos = elem(geom, tuple_size(geom) - 1)
+    var = "$#{elem(geom, 0)}##{count}"
+    step = {:var_assign, var, geom, pos}
+    {{:method, name, [{:posarg, {:var_ref, var, pos}}], mpos}, {[step | hoisted], count}}
+  end
 
   # ── Top-level node processing ─────────────────────────────────────
 
@@ -698,6 +714,9 @@ defmodule PlazaQL.Compiler do
 
   # Variable / output refs compile to {:set_ref, name} — the executor resolves
   # the named set's geometry at run time ("name" for $name, "$$.name" for $$.name).
+  defp extract_geometry_arg([{:kwarg, "geometry", geom}]),
+    do: extract_geometry_arg([{:posarg, geom}])
+
   defp extract_geometry_arg(args) do
     case args do
       [{:posarg, {:var_ref, "$" <> _, _} = ref}] ->

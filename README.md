@@ -753,7 +753,7 @@ search(node, amenity: "cafe")
   .around(200, point(40.74, -73.98));
 ```
 
-The geometry argument of `.within()`, `.intersects()`, `.contains()`, `.crosses()`, `.touches()`, and their `not_` forms can be a constructor (`point(...)`, `linestring(...)`, `polygon(...)`, `bbox(...)`) or a variable holding geometry, either `$var` or `$$.name`. The executor resolves the variable's geometry when the query runs:
+The geometry argument of `.within()`, `.intersects()`, `.contains()`, `.crosses()`, `.touches()`, and their `not_` forms can be a constructor (`point(...)`, `linestring(...)`, `polygon(...)`, `bbox(...)`) or a variable holding geometry, either `$var` or `$$.name`. The executor resolves the variable's geometry when the query runs: The argument can be positional or `geometry:`. An inline `boundary(...)`, computation (`isochrone(...)`, `route(...)`) or `search(...)` runs first, exactly as if it were assigned to a variable: `.within(boundary(name: "Manhattan"))` is `$m = boundary(name: "Manhattan"); ... .within($m)`.
 
 ```plazaql
 $walk = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");

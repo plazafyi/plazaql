@@ -11,6 +11,11 @@ defmodule PlazaQL.RestParityTest do
     plan
   end
 
+  defp plan_list(source) do
+    {:ok, %{plans: plans}} = PlazaQL.compile(source)
+    plans
+  end
+
   defp error!(source) do
     {:error, [%PlazaQL.Error{} = error | _]} = PlazaQL.compile(source)
     error
@@ -106,6 +111,34 @@ defmodule PlazaQL.RestParityTest do
       assert boundary.element_types == [:boundary]
       assert [{"b", ^boundary}] = variable.steps
       assert [%{spatial_filter: {:predicate, :within, {:set_ref, "boundary#1"}}}] = inline.plans
+    end
+
+    test "geometry: is the same as the positional argument" do
+      {:ok, kw} =
+        PlazaQL.compile(~s|$b = boundary(name: "Paris"); search(node).within(geometry: $b);|)
+
+      {:ok, pos} = PlazaQL.compile(~s|$b = boundary(name: "Paris"); search(node).within($b);|)
+
+      assert [%{spatial_filter: {:predicate, :within, {:set_ref, "b"}}}] = kw.plans
+      assert kw.plans == pos.plans
+
+      assert [%{spatial_filter: {:predicate, :crosses, {:linestring, [_, _]}}}] =
+               plan_list("search(way).crosses(geometry: linestring(point(1, 2), point(3, 4)));")
+    end
+
+    test "an inline computation or search runs as a step" do
+      {:ok, result} =
+        PlazaQL.compile(
+          ~s|search(way, leisure: "park").within(isochrone(center: point(1, 2), time: 900));|
+        )
+
+      assert [{"computation#1", %{computation: {:isochrone, _}}}] = result.steps
+      assert [%{spatial_filter: {:predicate, :within, {:set_ref, "computation#1"}}}] = result.plans
+
+      {:ok, result} =
+        PlazaQL.compile(~s|search(way).intersects(geometry: search(way, waterway: "river"));|)
+
+      assert [{"search#1", _}] = result.steps
     end
 
     test "each inline boundary gets its own step" do
