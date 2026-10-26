@@ -466,6 +466,22 @@ defmodule PlazaQL.CompilerTest do
       assert {:matrix, %{mode: "truck", hazmat: false}} = plan.computation
     end
 
+    test "route and ev_route accept steps, lang, units and verbal like POST /route" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), steps: true, lang: "fr", units: "km", verbal: true);|
+        )
+
+      assert {:route, %{steps: true, lang: "fr", units: "km", verbal: true}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, steps: true, lang: "de");|
+        )
+
+      assert {:ev_route, %{steps: true, lang: "de"}} = plan.computation
+    end
+
     test "exclude also takes a comma-separated string, and ev_route takes the same options" do
       plan =
         first_plan(

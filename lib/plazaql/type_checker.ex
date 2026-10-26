@@ -1105,7 +1105,7 @@ defmodule PlazaQL.TypeChecker do
   # it stands in for. Anything else is a type error naming the computation, so
   # a misspelt or misplaced keyword is never silently dropped.
   @route_kwargs ~w(origin destination mode steps alternatives waypoints depart_at traffic_model
-                   exclude overview geometries annotations)
+                   exclude overview geometries annotations lang units verbal)
   @geocode_filter_kwargs ~w(focus country_code bbox layers layer boundary_gid limit lang)
 
   @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country)
@@ -1179,8 +1179,11 @@ defmodule PlazaQL.TypeChecker do
   @route_types [:route, :ev_route]
   @lang ~r/\A[a-z]{2,3}\z/
 
-  defp option_value_error(_type, key, {:bool, _, _}) when key in ~w(steps roundtrip), do: nil
-  defp option_value_error(_type, key, _value) when key in ~w(steps roundtrip), do: "true or false"
+  defp option_value_error(_type, key, {:bool, _, _}) when key in ~w(steps roundtrip verbal),
+    do: nil
+
+  defp option_value_error(_type, key, _value) when key in ~w(steps roundtrip verbal),
+    do: "true or false"
 
   defp option_value_error(type, "annotations", {:bool, _, _}) when type in @route_types, do: nil
 
@@ -1240,6 +1243,10 @@ defmodule PlazaQL.TypeChecker do
   defp option_value_error(:map_match, "radiuses", _value),
     do: "a list of search radii in meters, one per trace point"
 
+  # route()/ev_route() `lang` is a BCP 47 tag ("pt-BR"), checked against the
+  # step languages in check_route_option/2.
+  defp option_value_error(type, "lang", _value) when type in @route_types, do: nil
+
   defp option_value_error(_type, "lang", {:string, v, _}) do
     if Regex.match?(@lang, v), do: nil, else: ~s|a 2 or 3 letter language code, e.g. "de"|
   end
@@ -1269,6 +1276,11 @@ defmodule PlazaQL.TypeChecker do
 
   @reverse_geocode_includes ["census"]
   @traffic_models ["best_guess", "optimistic", "pessimistic"]
+  # Languages Plaza translates turn-by-turn instructions into (POST /route
+  # `lang`). A BCP 47 tag is accepted when its primary subtag is listed.
+  @route_langs ~w(ar da de en es fi fr hi id it ja ko nb nl pl pt ru sv th tr vi zh)
+  @route_lang_aliases %{"no" => "nb", "nn" => "nb", "in" => "id"}
+  @route_units ["km", "mi"]
   @route_exclusions ~w(toll ferry unpaved motorway trunk primary secondary tertiary)
   @centroid_metrics ["time", "distance"]
   @expansion_actions ["route", "isochrone", "matrix"]
@@ -1517,6 +1529,29 @@ defmodule PlazaQL.TypeChecker do
     )
   end
 
+  defp check_route_option({:kwarg, "lang", {:string, tag, _}}, pos) do
+    [primary | _subtags] = String.split(tag, ["-", "_"])
+    primary = String.downcase(primary)
+
+    if Map.get(@route_lang_aliases, primary, primary) in @route_langs,
+      do: [],
+      else: lang_error("unsupported `lang:` #{inspect(tag)}", pos)
+  end
+
+  defp check_route_option({:kwarg, "lang", _}, pos),
+    do: lang_error(~s|`lang:` must be a language tag string such as "fr" or "pt-BR"|, pos)
+
+  defp check_route_option({:kwarg, "units", {:string, units, _}}, _pos) when units in @route_units,
+    do: []
+
+  defp check_route_option({:kwarg, "units", _}, pos) do
+    route_option_error(
+      ~s|`units:` must be "km" or "mi"|,
+      ~s|defaults to "mi" for US, GB, LR and MM `lang:` regions, otherwise "km"|,
+      pos
+    )
+  end
+
   defp check_route_option({:kwarg, "exclude", {:string, value, _}}, pos) do
     value
     |> String.split(",", trim: true)
@@ -1534,6 +1569,9 @@ defmodule PlazaQL.TypeChecker do
     do: exclude_error("`exclude:` must be a string or a list of strings", pos)
 
   defp check_route_option(_opt, _pos), do: []
+
+  defp lang_error(message, pos),
+    do: route_option_error(message, "supported: #{Enum.join(@route_langs, ", ")}", pos)
 
   defp check_exclude_value(value, _pos) when value in @route_exclusions, do: []
 

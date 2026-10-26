@@ -976,6 +976,39 @@ defmodule PlazaQL.TypeCheckerTest do
 
       assert error.message =~ "stairs"
     end
+
+    test "steps, verbal, lang and units pass with valid values" do
+      check!(@route <> ~s|, steps: true, verbal: true, lang: "fr", units: "mi");|)
+      check!(@route <> ~s|, steps: true, lang: "pt-BR");|)
+      check!(@route <> ~s|, steps: false, lang: "zh_Hans");|)
+    end
+
+    test "an unsupported lang is rejected with the supported codes" do
+      [error] = check_errors(@route <> ~s|, steps: true, lang: "tlh");|)
+      assert error.message =~ ~s|unsupported `lang:` "tlh"|
+      assert error.hint =~ "fr"
+      assert error.hint =~ "ja"
+
+      [error] = check_errors(@route <> ~s|, lang: 7);|)
+      assert error.message =~ "`lang:` must be a language tag string"
+    end
+
+    test "units must be km or mi, steps and verbal booleans" do
+      [error] = check_errors(@route <> ~s|, units: "furlongs");|)
+      assert error.message =~ ~s|`units:` must be "km" or "mi"|
+
+      [error] = check_errors(@route <> ~s|, steps: "yes");|)
+      assert error.message == "invalid `steps:` for `route()`"
+      assert error.hint == "true or false"
+
+      [error] =
+        check_errors(
+          ~s|ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, verbal: 1);|
+        )
+
+      assert error.message == "invalid `verbal:` for `ev_route()`"
+      assert error.hint == "true or false"
+    end
   end
 
   describe "truck options" do

@@ -389,11 +389,24 @@ describe("PlazaQL Completions", () => {
       expect(items.some((i) => i.label === '"pessimistic"')).toBe(true);
     });
 
+    it("suggests lang and units values for route(lang: ) and route(units: )", () => {
+      const lang = "$$ = route(origin: point(0,0), destination: point(1,1), steps: true, lang: ";
+      const langItems = getCompletions(lang, 1, lang.length + 1);
+      for (const code of ['"en"', '"fr"', '"ja"', '"zh"']) {
+        expect(langItems.some((i) => i.label === code)).toBe(true);
+      }
+
+      const units = "$$ = route(origin: point(0,0), destination: point(1,1), units: ";
+      const unitItems = getCompletions(units, 1, units.length + 1);
+      expect(unitItems.some((i) => i.label === '"km"')).toBe(true);
+      expect(unitItems.some((i) => i.label === '"mi"')).toBe(true);
+    });
+
     it("suggests the POST /route options as route( and ev_route( params", () => {
       for (const fn of ["route", "ev_route"]) {
         const src = `$$ = ${fn}(`;
         const items = getCompletions(src, 1, src.length + 1);
-        for (const name of ["depart_at", "traffic_model", "exclude"]) {
+        for (const name of ["depart_at", "traffic_model", "exclude", "steps", "lang", "units", "verbal"]) {
           expect(items.some((i) => i.label === name)).toBe(true);
         }
       }
