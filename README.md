@@ -781,12 +781,12 @@ search(dataset("census-tracts")).intersects($walk).overlap_fraction($walk);
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `.fields(f1, f2, ...)` | `GeoSet → GeoSet` | Select specific tag fields |
-| `.include(what)` | `GeoSet → GeoSet` | Include related data (`"nodes"`, `"members"`) |
+| `.include(what)` | `GeoSet → GeoSet` | Include extra output data (`:bbox`, `:center`) |
 | `.precision(n)` | `GeoSet → GeoSet` | Coordinate decimal places |
 
 ```plazaql
 search(node, amenity: "cafe").fields("name", "cuisine", "opening_hours");
-search(way, highway: "motorway").include("nodes");
+search(way, highway: "motorway").include(:center);
 search(node, amenity: *).precision(4);
 ```
 

@@ -14,38 +14,43 @@ search(node, amenity: "bar")
   .within($manhattan);
 
 // NOT within — exclude an area
+$manhattan = boundary(name: "Manhattan, New York");
 $central_park = boundary(name: "Central Park, New York");
 search(node, amenity: "bench")
   .within($manhattan)
   .not_within($central_park);
 
 // Search within a custom polygon
-$zone = polygon(
+search(node, shop: *).within(polygon(
   point(40.71, -74.01),
   point(40.71, -73.99),
   point(40.73, -73.99),
   point(40.73, -74.01)
-);
-search(node, shop: *).within($zone);
+));
 
 // Intersects — features whose geometry crosses a line
-$river = linestring(
+search(way, bridge: "yes").intersects(linestring(
   point(40.70, -74.02),
   point(40.75, -73.97)
-);
-search(way, bridge: "yes").intersects($river);
+));
 
 // Contains — features that fully contain a geometry
 search(way, landuse: "forest")
   .contains(point(47.6, -122.3));
 
 // Crosses — features that cross a geometry
-search(way, highway: "primary")
-  .crosses($river);
+search(way, highway: "primary").crosses(linestring(
+  point(40.70, -74.02),
+  point(40.75, -73.97)
+));
 
 // Touches — features that touch but don't overlap
-search(way, boundary: "administrative")
-  .touches($zone);
+search(way, boundary: "administrative").touches(polygon(
+  point(40.71, -74.01),
+  point(40.71, -73.99),
+  point(40.73, -73.99),
+  point(40.73, -74.01)
+));
 
 // H3 cell filter
 search(node, amenity: "cafe")
