@@ -60,6 +60,18 @@ describe("REST options as keywords", () => {
   })
 })
 
+describe("number lists after a keyword", () => {
+  it("parse in methods and computations", () => {
+    for (const source of [
+      "search(node).limit(count: [1, 2]);",
+      "map_match(points: [point(1, 2), point(3, 4)], radiuses: [10]);",
+    ]) {
+      const { errors } = parse(source)
+      expect(errors, source).toHaveLength(0)
+    }
+  })
+})
+
 describe("output shape and accessors", () => {
   it("accepts .geometry(false) and .include()", () => {
     expect(

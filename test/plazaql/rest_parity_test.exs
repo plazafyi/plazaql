@@ -331,6 +331,34 @@ defmodule PlazaQL.RestParityTest do
     end
   end
 
+  describe "directive numbers" do
+    test "#limit(count: 5) limits every search to 5" do
+      assert plan!("#limit(count: 5); search(node);").limit == 5
+    end
+  end
+
+  describe "number lists after a keyword" do
+    test "compile in computations" do
+      assert {:map_match, %{radiuses: {:list, [{:number, 10, _}], _}}} =
+               plan!("map_match(points: [point(1, 2), point(3, 4)], radiuses: [10]);").computation
+    end
+
+    test "are clear errors where a method can't take them, never a parser crash" do
+      for {source, message} <- [
+            {"search(node).member_of(search(relation), role: [1]);", "`role:` must be a string"},
+            {"search(node).sort(by: [1]);", "`.sort(by: ...)` takes"},
+            {"search(node).limit(count: [1]);", "expected a number"},
+            {"search(node).expand(direction: [1]);", "expected :down, :up"},
+            {"search(node).fields([1]);", "expected field names as strings"},
+            {~s|geocode("x", layers: [1]);|, "`layers:` list items must be strings"},
+            {"search(node, layer: [1]);", "list values are only supported for id filters"}
+          ] do
+        assert {:error, [error | _]} = PlazaQL.compile(source), source
+        assert error.message =~ message, source
+      end
+    end
+  end
+
   describe "output shape" do
     test ".include() takes the REST output.include values" do
       plan = plan!(~s|search(node).include("bbox", "center", "distance");|)

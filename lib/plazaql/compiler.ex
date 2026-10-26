@@ -566,8 +566,17 @@ defmodule PlazaQL.Compiler do
   defp apply_method(plan, {:method, :expand, args, _pos}, _env) do
     direction =
       case args do
-        [{:posarg, {:atom, dir, _}}] when dir in [:down, :up, :down_full, :up_full] -> dir
-        _ -> :down
+        [] ->
+          :down
+
+        [{:posarg, {:atom, dir, _}}] when dir in [:down, :up, :down_full, :up_full] ->
+          dir
+
+        [{:kwarg, "direction", {:atom, dir, _}}] when dir in [:down, :up, :down_full, :up_full] ->
+          dir
+
+        other ->
+          argument_error!(":down, :up, :down_full or :up_full", other)
       end
 
     %{plan | recurse: direction}
@@ -744,8 +753,16 @@ defmodule PlazaQL.Compiler do
   defp extract_single_number(args) do
     case extract_single_value(args) do
       {:number, n, _} -> n
-      _ -> 0
+      other -> argument_error!("a number", other)
     end
+  end
+
+  @spec argument_error!(String.t(), term()) :: no_return()
+  defp argument_error!(expected, got) do
+    throw(
+      {:compile_error,
+       %Error{message: "expected #{expected}, got #{inspect(got)}", line: 0, col: 0}}
+    )
   end
 
   defp extract_string_list(args) do
@@ -753,7 +770,7 @@ defmodule PlazaQL.Compiler do
       {:posarg, {:string, s, _}} -> [s]
       {:posarg, {:identifier, s, _}} -> [s]
       {:kwarg, _, {:string, s, _}} -> [s]
-      _ -> []
+      other -> argument_error!("field names as strings", other)
     end)
   end
 
@@ -801,8 +818,11 @@ defmodule PlazaQL.Compiler do
     )
   end
 
+  # Directive arguments arrive as tag filters: `#limit(count: 5)`.
+  defp extract_single_value([{:posarg, {:eq_num, _key, n}}]), do: {:number, n, %{}}
   defp extract_single_value([{:posarg, val}]), do: val
   defp extract_single_value([{:kwarg, _, val}]), do: val
+
   defp extract_single_value(_), do: nil
 
   # Variable / output refs compile to {:set_ref, name} — the executor resolves

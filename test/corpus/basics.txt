@@ -2050,3 +2050,24 @@ search(node).filter(number(p["capacity"]) > 50);
                 (tag_access
                   (string))))
             (number)))))))
+
+================
+Number list as a method keyword value
+================
+
+search(node).limit(count: [1, 2]);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (tag_filter
+          key: (identifier)
+          value: (tag_id_list
+            (number)
+            (number)))))))

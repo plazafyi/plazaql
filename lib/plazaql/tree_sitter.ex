@@ -452,6 +452,17 @@ defmodule PlazaQL.TreeSitter do
       :keyword_argument ->
         transform_kwarg(el)
 
+      # `[1, 2]` after a keyword: the grammar reads a number list as an id
+      # list (`id: [1, 2]`); anywhere else it is a plain list of numbers.
+      :tag_id_list ->
+        items =
+          el
+          |> named_children()
+          |> Enum.filter(&(elem_name(&1) == :number))
+          |> Enum.map(&transform_expression/1)
+
+        {:list, items, make_pos(el)}
+
       other ->
         raise "Unknown CST node type: #{inspect(other)} at #{inspect(make_pos(el))}"
     end
