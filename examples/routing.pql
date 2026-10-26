@@ -156,6 +156,24 @@ ev_route(
   mode: "auto"
 );
 
+// Electric motorcycle: its own consumption and two-wheeler sockets
+ev_route(
+  origin: point(48.8566, 2.3522),
+  destination: point(49.4432, 1.0999),
+  battery: 15000,
+  mode: "motorcycle",
+  style: "touring"
+);
+
+// Commuting motorcycle that filters through rush-hour traffic
+route(
+  origin: point(34.0522, -118.2437),
+  destination: point(34.1016, -118.3267),
+  mode: "motorcycle",
+  lane_splitting: true,
+  depart_at: "2026-03-16T08:00:00-07:00"
+);
+
 // Distance matrix between multiple points
 matrix(
   origins: [point(40.7128, -74.0060), point(40.7484, -73.9856)],

@@ -1204,7 +1204,7 @@ defmodule PlazaQL.TypeChecker do
   @bicycle_option_kwargs ~w(bicycle_type cycling_speed use_roads use_hills avoid_bad_surfaces)
   @pedestrian_option_kwargs ~w(walking_speed use_hills use_lit walkway_factor sidewalk_factor
                                step_penalty max_hiking_difficulty wheelchair)
-  @motorcycle_option_kwargs ~w(style use_trails use_curves)
+  @motorcycle_option_kwargs ~w(style use_trails use_curves lane_splitting)
   @motor_scooter_option_kwargs ~w(use_primary use_hills)
   @active_option_kwargs Enum.uniq(
                           @bicycle_option_kwargs ++
@@ -1233,6 +1233,8 @@ defmodule PlazaQL.TypeChecker do
     ev_route:
       @route_kwargs ++
         @costing_kwargs ++
+        @motorcycle_option_kwargs ++
+        @motor_scooter_option_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
     isochrone:
       ~w(center time mode denoise generalize exclude avoid_datasets datasets depart_at) ++
@@ -2174,6 +2176,11 @@ defmodule PlazaQL.TypeChecker do
   defp active_families(comp_type) when comp_type in @transit_computations,
     do: @active_families ++ [@transit_family]
 
+  # ev_route() plans electric motorcycles and scooters (Plaza's POST /route
+  # with `ev` and those modes); it has no bicycle or walker options.
+  defp active_families(:ev_route),
+    do: Enum.filter(@active_families, fn {mode, _, _} -> mode in ~w(motorcycle motor_scooter) end)
+
   defp active_families(_comp_type), do: @active_families
 
   # {min, max} for the numeric options.
@@ -2203,9 +2210,37 @@ defmodule PlazaQL.TypeChecker do
     end
   end
 
-  # As for truck options: a mode that is not a literal is checked by Plaza.
+  # ev_route() takes only the motorcycle and motor scooter options.
+  defp check_active_usage(:ev_route, opts, active_opts, pos) do
+    rider = @motorcycle_option_kwargs ++ @motor_scooter_option_kwargs
+
+    case for({:kwarg, key, _} <- active_opts, key not in rider, uniq: true, do: key) do
+      [] ->
+        check_rider_usage(:ev_route, opts, active_opts, pos)
+
+      others ->
+        route_option_error(
+          ~s|`ev_route()` has no #{Enum.map_join(others, ", ", &"`#{&1}:`")}; it takes the motorcycle and motor scooter options, with `mode: "motorcycle"` or `"motor_scooter"`|,
+          ~s|e.g. `ev_route(..., battery: 15000, mode: "motorcycle", style: "touring")`|,
+          pos
+        )
+    end
+  end
+
   defp check_active_usage(comp_type, opts, active_opts, pos)
-       when comp_type in @active_computations do
+       when comp_type in @active_computations,
+       do: check_rider_usage(comp_type, opts, active_opts, pos)
+
+  defp check_active_usage(comp_type, _opts, _active_opts, pos) do
+    route_option_error(
+      ~s|`#{comp_type}()` has no bicycle, pedestrian or motorcycle options; they apply to #{@vehicle_computation_names} with `mode: "bicycle"`, `"foot"`, `"motorcycle"` or `"motor_scooter"`, and the motorcycle and motor scooter ones to `ev_route()`|,
+      @active_hint,
+      pos
+    )
+  end
+
+  # As for truck options: a mode that is not a literal is checked by Plaza.
+  defp check_rider_usage(comp_type, opts, active_opts, pos) do
     keys = Enum.map(active_opts, fn {:kwarg, key, _} -> key end)
 
     families = active_families(comp_type)
@@ -2223,14 +2258,6 @@ defmodule PlazaQL.TypeChecker do
       nil ->
         active_mode_error(families, keys, pos)
     end
-  end
-
-  defp check_active_usage(comp_type, _opts, _active_opts, pos) do
-    route_option_error(
-      ~s|`#{comp_type}()` has no bicycle, pedestrian or motorcycle options; they apply to #{@vehicle_computation_names} with `mode: "bicycle"`, `"foot"`, `"motorcycle"` or `"motor_scooter"`|,
-      @active_hint,
-      pos
-    )
   end
 
   # The option keywords of a mode literal ([] for a mode without any).
@@ -2300,6 +2327,16 @@ defmodule PlazaQL.TypeChecker do
       )
 
   defp check_active_value({:kwarg, "wheelchair", {:bool, _, _}}, _pos), do: []
+
+  defp check_active_value({:kwarg, "lane_splitting", {:bool, _, _}}, _pos), do: []
+
+  defp check_active_value({:kwarg, "lane_splitting", _}, pos),
+    do:
+      route_option_error(
+        "`lane_splitting:` must be `true` or `false`",
+        "whether the rider filters between lanes of queued traffic (legal only in some places)",
+        pos
+      )
 
   defp check_active_value({:kwarg, "wheelchair", _}, pos),
     do: route_option_error("`wheelchair:` must be `true` or `false`", @active_hint, pos)

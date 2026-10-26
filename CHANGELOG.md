@@ -17,6 +17,13 @@ First Hex release of the PlazaQL Elixir package.
   `matrix()`, with the keywords `style`, `use_trails` and `use_curves`
   (motorcycle) and `use_primary` and `use_hills` (motor scooter). The type
   checker and the LSP reject them without their mode or out of range.
+- `lane_splitting:` (motorcycle): a rider who filters between lanes of
+  queued traffic, as Plaza's REST `motorcycle.lane_splitting`. The type
+  checker and the LSP check it is `true` or `false` and needs
+  `mode: "motorcycle"`.
+- `ev_route()` takes `mode: "motorcycle"` and `"motor_scooter"` with their
+  rider keywords (electric motorcycles and scooters); bicycle and walker
+  keywords are rejected there.
 - `exclude: "cash_only_tolls"` (roads through toll booths that take only
   cash), and `isochrone()` and `matrix()` take `exclude` like `route()`.
 - `datasets:` on `route()`, `ev_route()`, `isochrone()`, `matrix()` and

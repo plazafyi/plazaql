@@ -1362,8 +1362,16 @@ const ACTIVE_FAMILIES: [string, string[], string[]][] = [
   ["motor_scooter", MOTOR_SCOOTER_MODES, MOTOR_SCOOTER_OPTIONS],
 ]
 
-/** `wheelchair:` is also a transit option of route() and isochrone(). */
+/**
+ * `wheelchair:` is also a transit option of route() and isochrone().
+ * ev_route() plans electric motorcycles and scooters only.
+ */
 function activeFamilies(name: string): [string, string[], string[]][] {
+  if (name === "ev_route") {
+    return ACTIVE_FAMILIES.filter(([mode]) =>
+      ["motorcycle", "motor_scooter"].includes(mode),
+    )
+  }
   return TRANSIT_COMPUTATIONS.includes(name)
     ? [...ACTIVE_FAMILIES, ["transit", ["transit"], TRANSIT_ACTIVE_OPTIONS]]
     : ACTIVE_FAMILIES
@@ -1395,11 +1403,23 @@ function checkActiveUsage(
   keys: string[],
   pos: Pos,
 ): TypeCheckError[] {
-  if (!ACTIVE_COMPUTATIONS.includes(name)) {
+  if (name === "ev_route") {
+    const rider = [...MOTORCYCLE_OPTIONS, ...MOTOR_SCOOTER_OPTIONS]
+    const others = [...new Set(keys.filter((key) => !rider.includes(key)))]
+    if (others.length > 0) {
+      return [
+        kwargError(
+          pos,
+          `\`ev_route()\` has no ${others.map((key) => `\`${key}:\``).join(", ")}; it takes the motorcycle and motor scooter options, with \`mode: "motorcycle"\` or \`"motor_scooter"\``,
+          'e.g. `ev_route(..., battery: 15000, mode: "motorcycle", style: "touring")`',
+        ),
+      ]
+    }
+  } else if (!ACTIVE_COMPUTATIONS.includes(name)) {
     return [
       kwargError(
         pos,
-        `\`${name}()\` has no bicycle, pedestrian or motorcycle options; they apply to ${VEHICLE_COMPUTATION_NAMES} with \`mode: "bicycle"\`, \`"foot"\`, \`"motorcycle"\` or \`"motor_scooter"\``,
+        `\`${name}()\` has no bicycle, pedestrian or motorcycle options; they apply to ${VEHICLE_COMPUTATION_NAMES} with \`mode: "bicycle"\`, \`"foot"\`, \`"motorcycle"\` or \`"motor_scooter"\`, and the motorcycle and motor scooter ones to \`ev_route()\``,
         ACTIVE_HINT,
       ),
     ]
@@ -1481,6 +1501,16 @@ function checkActiveValue(arg: Arg, pos: Pos): TypeCheckError[] {
               pos,
               "`wheelchair:` must be `true` or `false`",
               ACTIVE_HINT,
+            ),
+          ]
+    case "lane_splitting":
+      return arg.value.kind === "bool"
+        ? []
+        : [
+            kwargError(
+              pos,
+              "`lane_splitting:` must be `true` or `false`",
+              "whether the rider filters between lanes of queued traffic (legal only in some places)",
             ),
           ]
     case "max_hiking_difficulty":

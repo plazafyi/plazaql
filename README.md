@@ -458,6 +458,7 @@ The options need their mode and are only accepted by these functions.
 | `style`           | string | `"touring"` (default): direct, paved roads. `"adventure"`: curvy roads, unpaved surfaces and tracks are fine |
 | `use_trails`      | number | 0 to 1. 0 keeps to roads; higher values ride tracks more willingly. Default 0 touring, 0.5 adventure |
 | `use_curves`      | number | 0 (avoid) to 1 (seek) curvy roads, measured from each road's geometry; 0.5 is neutral. Default 0.5 touring, 0.8 adventure |
+| `lane_splitting`  | boolean | Whether the rider filters between lanes of queued traffic (default `false`). Legal only in some places, so it is the rider's choice. With `depart_at`, urban motorways, trunk and primary roads with at least two lanes each way count half the slowdown the hour's traffic profile gives them; `duration_s` keeps the full traffic time |
 
 | Motor scooter option | Type   | Description |
 |----------------------|--------|-------------|
@@ -469,9 +470,10 @@ The [costing options](#costing-options) `use_highways`, `use_tolls`, `top_speed`
 ```plazaql
 route(origin: point(46.55, 8.56), destination: point(46.63, 8.6), mode: "motorcycle", style: "adventure", use_curves: 1)
 route(origin: point(41.89, 12.48), destination: point(41.91, 12.5), mode: "motor_scooter", use_primary: 0, top_speed: 50)
+route(origin: point(34.05, -118.25), destination: point(34.10, -118.33), mode: "motorcycle", lane_splitting: true, depart_at: "2026-03-16T08:00:00-07:00")
 ```
 
-The options need their mode and are only accepted by these functions. A motorcycle or scooter route's properties include `mode`, the options it was planned with, `curviness_avg` and `surface_breakdown`.
+The options need their mode and are only accepted by these functions and `ev_route()`, which plans electric motorcycles and scooters. A motorcycle or scooter route's properties include `mode`, the options it was planned with, `curviness_avg` and `surface_breakdown`.
 
 #### Transit options
 
@@ -793,10 +795,11 @@ The positional points are the waypoints; `waypoints: [...]` is the keyword form.
 
 ### `ev_route(origin:, destination:, battery:)`
 
-EV-aware routing with charge stop planning.
+EV-aware routing with charge stop planning. An electric car by default; with `mode: "motorcycle"` or `"motor_scooter"` an electric motorcycle (about 80 Wh/km) or scooter (about 40 Wh/km), routed with its own costing and rider options, that charges only at sockets a two-wheeler can use (Type 1, Type 2, CCS, CHAdeMO, household and camping sockets; no Tesla-only sites) unless `connector_types` is given. REST: `ev` on `POST /route` with those modes.
 
 ```plazaql
 ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000)
+ev_route(origin: point(48.85, 2.35), destination: point(49.44, 1.10), battery: 15000, mode: "motorcycle", style: "touring")
 ```
 
 | Parameter            | Type    | Description                              |
@@ -809,6 +812,8 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `min_charge_pct`     | number  | Reserve to keep as a fraction, default 0.1 (optional) |
 | `connector_types`    | string[] | Connectors the car accepts, matched against OSM `socket:<type>` keys, e.g. `["type2_combo", "chademo"]` (optional) |
 | `min_power_kw`       | number  | Minimum charger output in kW; chargers without a readable `socket:*:output` are skipped when set (optional) |
+| `mode`               | string  | `"auto"` (default), `"motorcycle"` or `"motor_scooter"` (optional) |
+| the [motorcycle and motor scooter options](#motorcycle-and-motor-scooter-options) | | With their mode (optional) |
 | `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names`, the [costing options](#costing-options) | | Same as `route()` (optional) |
 
 ### `centroid(locations:, mode:?, metric:?, exclude:?, avoid_datasets:?)`
