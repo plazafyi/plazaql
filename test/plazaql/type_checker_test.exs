@@ -1002,6 +1002,9 @@ defmodule PlazaQL.TypeCheckerTest do
 
       [error] = check_errors(@route <> ~s|, mode: "auto", hazmat: true);|)
       assert error.message =~ ~s|need `mode: "truck"`|
+
+      # A mode from a variable is checked when the query runs.
+      check!(~s|$m = "truck"; | <> @route <> ~s|, mode: $m, height: 4.1);|)
     end
 
     test "other computations have no truck options" do
@@ -1019,6 +1022,8 @@ defmodule PlazaQL.TypeCheckerTest do
 
       [error] = check_errors(@route <> ~s|, mode: "truck", weight: 0);|)
       assert error.message == "`weight:` must be a positive number (tonnes)"
+
+      check!(@route <> ~s|, mode: "truck", axle_count: 5.0);|)
 
       [error] = check_errors(@route <> ~s|, mode: "truck", axle_count: 2.5);|)
       assert error.message == "`axle_count:` must be a whole number of axles"

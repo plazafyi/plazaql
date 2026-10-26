@@ -907,15 +907,15 @@ function checkTruckUsage(
       ),
     ]
   }
-  const truckMode = args.some(
-    (arg) =>
-      arg.type === "kwarg" &&
-      arg.name === "mode" &&
-      arg.value.kind === "string" &&
-      arg.value.value === "truck",
-  )
-  if (truckMode) {
-    return []
+  // A mode that is not a literal (a variable, say) is checked by Plaza when
+  // it runs; only a missing mode or a literal other than "truck" is an error.
+  const mode = args.find((arg) => arg.type === "kwarg" && arg.name === "mode")
+  if (mode && mode.type === "kwarg") {
+    const literal = mode.value.kind === "string" || mode.value.kind === "atom"
+    const truck = mode.value.kind === "string" && mode.value.value === "truck"
+    if (truck || !literal) {
+      return []
+    }
   }
   const names = TRUCK_OPTIONS.map((option) => `\`${option}:\``).join(", ")
   return [

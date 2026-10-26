@@ -379,7 +379,7 @@ With `mode: "truck"`, `route()`, `isochrone()` and `matrix()` take the vehicle a
 | `weight`     | number  | Gross weight in tonnes, default 21.77, at most 200                            |
 | `axle_load`  | number  | Heaviest axle in tonnes, at most 50 (optional)                                |
 | `axle_count` | integer | 2 to 20; without `axle_load`, `weight / axle_count` is checked (optional)     |
-| `hazmat`     | boolean | Hazardous load: avoids `hazmat=no` roads, ADR tunnel categories B to E and tunnels (default `false`) |
+| `hazmat`     | boolean | Hazardous load: avoids `hazmat=no` / `hazmat:water=no` roads and ADR tunnel categories B to E (default `false`) |
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "truck", height: 4.0, weight: 30, hazmat: true)

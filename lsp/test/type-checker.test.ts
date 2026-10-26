@@ -324,6 +324,16 @@ describe("PlazaQL Type Checker", () => {
       expect(result.errors.some((e) => e.message.includes('need `mode: "truck"`'))).toBe(true);
     });
 
+    it("leaves a mode from a variable to the server", () => {
+      const result = check(`$m = "truck"; $$ = route(${route}, mode: $m, height: 4.1);`);
+      expect(result.errors.some((e) => e.message.includes("truck options"))).toBe(false);
+    });
+
+    it("accepts a whole-number axle_count written as 5.0", () => {
+      const result = check(`$$ = route(${route}, mode: "truck", axle_count: 5.0);`);
+      expect(result.errors).toHaveLength(0);
+    });
+
     it("rejects truck options on other computations", () => {
       const result = check(
         '$$ = centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], height: 4.0);'

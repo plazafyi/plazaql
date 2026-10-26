@@ -1049,7 +1049,7 @@ const TRUCK_PARAMS: ParamInfo[] = [
     type: "boolean",
     optional: true,
     description:
-      'Carrying hazardous materials: avoids hazmat-restricted roads and tunnels (mode: "truck")',
+      'Carrying hazardous materials: avoids hazmat=no roads and ADR category B-E tunnels (mode: "truck")',
   },
 ]
 

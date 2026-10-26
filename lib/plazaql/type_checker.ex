@@ -1411,20 +1411,28 @@ defmodule PlazaQL.TypeChecker do
     end
   end
 
+  # A mode that is not a literal (a variable, say) is checked by Plaza when
+  # it runs; only a missing mode or a literal other than "truck" is an error.
   defp check_truck_usage(comp_type, opts, pos) when comp_type in @truck_computations do
-    if Enum.any?(opts, &match?({:kwarg, "mode", {:string, "truck", _}}, &1)),
-      do: [],
-      else:
-        route_option_error(
-          "truck options (#{Enum.map_join(@truck_kwargs, ", ", &"`#{&1}:`")}) need `mode: \"truck\"`",
-          @truck_hint,
-          pos
-        )
+    case Enum.find(opts, &match?({:kwarg, "mode", _}, &1)) do
+      {:kwarg, "mode", {:string, "truck", _}} -> []
+      {:kwarg, "mode", {literal, _, _}} when literal in [:string, :atom] -> truck_mode_error(pos)
+      {:kwarg, "mode", _} -> []
+      nil -> truck_mode_error(pos)
+    end
   end
 
   defp check_truck_usage(comp_type, _opts, pos) do
     route_option_error(
       "`#{comp_type}()` has no truck options; they apply to `route()`, `isochrone()` and `matrix()` with `mode: \"truck\"`",
+      @truck_hint,
+      pos
+    )
+  end
+
+  defp truck_mode_error(pos) do
+    route_option_error(
+      "truck options (#{Enum.map_join(@truck_kwargs, ", ", &"`#{&1}:`")}) need `mode: \"truck\"`",
       @truck_hint,
       pos
     )
@@ -1439,8 +1447,9 @@ defmodule PlazaQL.TypeChecker do
     route_option_error("`#{key}:` must be a positive number (#{unit})", @truck_hint, pos)
   end
 
+  # Whole numbers only; `5.0` counts, as in the LSP and in Plaza.
   defp check_truck_value({:kwarg, "axle_count", {:number, n, _}}, _pos)
-       when is_integer(n) and n > 0,
+       when n > 0 and n == trunc(n),
        do: []
 
   defp check_truck_value({:kwarg, "axle_count", _}, pos),
