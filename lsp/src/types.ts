@@ -1119,7 +1119,6 @@ export const TRANSIT_OPTIONS = [
   "arrive_by",
 ]
 export const TRANSIT_COMPUTATIONS = ["route", "isochrone"]
-export const TRANSIT_ACTIVE_OPTIONS = ["wheelchair"]
 
 const TRANSIT_PARAMS: ParamInfo[] = [
   {
@@ -1191,6 +1190,8 @@ export const PEDESTRIAN_OPTIONS = [
   "max_hiking_difficulty",
   "wheelchair",
 ]
+// Transit walks take the pedestrian options (wheelchair included).
+export const TRANSIT_ACTIVE_OPTIONS = PEDESTRIAN_OPTIONS
 export const MOTORCYCLE_OPTIONS = ["style", "use_trails", "use_curves"]
 export const MOTOR_SCOOTER_OPTIONS = ["use_primary", "use_hills"]
 export const ACTIVE_OPTIONS = [

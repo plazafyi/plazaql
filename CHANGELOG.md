@@ -27,6 +27,10 @@ First Hex release of the PlazaQL Elixir package.
   SQL. Syntax highlighting, LSP completions and hover cover it.
 - The LSP accepts `.count()` after `.group_by()`, as the Elixir type checker
   already did.
+- The pedestrian options (`walking_speed:`, `use_hills:`, `use_lit:`,
+  `walkway_factor:`, `sidewalk_factor:`, `step_penalty:`,
+  `max_hiking_difficulty:`) type-check on `route()` and `isochrone()` with
+  `mode: "transit"`, for the journey's walking legs.
 - `arrive_by:` on `route()` and `wheelchair:` on `route()` and
   `isochrone()` with `mode: "transit"`. `arrive_by` finds the latest
   departure that arrives by then; `wheelchair` rides only accessible trips

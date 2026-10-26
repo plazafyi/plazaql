@@ -2142,9 +2142,11 @@ defmodule PlazaQL.TypeChecker do
     {"motor_scooter", ~w(motor_scooter scooter moped), @motor_scooter_option_kwargs}
   ]
 
-  # `wheelchair:` is also a transit option of route() and isochrone(): ride
-  # only accessible trips, board and alight only at accessible stops.
-  @transit_family {"transit", ~w(transit), ~w(wheelchair)}
+  # Transit routes and isochrones walk to, between and from stops: they take
+  # the pedestrian options for those walks. `wheelchair:` is also a transit
+  # option there (ride only accessible trips, board and alight only at
+  # accessible stops; Plaza sets the walker's wheelchair option from it).
+  @transit_family {"transit", ~w(transit), @pedestrian_option_kwargs}
 
   defp active_families(comp_type) when comp_type in @transit_computations,
     do: @active_families ++ [@transit_family]

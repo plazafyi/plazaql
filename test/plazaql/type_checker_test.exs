@@ -1161,7 +1161,7 @@ defmodule PlazaQL.TypeCheckerTest do
       [error] = check_errors(@route <> ~s|, mode: "auto", use_hills: 0.2);|)
 
       assert error.message ==
-               ~s|`use_hills:` need `mode: "bicycle"`, `mode: "foot"` or `mode: "motor_scooter"`|
+               ~s|`use_hills:` need `mode: "bicycle"`, `mode: "foot"`, `mode: "motor_scooter"` or `mode: "transit"`|
 
       [error] = check_errors(@route <> ~s|, mode: "bicycle", wheelchair: true);|)
       assert error.message == ~s|`wheelchair:` need `mode: "foot"` or `mode: "transit"`|
@@ -1282,9 +1282,15 @@ defmodule PlazaQL.TypeCheckerTest do
       [error] = check_errors(@route <> ~s|, mode: "transit", wheelchair: 1);|)
       assert error.message == "`wheelchair:` must be `true` or `false`"
 
-      # Pedestrian options stay foot-only under transit.
-      [error] = check_errors(@route <> ~s|, mode: "transit", wheelchair: true, walking_speed: 4);|)
-      assert error.message == ~s|`walking_speed:` need `mode: "foot"`|
+      # Pedestrian options apply to the walking legs of a transit journey.
+      check!(@route <> ~s|, mode: "transit", wheelchair: true, walking_speed: 4, use_lit: 1);|)
+
+      check!(
+        ~s|isochrone(center: point(40.71, -74.00), time: 900, mode: "transit", walking_speed: 3);|
+      )
+
+      [error] = check_errors(@route <> ~s|, mode: "transit", walking_speed: 20);|)
+      assert error.message == "`walking_speed:` must be a number from 1 to 10 (km/h)"
     end
 
     test "other computations have no transit options" do
