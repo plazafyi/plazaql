@@ -20,6 +20,14 @@ route(
   mode: "bike"
 );
 
+// Turn-by-turn steps in German, distances in kilometres
+route(
+  origin: point(52.5163, 13.3777),
+  destination: point(52.5219, 13.4132),
+  steps: true,
+  lang: "de"
+);
+
 // 15-minute walking isochrone
 isochrone(
   center: point(40.7128, -74.0060),
