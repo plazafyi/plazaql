@@ -27,6 +27,13 @@ First Hex release of the PlazaQL Elixir package.
   SQL. Syntax highlighting, LSP completions and hover cover it.
 - The LSP accepts `.count()` after `.group_by()`, as the Elixir type checker
   already did.
+- `arrive_by:` on `route()` and `wheelchair:` on `route()` and
+  `isochrone()` with `mode: "transit"`. `arrive_by` finds the latest
+  departure that arrives by then; `wheelchair` rides only accessible trips
+  and uses only accessible stops (it stays the pedestrian option with
+  `mode: "foot"`). The type checker and the LSP reject `arrive_by` with
+  `depart_at`, on `isochrone()`, as `"now"` or a non-string, and either
+  keyword with another mode.
 
 ### SQL generation
 

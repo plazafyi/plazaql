@@ -1192,7 +1192,10 @@ defmodule PlazaQL.TypeChecker do
   @truck_option_kwargs ~w(height width length weight axle_load axle_count hazmat)
 
   # transit options (`mode: "transit"`), checked by check_transit_kwargs/3.
-  @transit_option_kwargs ~w(use_bus use_rail use_transfers max_walk_m max_transfers)
+  # `arrive_by` is route() only; isochrone() recognises it to say so.
+  # `wheelchair` is also a transit option, but as a foot option too it is
+  # checked with the mode options (check_active_kwargs/3).
+  @transit_option_kwargs ~w(use_bus use_rail use_transfers max_walk_m max_transfers arrive_by)
 
   # bicycle options (`mode: "bicycle"`), pedestrian options (`mode: "foot"`),
   # motorcycle options (`mode: "motorcycle"`) and motor scooter options
@@ -2013,7 +2016,37 @@ defmodule PlazaQL.TypeChecker do
 
       transit_opts ->
         check_transit_usage(comp_type, opts, pos) ++
+          check_arrive_by(comp_type, opts, pos) ++
           Enum.flat_map(transit_opts, &check_transit_value(&1, pos))
+    end
+  end
+
+  # arrive_by: the latest departure arriving by then, for a transit route.
+  # An isochrone spreads out from its departure, so it has no arrival time.
+  defp check_arrive_by(comp_type, opts, pos) do
+    arrive_by? = Enum.any?(opts, &match?({:kwarg, "arrive_by", _}, &1))
+    depart_at? = Enum.any?(opts, &match?({:kwarg, "depart_at", _}, &1))
+
+    cond do
+      not arrive_by? ->
+        []
+
+      comp_type == :isochrone ->
+        route_option_error(
+          "`arrive_by:` is supported by transit routes, not isochrones",
+          "an isochrone spreads out from `depart_at:`",
+          pos
+        )
+
+      depart_at? ->
+        route_option_error(
+          "`depart_at:` and `arrive_by:` can't be combined",
+          "`depart_at:` leaves at a time; `arrive_by:` finds the latest departure arriving by one",
+          pos
+        )
+
+      true ->
+        []
     end
   end
 
@@ -2065,6 +2098,17 @@ defmodule PlazaQL.TypeChecker do
         pos
       )
 
+  defp check_transit_value({:kwarg, "arrive_by", {:string, at, _}}, _pos) when at != "now",
+    do: []
+
+  defp check_transit_value({:kwarg, "arrive_by", _}, pos),
+    do:
+      route_option_error(
+        "`arrive_by:` must be an ISO 8601 datetime string",
+        ~s|e.g. `arrive_by: "2026-03-16T09:00:00-04:00"`; without an offset, local time at the transit feed|,
+        pos
+      )
+
   # Whole numbers only; `2.0` counts, as in the LSP and in Plaza.
   defp check_transit_value({:kwarg, "max_transfers", {:number, n, _}}, _pos)
        when n >= 0 and n == trunc(n),
@@ -2098,6 +2142,15 @@ defmodule PlazaQL.TypeChecker do
     {"motor_scooter", ~w(motor_scooter scooter moped), @motor_scooter_option_kwargs}
   ]
 
+  # `wheelchair:` is also a transit option of route() and isochrone(): ride
+  # only accessible trips, board and alight only at accessible stops.
+  @transit_family {"transit", ~w(transit), ~w(wheelchair)}
+
+  defp active_families(comp_type) when comp_type in @transit_computations,
+    do: @active_families ++ [@transit_family]
+
+  defp active_families(_comp_type), do: @active_families
+
   # {min, max} for the numeric options.
   @active_ranges %{
     "cycling_speed" => {5, 50, "km/h"},
@@ -2130,18 +2183,20 @@ defmodule PlazaQL.TypeChecker do
        when comp_type in @active_computations do
     keys = Enum.map(active_opts, fn {:kwarg, key, _} -> key end)
 
+    families = active_families(comp_type)
+
     case Enum.find(opts, &match?({:kwarg, "mode", _}, &1)) do
       {:kwarg, "mode", {:string, mode, _}} ->
-        active_mode_error(keys -- mode_option_kwargs(mode), pos)
+        active_mode_error(families, keys -- mode_option_kwargs(families, mode), pos)
 
       {:kwarg, "mode", {:atom, _, _}} ->
-        active_mode_error(keys, pos)
+        active_mode_error(families, keys, pos)
 
       {:kwarg, "mode", _} ->
         []
 
       nil ->
-        active_mode_error(keys, pos)
+        active_mode_error(families, keys, pos)
     end
   end
 
@@ -2154,28 +2209,28 @@ defmodule PlazaQL.TypeChecker do
   end
 
   # The option keywords of a mode literal ([] for a mode without any).
-  defp mode_option_kwargs(mode) do
-    case Enum.find(@active_families, fn {_, literals, _} -> mode in literals end) do
+  defp mode_option_kwargs(families, mode) do
+    case Enum.find(families, fn {_, literals, _} -> mode in literals end) do
       {_, _, accepted} -> accepted
       nil -> []
     end
   end
 
   # The modes that take every one of `keys` (else those taking any of them).
-  defp active_mode_error([], _pos), do: []
+  defp active_mode_error(_families, [], _pos), do: []
 
-  defp active_mode_error(keys, pos) do
+  defp active_mode_error(families, keys, pos) do
     keys = Enum.uniq(keys)
 
     all =
-      for {mode, _, accepted} <- @active_families,
+      for {mode, _, accepted} <- families,
           Enum.all?(keys, &(&1 in accepted)),
           do: mode
 
     modes =
       case all do
         [] ->
-          for {mode, _, accepted} <- @active_families, Enum.any?(keys, &(&1 in accepted)), do: mode
+          for {mode, _, accepted} <- families, Enum.any?(keys, &(&1 in accepted)), do: mode
 
         modes ->
           modes

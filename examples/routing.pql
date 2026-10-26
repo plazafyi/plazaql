@@ -191,6 +191,15 @@ route(
   use_bus: 0.5
 );
 
+// Step-free transit trip that gets to Harvard by 9 am
+route(
+  origin: point(42.3601, -71.0589),
+  destination: point(42.3736, -71.1190),
+  mode: "transit",
+  arrive_by: "2026-03-16T09:00:00-04:00",
+  wheelchair: true
+);
+
 // Where 15 and 30 minutes of walking and transit get you
 isochrone(
   center: point(42.3601, -71.0589),

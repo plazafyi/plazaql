@@ -477,13 +477,16 @@ With `mode: "transit"`, `route()` and `isochrone()` plan walking plus public tra
 | `use_transfers` | number  | 0 to 1, default 1. 0 allows no transfer; lower values add a penalty per transfer |
 | `max_walk_m`    | number  | Longest walk in meters to the first stop, between stops and from the last stop; default 1000, at most 3000 |
 | `max_transfers` | integer | Most changes between vehicles; default 3, at most 4                          |
+| `arrive_by`     | string  | `route()` only. ISO 8601 arrival time, an instant with an offset or local time at the feed without one (not `"now"`): finds the latest departure that arrives by then. Not with `depart_at` |
+| `wheelchair`    | boolean | Rides only trips marked wheelchair accessible and boards and alights only at stops marked wheelchair boarding (platforms inherit their station's value; unknown counts as not accessible); default `false` |
 
 ```plazaql
 route(origin: point(42.3601, -71.0589), destination: point(42.3736, -71.1190), mode: "transit", depart_at: "2026-03-16T08:00:00-04:00", max_walk_m: 800)
 isochrone(center: point(42.3601, -71.0589), time: [900, 1800], mode: "transit", depart_at: "2026-03-16T08:00:00")
+route(origin: point(42.3601, -71.0589), destination: point(42.3736, -71.1190), mode: "transit", arrive_by: "2026-03-16T09:00:00-04:00", wheelchair: true)
 ```
 
-The options need `mode: "transit"` and are only accepted by these two functions. Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck, bicycle, pedestrian, motorcycle and scooter options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
+The options need `mode: "transit"` and are only accepted by these two functions; `isochrone()` rejects `arrive_by`, and `depart_at` and `arrive_by` can't be combined. `wheelchair` also works with `mode: "foot"`, where it is the [pedestrian option](#bicycle-and-pedestrian-options). Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck, bicycle, pedestrian, motorcycle and scooter options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
 
 #### Costing options
 

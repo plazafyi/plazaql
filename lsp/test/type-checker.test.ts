@@ -357,6 +357,47 @@ describe("PlazaQL Type Checker", () => {
       expect(fromVar.errors.some((e) => e.message.includes("transit options"))).toBe(false);
     });
 
+    it("checks arrive_by like the Elixir type checker", () => {
+      const messages = (src: string) => check(src).errors.map((e) => e.message);
+      expect(messages(`$$ = route(${route}, mode: "transit", arrive_by: "2026-03-16T09:00:00-04:00");`)).toEqual([]);
+      expect(messages(`$$ = route(${route}, mode: "transit", arrive_by: "2026-03-16T09:00:00");`)).toEqual([]);
+      expect(
+        messages(`$$ = route(${route}, mode: "foot", arrive_by: "2026-03-16T09:00:00Z");`).some((m) =>
+          m.includes('need `mode: "transit"`')
+        )
+      ).toBe(true);
+      expect(messages(`$$ = route(${route}, mode: "transit", depart_at: "now", arrive_by: "2026-03-16T09:00:00Z");`)).toEqual([
+        "`depart_at:` and `arrive_by:` can't be combined",
+      ]);
+      for (const value of ['"now"', "9", "true"]) {
+        expect(messages(`$$ = route(${route}, mode: "transit", arrive_by: ${value});`)).toEqual([
+          "`arrive_by:` must be an ISO 8601 datetime string",
+        ]);
+      }
+      expect(
+        messages(
+          '$$ = isochrone(center: point(40.71, -74.00), time: 600, mode: "transit", arrive_by: "2026-03-16T09:00:00Z");'
+        )
+      ).toEqual(["`arrive_by:` is supported by transit routes, not isochrones"]);
+    });
+
+    it("accepts wheelchair with mode transit", () => {
+      const messages = (src: string) => check(src).errors.map((e) => e.message);
+      expect(messages(`$$ = route(${route}, mode: "transit", wheelchair: true, max_walk_m: 500);`)).toEqual([]);
+      expect(
+        messages('$$ = isochrone(center: point(40.71, -74.00), time: 900, mode: "transit", wheelchair: false);')
+      ).toEqual([]);
+      expect(messages(`$$ = route(${route}, mode: "auto", wheelchair: true);`)).toEqual([
+        '`wheelchair:` need `mode: "foot"` or `mode: "transit"`',
+      ]);
+      expect(messages(`$$ = route(${route}, mode: "transit", wheelchair: 1);`)).toEqual([
+        "`wheelchair:` must be `true` or `false`",
+      ]);
+      expect(messages(`$$ = route(${route}, mode: "transit", wheelchair: true, walking_speed: 4);`)).toEqual([
+        '`walking_speed:` need `mode: "foot"`',
+      ]);
+    });
+
     it("rejects transit options on other computations", () => {
       const result = check(
         "$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], max_transfers: 1);"
@@ -495,8 +536,13 @@ describe("PlazaQL Type Checker", () => {
         '`use_hills:` need `mode: "bicycle"`, `mode: "foot"` or `mode: "motor_scooter"`'
       );
       expect(messages(`$$ = route(${route}, mode: "bicycle", wheelchair: true);`)).toContain(
-        '`wheelchair:` need `mode: "foot"`'
+        '`wheelchair:` need `mode: "foot"` or `mode: "transit"`'
       );
+      expect(
+        messages(
+          '$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "auto", wheelchair: true);'
+        )
+      ).toContain('`wheelchair:` need `mode: "foot"`');
       expect(messages(`$$ = route(${route}, mode: "foot", use_roads: 0.5);`)).toContain(
         '`use_roads:` need `mode: "bicycle"`'
       );
