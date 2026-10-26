@@ -384,7 +384,7 @@ describe("PlazaQL Type Checker", () => {
 
     it("accepts them on route, ev_route and matrix, and the speeds on isochrone", () => {
       for (const src of [
-        `$$ = route(${route}, use_highways: 0.2, use_tolls: 0, use_ferries: 1, use_living_streets: 0.5, top_speed: 100, fixed_speed: 60, maneuver_penalty: 5, service_penalty: 15);`,
+        `$$ = route(${route}, use_highways: 0.2, use_tolls: 0, use_ferries: 1, use_living_streets: 0.5, top_speed: 100, fixed_speed: 60, maneuver_penalty: 5, service_penalty: 15, gate_cost: 60, toll_booth_cost: 120, country_crossing_cost: 600);`,
         `$$ = route(${route}, mode: "foot", use_tracks: 1, shortest: true);`,
         `$$ = route(${route}, waypoints: [point(40.72, -74.00)], location_types: ["break", "through", "break"], headings: [90, 0, 180], heading_tolerances: "45;;", preferred_sides: ["", "", "same"], approaches: ";;curb", recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);`,
         "$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], use_tolls: 0);",
@@ -404,6 +404,9 @@ describe("PlazaQL Type Checker", () => {
         ["shortest: 1", "`shortest:` must be true or false"],
         ["top_speed: 5", "`top_speed:` must be a speed cap in whole km/h from 10 to 252"],
         ["maneuver_penalty: -1", "`maneuver_penalty:` must be seconds from 0 to 3600"],
+        ["gate_cost: 3601", "`gate_cost:` must be seconds from 0 to 3600"],
+        ['toll_booth_cost: "1"', "`toll_booth_cost:` must be seconds from 0 to 3600"],
+        ["country_crossing_cost: -5", "`country_crossing_cost:` must be seconds from 0 to 3600"],
         [
           'location_types: ["stop", "break"]',
           '`location_types:` must be one entry per point (origin, waypoints, destination): "break", "through" or "via", or a ";"-separated string',

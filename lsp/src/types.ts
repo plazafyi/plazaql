@@ -1338,7 +1338,13 @@ export const COSTING_PREFERENCES = [
   "use_tracks",
 ]
 export const COSTING_SPEEDS = ["top_speed", "fixed_speed"]
-export const COSTING_PENALTIES = ["maneuver_penalty", "service_penalty"]
+export const COSTING_PENALTIES = [
+  "maneuver_penalty",
+  "service_penalty",
+  "gate_cost",
+  "toll_booth_cost",
+  "country_crossing_cost",
+]
 export const COSTING_OPTIONS = [
   ...COSTING_PREFERENCES,
   "shortest",
@@ -1414,6 +1420,27 @@ const COSTING_PARAMS: ParamInfo[] = [
     optional: true,
     description:
       'Seconds added for each service road used, 0 to 3600 (mode "auto", "truck", "motorcycle" or "motor_scooter"); steers, not part of the duration',
+  },
+  {
+    name: "gate_cost",
+    type: "number",
+    optional: true,
+    description:
+      "Seconds added for each gate passed (barrier=gate, lift_gate, swing_gate, sliding_gate or hampshire_gate without access=yes, permissive or designated), 0 to 3600 (every mode); steers, not part of the duration",
+  },
+  {
+    name: "toll_booth_cost",
+    type: "number",
+    optional: true,
+    description:
+      'Seconds added for each toll booth (barrier=toll_booth) passed, 0 to 3600 (mode "auto", "truck", "motorcycle" or "motor_scooter"). A booth already costs 15 s of travel time; this only steers the route',
+  },
+  {
+    name: "country_crossing_cost",
+    type: "number",
+    optional: true,
+    description:
+      "Seconds added for each country border crossed (a barrier=border_control node, or roads of two countries meeting), 0 to 3600 (every mode); steers, not part of the duration",
   },
 ]
 
