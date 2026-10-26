@@ -1754,7 +1754,7 @@ defmodule PlazaQL.TypeChecker do
   end
 
   # z/x/y of a slippy-map tile: 0 <= x, y < 2^z
-  @max_tile_zoom 30
+  @max_tile_zoom 22
 
   defp check_tile_coords(z, x, y, pos) do
     cond do

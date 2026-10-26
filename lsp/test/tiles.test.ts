@@ -34,6 +34,20 @@ describe(".tile(z, x, y)", () => {
     );
   });
 
+  it("checks the coordinates and the layers argument", () => {
+    const messages = (src: string) => check(src).errors.map((e) => e.message)
+    expect(messages('search(node, amenity: "cafe").tile(14, 2);')[0]).toContain("three integer")
+    expect(messages('search(node, amenity: "cafe").tile(23, 0, 0);')[0]).toContain("between 0 and 22")
+    expect(messages('search(node, amenity: "cafe").tile(2, 4, 0);')[0]).toContain("outside the grid")
+    expect(messages('search(node, amenity: "cafe").tile(2, 1, 1, format: "pbf");')[0]).toContain(
+      "unknown",
+    )
+    expect(messages('search(node, amenity: "cafe").tile(2, 1, 1, layers: [:pois]);')[0]).toContain(
+      "layers:",
+    )
+    expect(messages('search(node, amenity: "cafe").tile(2, 1, 1, layers: ["pois"]);')).toEqual([])
+  })
+
   it("is offered as a method completion", () => {
     const source = 'search(node, amenity: "cafe").';
     const items = getCompletions(source, 1, source.length + 1);

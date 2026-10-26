@@ -53,6 +53,11 @@ defmodule PlazaQL.TileTest do
       assert msg =~ "three integer arguments"
     end
 
+    test "rejects zooms above 22" do
+      assert [msg | _] = errors(~s|search(node, amenity: "cafe").tile(23, 0, 0);|)
+      assert msg =~ "between 0 and 22"
+    end
+
     test "rejects coordinates outside the zoom's grid" do
       assert [msg | _] = errors(~s|search(node, amenity: "cafe").tile(2, 4, 0);|)
       assert msg =~ "outside the grid"
