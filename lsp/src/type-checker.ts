@@ -22,12 +22,15 @@ import {
   BICYCLE_TYPES,
   CENTROID_METRICS,
   COMPUTATION_KWARGS,
+  COSTING_PENALTIES,
+  COSTING_PREFERENCES,
   computationType,
   EXPANSION_ACTIONS,
   EXPANSION_PROPERTIES,
   FOOT_MODES,
   GEOCODE_LAYERS,
   isOutputMode,
+  LOCATION_OPTIONS,
   methodCategory,
   methodGroup,
   methodOutputType,
@@ -934,7 +937,11 @@ function checkComputationKwargs(
   pos: Pos,
 ): TypeCheckError[] {
   const nameErrors = checkKwargNames(name, args, pos)
-  return [...nameErrors, ...checkComputationOptions(name, args, pos)]
+  return [
+    ...nameErrors,
+    ...checkComputationOptions(name, args, pos),
+    ...checkCostingKwargs(args, pos),
+  ]
 }
 
 function checkComputationOptions(
@@ -994,6 +1001,109 @@ function checkComputationOptions(
     }
     return [includeError("`include:` must be a string or a list of strings")]
   })
+}
+
+// ── Costing, per-point and recosting options ──────────────────────────
+// Value shapes only, as lib/plazaql/type_checker.ex: Plaza checks which
+// modes and computations take each option and the per-point counts.
+
+const COSTING_EXAMPLE =
+  "e.g. `route(origin: ..., destination: ..., use_tolls: 0, top_speed: 100)`"
+const LOCATION_EXAMPLE =
+  'e.g. `location_types: ["break", "through", "break"]`, `headings: "90;;"`'
+const RECOSTING_EXAMPLE =
+  'each "name: key=value, ...", with an optional mode=auto, foot or bicycle'
+
+function checkCostingKwargs(args: Arg[], pos: Pos): TypeCheckError[] {
+  return args.flatMap((arg) => {
+    if (arg.type !== "kwarg") {
+      return []
+    }
+    const expected = costingValueError(arg.name, arg.value)
+    if (expected === null) {
+      return []
+    }
+    const hint = LOCATION_OPTIONS.includes(arg.name)
+      ? LOCATION_EXAMPLE
+      : arg.name === "recostings"
+        ? RECOSTING_EXAMPLE
+        : COSTING_EXAMPLE
+    return [kwargError(pos, `\`${arg.name}:\` must be ${expected}`, hint)]
+  })
+}
+
+const inRange = (value: Expr, min: number, max: number): boolean =>
+  value.kind === "number" && value.value >= min && value.value <= max
+
+const preferenceError = (value: Expr): string | null =>
+  inRange(value, 0, 1)
+    ? null
+    : "a number from 0 (avoid) through 0.5 (neutral) to 1 (prefer)"
+
+const speedError =
+  (min: number, what: string) =>
+  (value: Expr): string | null =>
+    value.kind === "number" &&
+    Number.isInteger(value.value) &&
+    inRange(value, min, 252)
+      ? null
+      : `${what} in whole km/h from ${min} to 252`
+
+const penaltyError = (value: Expr): string | null =>
+  inRange(value, 0, 3600) ? null : "seconds from 0 to 3600"
+
+const degreesError =
+  (max: number, what: string) =>
+  (value: Expr): string | null =>
+    value.kind === "string" ||
+    (value.kind === "list" &&
+      value.items.every((item) => inRange(item, 0, max)))
+      ? null
+      : `${what} in degrees from 0 to ${max} per point, or a ";"-separated string with empty entries for points without one`
+
+const recostingsError = (value: Expr): string | null =>
+  value.kind === "list" && value.items.every((item) => item.kind === "string")
+    ? null
+    : 'a list of strings such as ["no_tolls: use_tolls=0", "walk: mode=foot"]'
+
+const COSTING_CHECKS: Record<string, (value: Expr) => string | null> = {
+  ...Object.fromEntries(
+    COSTING_PREFERENCES.map((name) => [name, preferenceError]),
+  ),
+  ...Object.fromEntries(COSTING_PENALTIES.map((name) => [name, penaltyError])),
+  shortest: (value) => (value.kind === "bool" ? null : "true or false"),
+  top_speed: speedError(10, "a speed cap"),
+  fixed_speed: speedError(1, "the speed on every road"),
+  location_types: (value) => perPointError(value, ["break", "through", "via"]),
+  preferred_sides: (value) =>
+    perPointError(value, ["same", "opposite", "either"]),
+  headings: degreesError(360, "a heading"),
+  heading_tolerances: degreesError(180, "a tolerance"),
+  recostings: recostingsError,
+}
+
+function costingValueError(name: string, value: Expr): string | null {
+  const check = COSTING_CHECKS[name]
+  return check ? check(value) : null
+}
+
+function perPointError(value: Expr, allowed: string[]): string | null {
+  if (value.kind === "string") {
+    return null
+  }
+  const ok =
+    value.kind === "list" &&
+    value.items.every(
+      (item) =>
+        item.kind === "string" &&
+        (item.value === "" || allowed.includes(item.value)),
+    )
+  return ok
+    ? null
+    : `one entry per point (origin, waypoints, destination): ${allowed
+        .map((v) => `"${v}"`)
+        .join(", ")
+        .replace(/, ([^,]*)$/, " or $1")}, or a ";"-separated string`
 }
 
 // ── Truck vehicle options (route/isochrone/matrix with mode: "truck") ─

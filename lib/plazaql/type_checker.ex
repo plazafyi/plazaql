@@ -235,6 +235,7 @@ defmodule PlazaQL.TypeChecker do
         check_truck_kwargs(comp_type, opts, pos) ++
         check_transit_kwargs(comp_type, opts, pos) ++
         check_active_kwargs(comp_type, opts, pos) ++
+        check_costing_kwargs(opts, pos) ++
         check_dataset_kwargs(opts, pos)
 
     typed = {:computation, comp_type, args, opts, Map.put(pos, :type, type)}
@@ -1200,14 +1201,33 @@ defmodule PlazaQL.TypeChecker do
                                step_penalty max_hiking_difficulty wheelchair)
   @active_option_kwargs Enum.uniq(@bicycle_option_kwargs ++ @pedestrian_option_kwargs)
 
+  # Road costing options (Plaza's REST costing options), checked by
+  # check_costing_kwargs/2. Plaza checks which modes take which.
+  @costing_preference_kwargs ~w(use_highways use_tolls use_ferries use_living_streets use_tracks)
+  @costing_speed_kwargs ~w(top_speed fixed_speed)
+  @costing_penalty_kwargs ~w(maneuver_penalty service_penalty)
+  @costing_kwargs @costing_preference_kwargs ++
+                    ["shortest"] ++ @costing_speed_kwargs ++ @costing_penalty_kwargs
+
+  # Per-point route options (one entry per point) and recostings.
+  @location_kwargs ~w(location_types headings heading_tolerances preferred_sides)
+
   @computation_kwargs %{
-    route: @route_kwargs ++ @truck_option_kwargs ++ @transit_option_kwargs ++ @active_option_kwargs,
+    route:
+      @route_kwargs ++
+        @truck_option_kwargs ++
+        @transit_option_kwargs ++
+        @active_option_kwargs ++ @costing_kwargs ++ @location_kwargs ++ ["recostings"],
     ev_route:
       @route_kwargs ++
+        @costing_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
     isochrone:
       ~w(center time mode denoise generalize avoid_datasets depart_at) ++
-        @truck_option_kwargs ++ @transit_option_kwargs ++ @active_option_kwargs,
+        @truck_option_kwargs ++
+        @transit_option_kwargs ++
+        @active_option_kwargs ++
+        @costing_speed_kwargs,
     geocode:
       ~w(query addresses address neighbourhood locality county region postalcode country) ++
         @geocode_filter_kwargs,
@@ -1217,7 +1237,7 @@ defmodule PlazaQL.TypeChecker do
     nearest: ~w(point radius),
     matrix:
       ~w(origins destinations mode annotations fallback_speed avoid_datasets) ++
-        @truck_option_kwargs ++ @active_option_kwargs,
+        @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
     map_match: ~w(points mode radiuses),
     optimize: ~w(waypoints mode roundtrip),
     elevation: ~w(point points),
@@ -1242,6 +1262,120 @@ defmodule PlazaQL.TypeChecker do
       %Error{line: pos.line, col: pos.col, message: message, hint: hint}
     end
   end
+
+  # ── Costing options, per-point options, recostings ─────────────
+
+  # Value shapes only: Plaza checks which modes and computations take each
+  # option, the per-point counts and the recosting entries, with the same
+  # messages as REST.
+  defp check_costing_kwargs(opts, pos) do
+    for {:kwarg, key, value} <- opts,
+        key in @costing_kwargs or key in @location_kwargs or key == "recostings",
+        hint = costing_value_error(key, value),
+        hint != nil do
+      %Error{
+        line: pos.line,
+        col: pos.col,
+        message: "`#{key}:` must be #{hint}",
+        hint: costing_hint(key)
+      }
+    end
+  end
+
+  defp costing_value_error(key, {:number, n, _}) when key in @costing_preference_kwargs,
+    do: if(n >= 0 and n <= 1, do: nil, else: preference_hint())
+
+  defp costing_value_error(key, _value) when key in @costing_preference_kwargs,
+    do: preference_hint()
+
+  defp costing_value_error("shortest", {:bool, _, _}), do: nil
+  defp costing_value_error("shortest", _value), do: "true or false"
+
+  defp costing_value_error("top_speed", value), do: speed_error(value, 10, "a speed cap")
+
+  defp costing_value_error("fixed_speed", value),
+    do: speed_error(value, 1, "the speed on every road")
+
+  defp costing_value_error(key, {:number, n, _}) when key in @costing_penalty_kwargs,
+    do: if(n >= 0 and n <= 3600, do: nil, else: "seconds from 0 to 3600")
+
+  defp costing_value_error(key, _value) when key in @costing_penalty_kwargs,
+    do: "seconds from 0 to 3600"
+
+  defp costing_value_error("location_types", value),
+    do: per_point_error(value, &(&1 in ~w(break through via)), ~s|"break", "through" or "via"|)
+
+  defp costing_value_error("preferred_sides", value),
+    do:
+      per_point_error(value, &(&1 in ~w(same opposite either)), ~s|"same", "opposite" or "either"|)
+
+  defp costing_value_error("headings", value), do: degrees_error(value, 360, "a heading")
+
+  defp costing_value_error("heading_tolerances", value),
+    do: degrees_error(value, 180, "a tolerance")
+
+  defp costing_value_error("recostings", {:list, items, _}) do
+    if Enum.all?(items, &match?({:string, _, _}, &1)), do: nil, else: recostings_hint()
+  end
+
+  defp costing_value_error("recostings", _value), do: recostings_hint()
+
+  defp costing_hint(key) when key in @location_kwargs,
+    do: ~s|e.g. `location_types: ["break", "through", "break"]`, `headings: "90;;"`|
+
+  defp costing_hint("recostings"),
+    do: ~s|each "name: key=value, ...", with an optional mode=auto, foot or bicycle|
+
+  defp costing_hint(_key),
+    do: ~s|e.g. `route(origin: ..., destination: ..., use_tolls: 0, top_speed: 100)`|
+
+  defp preference_hint(), do: "a number from 0 (avoid) through 0.5 (neutral) to 1 (prefer)"
+
+  defp recostings_hint(),
+    do: ~s|a list of strings such as ["no_tolls: use_tolls=0", "walk: mode=foot"]|
+
+  defp speed_error({:number, n, _}, min, _what)
+       when is_integer(n) and n >= min and n <= 252,
+       do: nil
+
+  defp speed_error({:number, n, _}, min, _what)
+       when is_float(n) and n == trunc(n) and n >= min and n <= 252,
+       do: nil
+
+  defp speed_error(_value, min, what), do: "#{what} in whole km/h from #{min} to 252"
+
+  # A list (one entry per point) or a ";"-separated string with empty
+  # entries for "not set".
+  defp per_point_error({:string, _, _}, _valid?, _expected), do: nil
+
+  defp per_point_error({:list, items, _}, valid?, expected) do
+    if Enum.all?(items, &(match?({:string, v, _} when v == "", &1) or string_valid?(&1, valid?))),
+      do: nil,
+      else: per_point_hint(expected)
+  end
+
+  defp per_point_error(_value, _valid?, expected), do: per_point_hint(expected)
+
+  defp string_valid?({:string, v, _}, valid?), do: valid?.(v)
+  defp string_valid?(_item, _valid?), do: false
+
+  defp per_point_hint(expected),
+    do:
+      ~s|one entry per point (origin, waypoints, destination): #{expected}, or a ";"-separated string|
+
+  defp degrees_error({:string, _, _}, _max, _what), do: nil
+
+  defp degrees_error({:list, items, _}, max, what) do
+    if Enum.all?(items, &match?({:number, n, _} when n >= 0 and n <= max, &1)),
+      do: nil,
+      else: degrees_hint(max, what)
+  end
+
+  defp degrees_error(_value, max, what), do: degrees_hint(max, what)
+
+  defp degrees_hint(max, what),
+    do:
+      ~s|#{what} in degrees from 0 to #{max} per point, or a ";"-separated string with empty entries for points without one|
 
   # Truck options on a computation without them get check_truck_kwargs/3's
   # own message ("`centroid()` has no truck options"); one error, not two.

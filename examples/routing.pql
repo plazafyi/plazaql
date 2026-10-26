@@ -180,3 +180,21 @@ isochrone(
   mode: "transit",
   depart_at: "2026-03-16T08:00:00-04:00"
 );
+
+// Avoid tolls and keep under 100 km/h; also report the same route's time on foot
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7580, -73.9855),
+  use_tolls: 0,
+  top_speed: 100,
+  recostings: ["walk: mode=foot"]
+);
+
+// Pass a pickup point without stopping, and arrive with the door on the driving side
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7580, -73.9855),
+  waypoints: [point(40.7306, -73.9866)],
+  location_types: ["break", "through", "break"],
+  preferred_sides: ";;same"
+);
