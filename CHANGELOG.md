@@ -31,6 +31,17 @@ First Hex release of the PlazaQL Elixir package.
   `ev_route()` and `matrix()`: seconds (0-3600) added per gate, toll booth
   or border crossing passed. Like the other penalties they steer the route
   and leave `duration_s` alone.
+- The pedestrian options (`walking_speed:`, `use_hills:`, `use_lit:`,
+  `walkway_factor:`, `sidewalk_factor:`, `step_penalty:`,
+  `max_hiking_difficulty:`) type-check on `route()` and `isochrone()` with
+  `mode: "transit"`, for the journey's walking legs.
+- `arrive_by:` on `route()` and `wheelchair:` on `route()` and
+  `isochrone()` with `mode: "transit"`. `arrive_by` finds the latest
+  departure that arrives by then; `wheelchair` rides only accessible trips
+  and uses only accessible stops (it stays the pedestrian option with
+  `mode: "foot"`). The type checker and the LSP reject `arrive_by` with
+  `depart_at`, on `isochrone()`, as `"now"` or a non-string, and either
+  keyword with another mode.
 
 ### SQL generation
 

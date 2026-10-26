@@ -44,6 +44,7 @@ import {
   REVERSE_GEOCODE_INCLUDES,
   STRUCTURED_GEOCODE_COMPONENTS,
   searchBaseType,
+  TRANSIT_ACTIVE_OPTIONS,
   TRANSIT_COMPUTATIONS,
   TRANSIT_OPTIONS,
   TRANSIT_PREFERENCES,
@@ -1228,8 +1229,38 @@ function checkTransitKwargs(
   }
   return [
     ...checkTransitUsage(name, args, pos),
+    ...checkArriveBy(name, args, pos),
     ...transitArgs.flatMap((arg) => checkTransitValue(arg, pos)),
   ]
+}
+
+// arrive_by: the latest departure arriving by then, for a transit route. An
+// isochrone spreads out from its departure, so it has no arrival time.
+function checkArriveBy(name: string, args: Arg[], pos: Pos): TypeCheckError[] {
+  const has = (key: string) =>
+    args.some((arg) => arg.type === "kwarg" && arg.name === key)
+  if (!has("arrive_by")) {
+    return []
+  }
+  if (name === "isochrone") {
+    return [
+      kwargError(
+        pos,
+        "`arrive_by:` is supported by transit routes, not isochrones",
+        "an isochrone spreads out from `depart_at:`",
+      ),
+    ]
+  }
+  if (has("depart_at")) {
+    return [
+      kwargError(
+        pos,
+        "`depart_at:` and `arrive_by:` can't be combined",
+        "`depart_at:` leaves at a time; `arrive_by:` finds the latest departure arriving by one",
+      ),
+    ]
+  }
+  return []
 }
 
 function checkTransitUsage(
@@ -1272,6 +1303,17 @@ function checkTransitValue(arg: Arg, pos: Pos): TypeCheckError[] {
   }
   const { name, value } = arg
   const isNumber = value.kind === "number"
+  if (name === "arrive_by") {
+    return value.kind === "string" && value.value !== "now"
+      ? []
+      : [
+          kwargError(
+            pos,
+            "`arrive_by:` must be an ISO 8601 datetime string",
+            'e.g. `arrive_by: "2026-03-16T09:00:00-04:00"`; without an offset, local time at the transit feed',
+          ),
+        ]
+  }
   if (TRANSIT_PREFERENCES.includes(name)) {
     return isNumber && value.value >= 0 && value.value <= 1
       ? []
@@ -1318,6 +1360,13 @@ const ACTIVE_FAMILIES: [string, string[], string[]][] = [
   ["motor_scooter", MOTOR_SCOOTER_MODES, MOTOR_SCOOTER_OPTIONS],
 ]
 
+/** `wheelchair:` is also a transit option of route() and isochrone(). */
+function activeFamilies(name: string): [string, string[], string[]][] {
+  return TRANSIT_COMPUTATIONS.includes(name)
+    ? [...ACTIVE_FAMILIES, ["transit", ["transit"], TRANSIT_ACTIVE_OPTIONS]]
+    : ACTIVE_FAMILIES
+}
+
 function checkActiveKwargs(
   name: string,
   args: Arg[],
@@ -1358,9 +1407,10 @@ function checkActiveUsage(
     // As for truck options: a mode that is not a literal is checked by Plaza.
     return []
   }
-  const family = ACTIVE_FAMILIES.find(([, literals]) => literals.includes(mode))
+  const families = activeFamilies(name)
+  const family = families.find(([, literals]) => literals.includes(mode))
   const stray = family ? keys.filter((key) => !family[2].includes(key)) : keys
-  return activeModeError(stray, pos)
+  return activeModeError(families, stray, pos)
 }
 
 /** The `mode:` literal given ("" for none or an atom), or "dynamic" for a variable. */
@@ -1377,18 +1427,22 @@ function activeMode(args: Arg[]): string {
 }
 
 /** The modes taking every one of `keys` (else those taking any of them). */
-function activeModeError(keys: string[], pos: Pos): TypeCheckError[] {
+function activeModeError(
+  families: [string, string[], string[]][],
+  keys: string[],
+  pos: Pos,
+): TypeCheckError[] {
   const unique = [...new Set(keys)]
   if (unique.length === 0) {
     return []
   }
-  let modes = ACTIVE_FAMILIES.filter(([, , options]) =>
-    unique.every((key) => options.includes(key)),
-  ).map(([mode]) => mode)
+  let modes = families
+    .filter(([, , options]) => unique.every((key) => options.includes(key)))
+    .map(([mode]) => mode)
   if (modes.length === 0) {
-    modes = ACTIVE_FAMILIES.filter(([, , options]) =>
-      unique.some((key) => options.includes(key)),
-    ).map(([mode]) => mode)
+    modes = families
+      .filter(([, , options]) => unique.some((key) => options.includes(key)))
+      .map(([mode]) => mode)
   }
   const quotedModes = modes.map((mode) => `\`mode: "${mode}"\``)
   const needed =

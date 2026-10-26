@@ -1282,7 +1282,7 @@ defmodule PlazaQL.Compiler do
   @computation_kwarg_names Map.new(
                              ~w(action address alternatives avoid_datasets axle_count axle_load battery
                                 battery_capacity_wh boundary_gid connector_types country
-                                country_code county dataset_name_field datasets depart_at destinations exclude
+                                country_code county dataset_name_field datasets depart_at arrive_by destinations exclude
                                 expansion_properties focus hazmat height ids include
                                 initial_charge_pct layers length locality locations metric
                                 min_charge_pct min_power_kw neighbourhood origins points

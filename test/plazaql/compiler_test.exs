@@ -647,6 +647,23 @@ defmodule PlazaQL.CompilerTest do
       assert {:isochrone, %{mode: "transit", depart_at: "now", use_rail: 0}} = plan.computation
     end
 
+    test "route passes arrive_by and wheelchair through; isochrone wheelchair" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "transit", arrive_by: "2026-03-16T09:00:00", wheelchair: true);|
+        )
+
+      assert {:route, %{mode: "transit", arrive_by: "2026-03-16T09:00:00", wheelchair: true}} =
+               plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = isochrone(center: point(40.71, -74.00), time: 900, mode: "transit", wheelchair: false);|
+        )
+
+      assert {:isochrone, %{mode: "transit", wheelchair: false}} = plan.computation
+    end
+
     test "route passes the costing, per-point and recosting keywords through" do
       plan =
         first_plan(

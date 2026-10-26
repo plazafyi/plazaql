@@ -1108,12 +1108,15 @@ const TRUCK_MODE_VALUES = [
 
 // Options of route() and isochrone() with mode: "transit" (Plaza's
 // pedestrian + public transit routing over GTFS feeds). Plaza checks the
-// upper bounds.
+// upper bounds. `arrive_by` is route() only; isochrone() recognises it to
+// say so. `wheelchair` is a transit option too, but as a foot option it is
+// checked with the mode options (TRANSIT_ACTIVE_OPTIONS).
 export const TRANSIT_PREFERENCES = ["use_bus", "use_rail", "use_transfers"]
 export const TRANSIT_OPTIONS = [
   ...TRANSIT_PREFERENCES,
   "max_walk_m",
   "max_transfers",
+  "arrive_by",
 ]
 export const TRANSIT_COMPUTATIONS = ["route", "isochrone"]
 
@@ -1155,6 +1158,14 @@ const TRANSIT_PARAMS: ParamInfo[] = [
   },
 ]
 
+const ARRIVE_BY_PARAM: ParamInfo = {
+  name: "arrive_by",
+  type: "string",
+  optional: true,
+  description:
+    'Arrival time for mode "transit" (ISO 8601 with an offset, local time at the feed without one): finds the latest departure that arrives by then. Not with depart_at.',
+}
+
 const TRANSIT_MODE_VALUE = { value: '"transit"' }
 
 // Rider options of route(), isochrone() and matrix() with mode: "bicycle"
@@ -1179,6 +1190,8 @@ export const PEDESTRIAN_OPTIONS = [
   "max_hiking_difficulty",
   "wheelchair",
 ]
+// Transit walks take the pedestrian options (wheelchair included).
+export const TRANSIT_ACTIVE_OPTIONS = PEDESTRIAN_OPTIONS
 export const MOTORCYCLE_OPTIONS = ["style", "use_trails", "use_curves"]
 export const MOTOR_SCOOTER_OPTIONS = ["use_primary", "use_hills"]
 export const ACTIVE_OPTIONS = [
@@ -1294,7 +1307,7 @@ const ACTIVE_PARAMS: ParamInfo[] = [
     type: "boolean",
     optional: true,
     description:
-      'Wheelchair routing: no steps, grades of 8% at most, smooth surfaces (mode: "foot")',
+      'Wheelchair routing. mode "foot": no steps, grades of 8% at most, smooth surfaces. mode "transit": rides only wheelchair-accessible trips and boards and alights only at accessible stops (unknown counts as not accessible)',
   },
   {
     name: "style",
@@ -1616,6 +1629,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       ...TRUCK_PARAMS,
       ...TRANSIT_PARAMS,
+      ARRIVE_BY_PARAM,
       ...ACTIVE_PARAMS,
       ...COSTING_PARAMS,
       ...LOCATION_PARAMS,
