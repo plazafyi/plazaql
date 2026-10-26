@@ -1548,6 +1548,26 @@ defmodule PlazaQL.TypeCheckerTest do
       )
 
       check!(
+        ~s|optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], exclude: "toll,ferry");|
+      )
+
+      check!(
+        ~s|map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], exclude: ["motorway"]);|
+      )
+
+      [error] =
+        check_errors(
+          ~s|map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], exclude: ["cash"]);|
+        )
+
+      assert error.message =~ "exclude"
+
+      [error] =
+        check_errors(~s|optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], exclude: 5);|)
+
+      assert error.message =~ "exclude"
+
+      check!(
         ~s|map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: ["a"]);|
       )
 

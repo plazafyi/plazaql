@@ -768,6 +768,7 @@ A `linestring(...)` works as the trace too: `map_match(linestring(point(40.71, -
 | `mode`    | string  | Match only to roads this mode may use: `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional; without it any road matches) |
 | `radiuses` | number[] | Search radius in meters per point, default 50 (optional) |
 | `datasets` | string[]/string | Datasets whose roads the trace may match too, as in `route()`; a matched dataset road is named by its `name` property (optional) |
+| `exclude` | string[]/string | Road types the trace is never matched to, same values as `route()` (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()`: no point is matched to a road that touches one (optional) |
 
 ### `optimize(points..., mode:)`
@@ -785,6 +786,7 @@ The positional points are the waypoints; `waypoints: [...]` is the keyword form.
 | `waypoints` | Point[] | Points to visit, 2 to 50 (or pass them positionally) |
 | `mode`      | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `roundtrip` | boolean | Return to the first point (optional)            |
+| `exclude`   | string[]/string | Road types to leave out, same values as `route()` (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 
 ### `ev_route(origin:, destination:, battery:)`

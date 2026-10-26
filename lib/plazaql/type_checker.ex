@@ -1251,10 +1251,11 @@ defmodule PlazaQL.TypeChecker do
       ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
     map_match:
-      ~w(points mode radiuses datasets avoid_datasets) ++
+      ~w(points mode radiuses exclude datasets avoid_datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     optimize:
-      ~w(waypoints mode roundtrip avoid_datasets) ++ @truck_option_kwargs ++ @active_option_kwargs,
+      ~w(waypoints mode roundtrip exclude avoid_datasets) ++
+        @truck_option_kwargs ++ @active_option_kwargs,
     elevation: ~w(point points),
     elevation_profile: ~w(points),
     centroid:
@@ -1637,7 +1638,9 @@ defmodule PlazaQL.TypeChecker do
     end)
   end
 
-  defp check_computation_kwargs(:matrix, opts, pos) do
+  # matrix(), map_match() and optimize() exclude: the same road types.
+  defp check_computation_kwargs(comp_type, opts, pos)
+       when comp_type in [:matrix, :map_match, :optimize] do
     Enum.flat_map(opts, fn
       {:kwarg, "exclude", _} = opt -> check_route_option(opt, pos)
       _ -> []

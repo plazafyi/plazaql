@@ -25,6 +25,8 @@ First Hex release of the PlazaQL Elixir package.
   areas to keep out of. LSP signatures list it.
 - `centroid()`, `expansion()`, `optimize()` and `map_match()` take
   `avoid_datasets:` like `route()`, `isochrone()` and `matrix()`.
+- `map_match()` and `optimize()` take `exclude:` like `route()`, checked
+  the same way (Plaza's REST `exclude` on `/map-match` and `/optimize`).
 - `optimize()`, `centroid()`, `expansion()` and `map_match()` take every
   vehicle mode too: the truck keywords with `mode: "truck"` and the bicycle,
   pedestrian, motorcycle and scooter keywords with their modes, as
