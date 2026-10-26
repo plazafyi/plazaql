@@ -119,17 +119,22 @@ describe("dataset keywords", () => {
       '$$ = route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), avoid_datasets: ["flood-zones"]);',
       '$$ = isochrone(center: point(38.8, -77.1), time: 600, avoid_datasets: "flood-zones");',
       '$$ = matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], avoid_datasets: ["a"]);',
+      '$$ = route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: ["campus-roads"]);',
+      '$$ = ev_route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: "campus-roads");',
+      '$$ = isochrone(center: point(38.8, -77.1), time: 600, datasets: ["campus-roads"]);',
+      '$$ = matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], datasets: ["a"]);',
+      '$$ = map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["campus-roads"]);',
     ]) {
       expect(check(src).errors).toEqual([]);
     }
   });
 
   it("rejects dataset keywords on computations that don't take them", () => {
-    const route = check(
-      '$$ = route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: ["x"]);',
+    const optimize = check(
+      '$$ = optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["x"]);',
     );
-    expect(route.errors.map((e) => e.message)).toContain(
-      "`route()` does not accept `datasets:`",
+    expect(optimize.errors.map((e) => e.message)).toContain(
+      "`optimize()` does not accept `datasets:`",
     );
 
     const geocode = check('$$ = geocode("Main St", avoid_datasets: ["x"]);');

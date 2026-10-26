@@ -381,6 +381,7 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 | `voice_units`   | string          | `"metric"` or `"imperial"` for distances in voice announcements (optional, defaults to `units`) |
 | `waypoint_names` | string[]/string | One name per point (origin, each waypoint, destination) for arrival instructions; `""` keeps the default; a list or a `;`-separated string (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons the route stays out of (optional, below) |
+| `datasets` | string[]/string | Datasets whose roads the route may use as well as OSM's (optional, below) |
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), depart_at: "2026-03-16T08:00:00Z", traffic_model: "pessimistic", exclude: ["toll", "ferry"])
@@ -390,6 +391,12 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), depart_at
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), avoid_datasets: ["flood-zones"])
+```
+
+`datasets` adds the roads of your datasets to the graph: a campus, a private estate, a new road OSM doesn't have yet. It takes up to 20 dataset slugs or ids; `"plaza"` and `"all"` are not accepted (REST: `datasets`). A road is a line feature with a `highway` (or `road_class`) property, read like an OSM way: `maxspeed`, `oneway`, `access`, `motor_vehicle`, `foot`, `bicycle`, `surface` and `toll` work as their OSM tags do, so cars stay off a `highway: "footway"` and `access: "private"` closes a road to them. A road joins the OSM network where one of its ends lies within 10 m of an OSM junction; elsewhere it only connects to the dataset's other roads. OSM turn restrictions and turn costs don't apply on dataset roads, and they carry no traffic profile or intersection delays. `duration_s` is timed the same way as on OSM roads. `isochrone()`, `matrix()`, `ev_route()` and `map_match()` take it too. Note the difference from `avoid_datasets`, whose polygons are areas to stay out of.
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), datasets: ["campus-roads"])
 ```
 
 #### Truck options
@@ -578,6 +585,7 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 | `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` is a list (optional) |
 | `exclude` | string[]/string | Road types to leave out, as in `route()` (optional; not with `mode: "transit"`) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
+| `datasets` | string[]/string | Datasets whose roads to travel as well, as in `route()` (optional) |
 
 ### `geocode(address)` / `geocode(address:, locality:, ...)`
 
@@ -619,7 +627,7 @@ A structured call needs at least one of `address`, `locality`, `region` or `post
 
 `geocode(addresses: ["...", "..."])` geocodes up to 1000 addresses at once and returns the `POST /api/v1/geocode/batch` body: `{"results": [FeatureCollection, ...], "count": n}`, in input order.
 
-`datasets` adds dataset features as candidates (REST: `datasets`). It takes dataset slugs or ids, `"plaza"` for every Plaza dataset, or `"all"` for those plus your own; another user's dataset is "dataset not found". The query text (for structured calls, the most specific component given) is matched against each feature's name, `properties.name`, or the property `dataset_name_field` names. Matches rank by text similarity alongside the OSM results, and carry `layer: "dataset"`, `dataset` (the slug), `dataset_id`, `feature_id` and the feature's properties as `dataset_properties`. `bbox`, `boundary_gid` and `country_code` filter them too.
+`datasets` adds dataset features as candidates (REST: `datasets`). It takes dataset slugs or ids, `"plaza"` for every Plaza dataset, or `"all"` for those plus your own; another user's dataset is "dataset not found". The query text (for structured calls, the most specific component given) is matched against each feature's name, `properties.name`, or the property `dataset_name_field` names. The datasets' addresses (features with `housenumber` and `street`, or `addr:housenumber` and `addr:street`) are matched on their full address too. Matches rank by text similarity alongside the OSM results, and carry `layer: "dataset"`, `dataset` (the slug), `dataset_id`, `feature_id`, `feature_type` and the feature's properties as `dataset_properties`; an address has `feature_type: "address"` and its `house_number`, `street`, `city`, `state`, `postcode` and `country_code`. `bbox`, `boundary_gid` and `country_code` filter them too.
 
 ```plazaql
 geocode("Union Square", datasets: ["my-stores"], focus: point(37.788, -122.407))
@@ -693,6 +701,8 @@ Any other `include:` value is a type error.
 
 `datasets: [...]` (slugs, ids, `"plaza"` or `"all"`) attaches a `datasets` list to the response and to every result: per dataset, each polygon that contains the point, smallest first (`"match": "contains"`) and the nearest point or line feature within `radius` (`"match": "nearest"`, with `distance_m`). Each entry has `dataset`, `dataset_id`, `id`, `name`, `feature_type`, `match`, `distance_m` and `properties`.
 
+The datasets' addresses within `radius` also rank with the OSM results by distance, so a dataset address nearer than any OSM address comes first, and a point with only a dataset address nearby is answered with it. They carry `layer: "dataset"`, `feature_type: "address"`, the address fields and `dataset`, `dataset_id`, `feature_id`. `layer: "poi"` leaves them out.
+
 ```plazaql
 reverse_geocode(point(40.7484, -73.9856), datasets: ["census-tracts", "my-territories"])
 ```
@@ -737,6 +747,7 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 | `fallback_speed` | number | km/h used to estimate pairs with no route, which are otherwise null (optional) |
 | `exclude`      | string[]/string | Road types to leave out, as in `route()` (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
+| `datasets` | string[]/string | Datasets whose roads to travel as well, as in `route()` (optional) |
 | the [costing options](#costing-options) | | As in `route()`; durations stay travel time (optional) |
 
 The two lists can be positional: `matrix([point(40.71, -74.00)], [point(40.75, -73.98)])`.
@@ -756,6 +767,7 @@ A `linestring(...)` works as the trace too: `map_match(linestring(point(40.71, -
 | `points`  | Point[] | GPS trace, two or more points in order     |
 | `mode`    | string  | Match only to roads this mode may use: `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional; without it any road matches) |
 | `radiuses` | number[] | Search radius in meters per point, default 50 (optional) |
+| `datasets` | string[]/string | Datasets whose roads the trace may match too, as in `route()`; a matched dataset road is named by its `name` property (optional) |
 
 ### `optimize(points..., mode:)`
 
@@ -788,7 +800,7 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `battery`            | number  | Battery capacity in watt-hours (required) |
 | `initial_charge_pct` | number  | Initial charge percentage (optional)     |
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
-| `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names`, the [costing options](#costing-options) | | Same as `route()` (optional) |
+| `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names`, the [costing options](#costing-options) | | Same as `route()` (optional) |
 
 ### `centroid(locations:, mode:?, metric:?, exclude:?)`
 

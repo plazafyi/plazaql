@@ -1181,7 +1181,7 @@ defmodule PlazaQL.TypeChecker do
   # a misspelt or misplaced keyword is never silently dropped.
   @route_kwargs ~w(origin destination mode steps alternatives waypoints depart_at traffic_model
                    exclude overview geometries annotations lang units verbal avoid_datasets
-                   voice_instructions banner_instructions roundabout_exits voice_units
+                   datasets voice_instructions banner_instructions roundabout_exits voice_units
                    waypoint_names)
   @geocode_filter_kwargs ~w(focus country_code bbox layers layer boundary_gid limit lang
                            datasets dataset_name_field)
@@ -1235,7 +1235,7 @@ defmodule PlazaQL.TypeChecker do
         @costing_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
     isochrone:
-      ~w(center time mode denoise generalize exclude avoid_datasets depart_at) ++
+      ~w(center time mode denoise generalize exclude avoid_datasets datasets depart_at) ++
         @truck_option_kwargs ++
         @transit_option_kwargs ++
         @active_option_kwargs ++
@@ -1248,9 +1248,9 @@ defmodule PlazaQL.TypeChecker do
     reverse_geocode: ~w(point radius limit include layer lang datasets),
     nearest: ~w(point radius),
     matrix:
-      ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets) ++
+      ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
-    map_match: ~w(points mode radiuses) ++ @truck_option_kwargs ++ @active_option_kwargs,
+    map_match: ~w(points mode radiuses datasets) ++ @truck_option_kwargs ++ @active_option_kwargs,
     optimize: ~w(waypoints mode roundtrip) ++ @truck_option_kwargs ++ @active_option_kwargs,
     elevation: ~w(point points),
     elevation_profile: ~w(points),
@@ -1641,7 +1641,8 @@ defmodule PlazaQL.TypeChecker do
   defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
 
   # Values of the dataset keywords, shared with Plaza's REST `datasets`
-  # (geocoding), `dataset_name_field` and `avoid_datasets` (routing): dataset
+  # (geocoding: datasets to search; routing: datasets whose roads to route
+  # over), `dataset_name_field` and `avoid_datasets` (routing): dataset
   # slugs or ids, which Plaza resolves and scope-checks. Which computations
   # take them is @computation_kwargs.
   @dataset_kwargs ~w(datasets dataset_name_field avoid_datasets)

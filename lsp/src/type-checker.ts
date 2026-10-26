@@ -852,7 +852,8 @@ function checkOverlapFractionMethod(
 // ── Dataset keyword arguments ───────────────────────────────────────
 
 /**
- * Dataset keywords, shared with Plaza's REST `datasets` (geocoding),
+ * Dataset keywords, shared with Plaza's REST `datasets` (geocoding: datasets
+ * to search; routing: datasets whose roads to route over),
  * `dataset_name_field` and `avoid_datasets` (routing). Values are dataset
  * slugs or ids, which Plaza resolves. Which computations take them is
  * COMPUTATION_KWARGS.

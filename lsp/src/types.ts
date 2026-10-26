@@ -1739,6 +1739,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
       },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
+      },
     ],
     returnType: "Route",
     description: "Compute a route between waypoints.",
@@ -1790,6 +1797,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
       },
     ],
     returnType: "Isochrone",
@@ -2044,6 +2058,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
       },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
+      },
     ],
     returnType: "Matrix",
     description: "Compute a distance/duration matrix between point sets.",
@@ -2062,6 +2083,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       ...TRUCK_PARAMS,
       ...ACTIVE_PARAMS,
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also match to the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
+      },
     ],
     returnType: "Route",
     description: "Snap a GPS trace to the road network.",
@@ -2218,6 +2246,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
       },
     ],
     returnType: "Route",
@@ -2404,6 +2439,7 @@ const ROUTE_KWARGS = [
   "units",
   "verbal",
   "avoid_datasets",
+  "datasets",
   "voice_instructions",
   "banner_instructions",
   "roundabout_exits",
@@ -2465,6 +2501,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "generalize",
     "exclude",
     "avoid_datasets",
+    "datasets",
     "depart_at",
     ...TRUCK_OPTION_KWARGS,
     ...TRANSIT_OPTIONS,
@@ -2503,6 +2540,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "fallback_speed",
     "exclude",
     "avoid_datasets",
+    "datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
     ...COSTING_OPTIONS,
@@ -2511,6 +2549,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "points",
     "mode",
     "radiuses",
+    "datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],
