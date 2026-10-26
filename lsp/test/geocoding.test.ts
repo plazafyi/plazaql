@@ -108,3 +108,45 @@ describe("completions", () => {
     expect(labels).toContain("place_lookup");
   });
 });
+
+describe("dataset keywords", () => {
+  it("accepts datasets:, dataset_name_field: and avoid_datasets: where they apply", () => {
+    for (const src of [
+      '$$ = geocode("Main St", datasets: ["census-places", "all"], layers: "dataset");',
+      '$$ = geocode(locality: "Springfield", datasets: "plaza", dataset_name_field: "title");',
+      '$$ = autocomplete("Gold", datasets: ["my-stores"]);',
+      '$$ = reverse_geocode(point(38.9, -77.0), datasets: ["census-tracts"]);',
+      '$$ = route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), avoid_datasets: ["flood-zones"]);',
+      '$$ = isochrone(center: point(38.8, -77.1), time: 600, avoid_datasets: "flood-zones");',
+      '$$ = matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], avoid_datasets: ["a"]);',
+    ]) {
+      expect(check(src).errors).toEqual([]);
+    }
+  });
+
+  it("rejects dataset keywords on computations that don't take them", () => {
+    const route = check(
+      '$$ = route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: ["x"]);',
+    );
+    expect(route.errors.map((e) => e.message)).toContain(
+      "`route()` does not accept `datasets:`",
+    );
+
+    const geocode = check('$$ = geocode("Main St", avoid_datasets: ["x"]);');
+    expect(geocode.errors.map((e) => e.message)).toContain(
+      "`geocode()` does not accept `avoid_datasets:`",
+    );
+  });
+
+  it("rejects non-string values", () => {
+    expect(check('$$ = geocode("Main St", datasets: 5);').errors.map((e) => e.message)).toContain(
+      "`datasets:` must be a string or a list of strings",
+    );
+    expect(
+      check('$$ = geocode("Main St", datasets: ["a", 5]);').errors.map((e) => e.message),
+    ).toContain("`datasets:` list items must be strings");
+    expect(
+      check('$$ = geocode("Main St", dataset_name_field: 5);').errors.map((e) => e.message),
+    ).toContain("`dataset_name_field:` must be a string");
+  });
+});

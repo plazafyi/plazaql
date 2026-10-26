@@ -232,7 +232,8 @@ defmodule PlazaQL.TypeChecker do
       check_kwarg_names(comp_type, opts, pos) ++
         check_computation_kwargs(comp_type, opts, pos) ++
         check_computation_args(comp_type, args, opts, pos) ++
-        check_truck_kwargs(comp_type, opts, pos)
+        check_truck_kwargs(comp_type, opts, pos) ++
+        check_dataset_kwargs(opts, pos)
 
     typed = {:computation, comp_type, args, opts, Map.put(pos, :type, type)}
     {typed, type, arg_errors ++ kwarg_errors}
@@ -1105,10 +1106,11 @@ defmodule PlazaQL.TypeChecker do
   # it stands in for. Anything else is a type error naming the computation, so
   # a misspelt or misplaced keyword is never silently dropped.
   @route_kwargs ~w(origin destination mode steps alternatives waypoints depart_at traffic_model
-                   exclude overview geometries annotations lang units verbal)
-  @geocode_filter_kwargs ~w(focus country_code bbox layers layer boundary_gid limit lang)
+                   exclude overview geometries annotations lang units verbal avoid_datasets)
+  @geocode_filter_kwargs ~w(focus country_code bbox layers layer boundary_gid limit lang
+                           datasets dataset_name_field)
 
-  @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country)
+  @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country dataset)
 
   # truck vehicle options (`mode: "truck"`), checked by check_truck_kwargs/3.
   @truck_option_kwargs ~w(height width length weight axle_load axle_count hazmat)
@@ -1118,15 +1120,17 @@ defmodule PlazaQL.TypeChecker do
     ev_route:
       @route_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
-    isochrone: ~w(center time mode denoise generalize) ++ @truck_option_kwargs,
+    isochrone: ~w(center time mode denoise generalize avoid_datasets) ++ @truck_option_kwargs,
     geocode:
       ~w(query addresses address neighbourhood locality county region postalcode country) ++
         @geocode_filter_kwargs,
     autocomplete: ["query" | @geocode_filter_kwargs],
     text_search: ~w(query limit bbox focus),
-    reverse_geocode: ~w(point radius limit include layer lang),
+    reverse_geocode: ~w(point radius limit include layer lang datasets),
     nearest: ~w(point radius),
-    matrix: ~w(origins destinations mode annotations fallback_speed) ++ @truck_option_kwargs,
+    matrix:
+      ~w(origins destinations mode annotations fallback_speed avoid_datasets) ++
+        @truck_option_kwargs,
     map_match: ~w(points mode radiuses),
     optimize: ~w(waypoints mode roundtrip),
     elevation: ~w(point points),
@@ -1378,6 +1382,46 @@ defmodule PlazaQL.TypeChecker do
   end
 
   defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
+
+  # Values of the dataset keywords, shared with Plaza's REST `datasets`
+  # (geocoding), `dataset_name_field` and `avoid_datasets` (routing): dataset
+  # slugs or ids, which Plaza resolves and scope-checks. Which computations
+  # take them is @computation_kwargs.
+  @dataset_kwargs ~w(datasets dataset_name_field avoid_datasets)
+
+  defp check_dataset_kwargs(opts, pos) do
+    for {:kwarg, key, value} <- opts,
+        key in @dataset_kwargs,
+        error <- check_dataset_kwarg_value(key, value, pos),
+        do: error
+  end
+
+  defp check_dataset_kwarg_value("dataset_name_field", {:string, _, _}, _pos), do: []
+
+  defp check_dataset_kwarg_value("dataset_name_field", _value, pos),
+    do:
+      dataset_kwarg_error(
+        "`dataset_name_field:` must be a string",
+        "a property name, e.g. `\"title\"`",
+        pos
+      )
+
+  defp check_dataset_kwarg_value(_key, {:string, _, _}, _pos), do: []
+
+  defp check_dataset_kwarg_value(key, {:list, items, _}, pos) do
+    if Enum.all?(items, &match?({:string, _, _}, &1)),
+      do: [],
+      else: dataset_kwarg_error("`#{key}:` list items must be strings", dataset_hint(), pos)
+  end
+
+  defp check_dataset_kwarg_value(key, _value, pos),
+    do: dataset_kwarg_error("`#{key}:` must be a string or a list of strings", dataset_hint(), pos)
+
+  defp dataset_hint(),
+    do: ~s|dataset slugs or ids, or "plaza" / "all", e.g. `datasets: ["census-places"]`|
+
+  defp dataset_kwarg_error(message, hint, pos),
+    do: [%Error{line: pos.line, col: pos.col, message: message, hint: hint}]
 
   defp check_expansion_property({:string, value, _}, _pos) when value in @expansion_properties,
     do: []

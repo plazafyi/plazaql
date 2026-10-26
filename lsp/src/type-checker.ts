@@ -232,6 +232,7 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
       const kwargErrors = [
         ...checkComputationKwargs(expr.name, expr.args, expr.pos),
         ...checkTruckKwargs(expr.name, expr.args, expr.pos),
+        ...checkDatasetKwargs(expr.args, expr.pos),
       ]
       return { type, errors: [...argErrors, ...kwargErrors] }
     }
@@ -814,6 +815,66 @@ function checkOverlapFractionMethod(
   }
   // Undefined variables are already reported by checkVarRefsInArgs
   return checkOverlapFractionArg(first.value, pos, scope, outputScope, false)
+}
+
+// ── Dataset keyword arguments ───────────────────────────────────────
+
+/**
+ * Dataset keywords, shared with Plaza's REST `datasets` (geocoding),
+ * `dataset_name_field` and `avoid_datasets` (routing). Values are dataset
+ * slugs or ids, which Plaza resolves. Which computations take them is
+ * COMPUTATION_KWARGS.
+ */
+const DATASET_KWARGS = ["datasets", "dataset_name_field", "avoid_datasets"]
+
+const DATASET_HINT =
+  'dataset slugs or ids, or "plaza" / "all", e.g. `datasets: ["census-places"]`'
+
+function checkDatasetKwargValue(
+  name: string,
+  value: Expr,
+  pos: Pos,
+): TypeCheckError[] {
+  if (name === "dataset_name_field") {
+    return value.kind === "string"
+      ? []
+      : [
+          kwargError(
+            pos,
+            "`dataset_name_field:` must be a string",
+            'a property name, e.g. `"title"`',
+          ),
+        ]
+  }
+  if (value.kind === "string") {
+    return []
+  }
+  if (value.kind === "list") {
+    return value.items.every((item) => item.kind === "string")
+      ? []
+      : [
+          kwargError(
+            pos,
+            `\`${name}:\` list items must be strings`,
+            DATASET_HINT,
+          ),
+        ]
+  }
+  return [
+    kwargError(
+      pos,
+      `\`${name}:\` must be a string or a list of strings`,
+      DATASET_HINT,
+    ),
+  ]
+}
+
+function checkDatasetKwargs(args: Arg[], pos: Pos): TypeCheckError[] {
+  return args.flatMap((arg): TypeCheckError[] =>
+    arg.type === "kwarg" && DATASET_KWARGS.includes(arg.name)
+      ? checkDatasetKwargValue(arg.name, arg.value, pos)
+      : [],
+  )
 }
 
 // ── Computation keyword arguments ────────────────────────────────────

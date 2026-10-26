@@ -21,6 +21,12 @@ geocode(locality: "Springfield", region: "IL");
 // Restrict to points of interest inside a boundary (Berlin)
 geocode("Cafe Einstein", layers: "poi", boundary_gid: "osm:relation:62422");
 
+// Also match your own dataset's features, ranked with the OSM results
+geocode("Union Square", datasets: ["my-stores"], focus: point(37.788, -122.407));
+
+// Which Census tract and which of your territories contain a point
+reverse_geocode(point(40.7484, -73.9856), datasets: ["census-tracts", "my-territories"]);
+
 // Look up results again by their gid
 place_lookup("osm:node:21154906", "osm:relation:62422");
 
