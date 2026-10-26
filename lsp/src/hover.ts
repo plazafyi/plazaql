@@ -237,7 +237,6 @@ function getTokenAtPosition(
   return currentLine.slice(start, end)
 }
 
-// Is the identifier under the cursor directly preceded by "." (a method call)?
 // Hover for bare words: the t[] / p[] accessors and element types
 function getKeywordHover(
   token: string,
@@ -289,6 +288,7 @@ function isBeforeBracket(source: string, line: number, col: number): boolean {
   return currentLine[findIdentEnd(currentLine, start)] === "["
 }
 
+// Is the identifier under the cursor directly preceded by "." (a method call)?
 function isAfterDot(source: string, line: number, col: number): boolean {
   const currentLine = source.split("\n")[line - 1] ?? ""
   let start = col - 1

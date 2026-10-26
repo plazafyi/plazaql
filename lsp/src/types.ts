@@ -1439,7 +1439,7 @@ const COSTING_PARAMS: ParamInfo[] = [
     type: "number",
     optional: true,
     description:
-      "Seconds added for each gate passed (barrier=gate, lift_gate, swing_gate, sliding_gate or hampshire_gate without access=yes, permissive or designated), 0 to 3600 (every mode); steers, not part of the duration",
+      "Seconds added for each gate passed (barrier=gate, lift_gate, swing_gate, sliding_gate or hampshire_gate without access=yes, permissive, designated or public), 0 to 3600 (every mode); steers, not part of the duration",
   },
   {
     name: "toll_booth_cost",
