@@ -1,10 +1,12 @@
 // Global directives — #method() applies to all subsequent queries
+//
+// Each block below is its own request: the directives at its top apply to
+// the statements underneath it, and nothing carries over to the next block.
 
 // ── Spatial Directives ────────────────────────────────────────
 
 // Scope all queries to Berlin
 #within(geometry: boundary(name: "Berlin"));
-
 // Every search below is automatically filtered to Berlin
 $$.cafes = search(node, amenity: "cafe").limit(10);
 $$.parks = search(way, leisure: "park").limit(10);
@@ -14,7 +16,6 @@ $$.museums = search(node, tourism: "museum").limit(10);
 
 // Only return features that have a name tag
 #filter(name: *);
-
 // All results below will have names
 $$.restaurants = search(node, amenity: "restaurant").limit(20);
 $$.bars = search(node, amenity: "bar").limit(20);
@@ -23,14 +24,12 @@ $$.bars = search(node, amenity: "bar").limit(20);
 
 // Restrict to a bounding box (south, west, north, east)
 #bbox(south: 47.0, west: 10.0, north: 48.0, east: 11.0);
-
 search(node, amenity: "fuel").limit(20);
 
 // ── Limit Directive ───────────────────────────────────────────
 
 // Cap all results to 5 features (last-one-wins for single-value directives)
 #limit(count: 5);
-
 $$.schools = search(node, amenity: "school");
 $$.hospitals = search(node, amenity: "hospital");
 
@@ -38,11 +37,9 @@ $$.hospitals = search(node, amenity: "hospital");
 
 // Directives accumulate — each new one adds a constraint (AND semantics).
 // This query scopes to Paris, requires wheelchair access, and limits to 10.
-
 #within(geometry: boundary(name: "Paris"));
 #filter(wheelchair: "yes");
 #limit(count: 10);
-
 $$.accessible_cafes = search(node, amenity: "cafe");
 $$.accessible_restaurants = search(node, amenity: "restaurant");
 
@@ -50,5 +47,4 @@ $$.accessible_restaurants = search(node, amenity: "restaurant");
 
 // Filter by expression — only features with population > 100000
 #filter(number(t["population"]) > 100000);
-
 search(node, place: "city").limit(50);

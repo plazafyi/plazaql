@@ -67,10 +67,10 @@ search(node, amenity: "restaurant")
   .sort(number(t["capacity"]), order: :desc)
   .limit(20);
 
-// Include related geometry data
+// Include extra output data (bounding box, center point)
 search(way, highway: "motorway")
   .within(boundary(name: "California, United States"))
-  .include("nodes")
+  .include(:center)
   .simplify(500)
   .limit(10);
 

@@ -55,7 +55,6 @@ search(way, highway: *)
 // Count accessible restaurants by cuisine (using directive for scoping)
 #within(geometry: boundary(name: "Barcelona, Spain"));
 #filter(wheelchair: "yes");
-
 search(node, amenity: "restaurant", cuisine: *)
   .group_by(t["cuisine"])
   .count();
