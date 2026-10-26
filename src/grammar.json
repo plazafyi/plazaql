@@ -1245,6 +1245,10 @@
         },
         {
           "type": "STRING",
+          "value": "expansion"
+        },
+        {
+          "type": "STRING",
           "value": "ev_route"
         },
         {
@@ -1258,6 +1262,10 @@
         {
           "type": "STRING",
           "value": "optimize"
+        },
+        {
+          "type": "STRING",
+          "value": "centroid"
         },
         {
           "type": "STRING",

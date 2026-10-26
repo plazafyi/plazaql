@@ -4500,6 +4500,10 @@
     "named": false
   },
   {
+    "type": "centroid",
+    "named": false
+  },
+  {
     "type": "circle",
     "named": false
   },
@@ -4521,6 +4525,10 @@
   },
   {
     "type": "ev_route",
+    "named": false
+  },
+  {
+    "type": "expansion",
     "named": false
   },
   {

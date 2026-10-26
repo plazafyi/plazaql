@@ -877,7 +877,9 @@ defmodule PlazaQL.TypeChecker do
     nearest: :point_set,
     matrix: :matrix,
     elevation: :elevation,
-    elevation_profile: :elevation
+    elevation_profile: :elevation,
+    centroid: :point_set,
+    expansion: :line_set
   }
 
   defp computation_type(comp), do: Map.get(@computation_types, comp, :geo_set)
@@ -1081,6 +1083,9 @@ defmodule PlazaQL.TypeChecker do
   @reverse_geocode_includes ["census"]
   @traffic_models ["best_guess", "optimistic", "pessimistic"]
   @route_exclusions ~w(toll ferry unpaved motorway trunk primary secondary tertiary)
+  @centroid_metrics ["time", "distance"]
+  @expansion_actions ["route", "isochrone", "matrix"]
+  @expansion_properties ~w(duration distance cost cumulative_cost edge_id osm_way_id)
 
   defp check_computation_kwargs(:reverse_geocode, opts, pos) do
     Enum.flat_map(opts, fn
@@ -1106,7 +1111,85 @@ defmodule PlazaQL.TypeChecker do
     Enum.flat_map(opts, &check_route_option(&1, pos))
   end
 
+  # centroid() options shared with Plaza's POST /centroid.
+  defp check_computation_kwargs(:centroid, opts, pos) do
+    Enum.flat_map(opts, fn
+      {:kwarg, "metric", {:string, metric, _}} when metric in @centroid_metrics ->
+        []
+
+      {:kwarg, "metric", _} ->
+        route_option_error(
+          "`metric:` must be one of #{Enum.map_join(@centroid_metrics, ", ", &inspect/1)}",
+          "the total travel cost the meeting point minimises",
+          pos
+        )
+
+      {:kwarg, "exclude", _} = opt ->
+        check_route_option(opt, pos)
+
+      _ ->
+        []
+    end)
+  end
+
+  # expansion() options shared with Plaza's POST /expansion.
+  defp check_computation_kwargs(:expansion, opts, pos) do
+    action_errors =
+      case Enum.find(opts, &match?({:kwarg, "action", _}, &1)) do
+        {:kwarg, "action", {:string, action, _}} when action in @expansion_actions ->
+          []
+
+        nil ->
+          route_option_error(
+            "`expansion()` requires `action:`",
+            "one of #{Enum.map_join(@expansion_actions, ", ", &inspect/1)}",
+            pos
+          )
+
+        _ ->
+          route_option_error(
+            "`action:` must be one of #{Enum.map_join(@expansion_actions, ", ", &inspect/1)}",
+            "the request whose search to show",
+            pos
+          )
+      end
+
+    option_errors =
+      Enum.flat_map(opts, fn
+        {:kwarg, "expansion_properties", {:list, items, _}} ->
+          Enum.flat_map(items, &check_expansion_property(&1, pos))
+
+        {:kwarg, "expansion_properties", _} ->
+          expansion_property_error("`expansion_properties:` must be a list of strings", pos)
+
+        {:kwarg, "exclude", _} = opt ->
+          check_route_option(opt, pos)
+
+        _ ->
+          []
+      end)
+
+    action_errors ++ option_errors
+  end
+
   defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
+
+  defp check_expansion_property({:string, value, _}, _pos) when value in @expansion_properties,
+    do: []
+
+  defp check_expansion_property({:string, value, _}, pos),
+    do: expansion_property_error("unknown `expansion_properties:` value #{inspect(value)}", pos)
+
+  defp check_expansion_property(_item, pos),
+    do: expansion_property_error("`expansion_properties:` list items must be strings", pos)
+
+  defp expansion_property_error(message, pos) do
+    route_option_error(
+      message,
+      "supported: #{Enum.map_join(@expansion_properties, ", ", &inspect/1)}",
+      pos
+    )
+  end
 
   defp check_route_option({:kwarg, "depart_at", {:string, _, _}}, _pos), do: []
 

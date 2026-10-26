@@ -755,7 +755,7 @@ defmodule PlazaQL.Compiler do
   end
 
   # Keywords whose `[...]` value compiles to a plain list of strings.
-  @string_list_kwargs ["include", "exclude"]
+  @string_list_kwargs ["include", "exclude", "expansion_properties"]
 
   defp compile_kwargs(opts) do
     Map.new(opts, fn
@@ -786,10 +786,11 @@ defmodule PlazaQL.Compiler do
   # atom *values*). Kept separate so adding a computation option never makes a
   # new atom value legal.
   @computation_kwarg_names Map.new(
-                             ~w(alternatives battery battery_capacity_wh connector_types
-                                depart_at destinations exclude include initial_charge_pct
-                                min_charge_pct min_power_kw origins points traffic_model
-                                waypoints)a,
+                             ~w(action alternatives battery battery_capacity_wh
+                                connector_types depart_at destinations exclude
+                                expansion_properties include initial_charge_pct locations
+                                metric min_charge_pct min_power_kw origins points
+                                traffic_model waypoints)a,
                              &{Atom.to_string(&1), &1}
                            )
 

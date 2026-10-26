@@ -978,6 +978,56 @@ defmodule PlazaQL.TypeCheckerTest do
     end
   end
 
+  describe "centroid options" do
+    @locations ~s|locations: [point(48.858, 2.294), point(48.87, 2.35)]|
+
+    test "valid metric and exclude pass, and the result is a PointSet" do
+      check!(~s|centroid(#{@locations}, metric: "distance", exclude: ["toll"]);|)
+      check!(~s|$m = centroid(#{@locations}); search(node, amenity: "cafe").around(300, $m);|)
+    end
+
+    test "an unknown metric is rejected" do
+      [error] = check_errors(~s|centroid(#{@locations}, metric: "vibes");|)
+      assert error.message =~ ~s|`metric:` must be one of "time", "distance"|
+    end
+
+    test "exclude is checked like route()'s" do
+      [error] = check_errors(~s|centroid(#{@locations}, exclude: "stairs");|)
+      assert error.message =~ "stairs"
+    end
+  end
+
+  describe "expansion options" do
+    @route_args ~s|origin: point(48.858, 2.294), destination: point(48.87, 2.35)|
+
+    test "each action passes" do
+      check!(~s|expansion(action: "route", #{@route_args});|)
+      check!(~s|expansion(action: "isochrone", center: point(48.858, 2.294), time: [300, 600]);|)
+
+      check!(
+        ~s|expansion(action: "matrix", origins: [point(48.858, 2.294)], destinations: [point(48.87, 2.35)], expansion_properties: ["distance"]);|
+      )
+    end
+
+    test "action is required and must be known" do
+      [error] = check_errors(~s|expansion(#{@route_args});|)
+      assert error.message =~ "requires `action:`"
+
+      [error] = check_errors(~s|expansion(action: "teleport", #{@route_args});|)
+      assert error.message =~ ~s|`action:` must be one of "route", "isochrone", "matrix"|
+    end
+
+    test "unknown expansion_properties are rejected" do
+      [error] =
+        check_errors(
+          ~s|expansion(action: "route", #{@route_args}, expansion_properties: ["duration", "vibes"]);|
+        )
+
+      assert error.message =~ ~s|unknown `expansion_properties:` value "vibes"|
+      assert error.hint =~ ~s|"cumulative_cost"|
+    end
+  end
+
   describe "point-list computation keywords" do
     test "matrix takes origins and destinations as point lists" do
       check!(
