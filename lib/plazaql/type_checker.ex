@@ -1235,7 +1235,7 @@ defmodule PlazaQL.TypeChecker do
         @costing_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
     isochrone:
-      ~w(center time mode denoise generalize avoid_datasets depart_at) ++
+      ~w(center time mode denoise generalize exclude avoid_datasets depart_at) ++
         @truck_option_kwargs ++
         @transit_option_kwargs ++
         @active_option_kwargs ++
@@ -1248,7 +1248,7 @@ defmodule PlazaQL.TypeChecker do
     reverse_geocode: ~w(point radius limit include layer lang datasets),
     nearest: ~w(point radius),
     matrix:
-      ~w(origins destinations mode annotations fallback_speed avoid_datasets) ++
+      ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
     map_match: ~w(points mode radiuses) ++ @truck_option_kwargs ++ @active_option_kwargs,
     optimize: ~w(waypoints mode roundtrip) ++ @truck_option_kwargs ++ @active_option_kwargs,
@@ -1525,7 +1525,7 @@ defmodule PlazaQL.TypeChecker do
   @route_lang_aliases %{"no" => "nb", "nn" => "nb", "in" => "id"}
   @route_units ["km", "mi"]
   @voice_units ["metric", "imperial", "km", "mi"]
-  @route_exclusions ~w(toll ferry unpaved motorway trunk primary secondary tertiary)
+  @route_exclusions ~w(toll cash_only_tolls ferry unpaved motorway trunk primary secondary tertiary)
   @centroid_metrics ["time", "distance"]
   @expansion_actions ["route", "isochrone", "matrix"]
   @expansion_properties ~w(duration distance cost cumulative_cost edge_id osm_way_id)
@@ -1622,9 +1622,18 @@ defmodule PlazaQL.TypeChecker do
   end
 
   # isochrone(mode: "transit", depart_at: ...): the same depart_at as route().
+  # isochrone()/matrix() exclude: the road types route() takes (POST
+  # /isochrone and /matrix `exclude`).
   defp check_computation_kwargs(:isochrone, opts, pos) do
     Enum.flat_map(opts, fn
-      {:kwarg, "depart_at", _} = opt -> check_route_option(opt, pos)
+      {:kwarg, key, _} = opt when key in ["depart_at", "exclude"] -> check_route_option(opt, pos)
+      _ -> []
+    end)
+  end
+
+  defp check_computation_kwargs(:matrix, opts, pos) do
+    Enum.flat_map(opts, fn
+      {:kwarg, "exclude", _} = opt -> check_route_option(opt, pos)
       _ -> []
     end)
   end

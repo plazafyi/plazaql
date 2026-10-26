@@ -1637,7 +1637,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string[]",
         optional: true,
         description:
-          'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+          'Road types to avoid: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
       ...TRUCK_PARAMS,
       ...TRANSIT_PARAMS,
@@ -1777,6 +1777,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       ...TRANSIT_PARAMS,
       ...SPEED_PARAMS,
+      {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to leave out of the graph: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
       {
         name: "avoid_datasets",
         type: "string | string[]",
@@ -2024,6 +2031,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       ...ACTIVE_PARAMS,
       ...COSTING_PARAMS,
       {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to leave out of the graph: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
+      {
         name: "avoid_datasets",
         type: "string | string[]",
         optional: true,
@@ -2108,7 +2122,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string[]",
         optional: true,
         description:
-          'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+          'Road types to avoid: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
       ...COSTING_PARAMS,
       {
@@ -2283,7 +2297,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string[]",
         optional: true,
         description:
-          'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+          'Road types to avoid: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
     ],
     returnType: "PointSet",
@@ -2354,7 +2368,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string[]",
         optional: true,
         description:
-          'Road types to avoid (route, matrix): "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+          'Road types to avoid (route, matrix): "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
       {
         name: "expansion_properties",
@@ -2449,6 +2463,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "denoise",
     "generalize",
+    "exclude",
     "avoid_datasets",
     "depart_at",
     ...TRUCK_OPTION_KWARGS,
@@ -2486,6 +2501,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "annotations",
     "fallback_speed",
+    "exclude",
     "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,

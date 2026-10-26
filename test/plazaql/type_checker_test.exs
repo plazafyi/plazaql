@@ -963,6 +963,30 @@ defmodule PlazaQL.TypeCheckerTest do
       assert error.message =~ ~s|"stairs"|
     end
 
+    test "isochrone() and matrix() take exclude, cash_only_tolls included" do
+      check!(@route <> ~s|, exclude: ["cash_only_tolls"]);|)
+
+      check!(
+        ~s|isochrone(center: point(40.71, -74.00), time: 600, exclude: ["cash_only_tolls", "ferry"]);|
+      )
+
+      check!(
+        ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], exclude: "toll,cash_only_tolls");|
+      )
+
+      [error] =
+        check_errors(~s|isochrone(center: point(40.71, -74.00), time: 600, exclude: ["stairs"]);|)
+
+      assert error.message =~ ~s|unknown `exclude:` value "stairs"|
+
+      [error] =
+        check_errors(
+          ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], exclude: [1]);|
+        )
+
+      assert error.message =~ "`exclude:` list items must be strings"
+    end
+
     test "depart_at must be a string" do
       [error] = check_errors(@route <> ~s|, depart_at: 8);|)
       assert error.message =~ "`depart_at:` must be an ISO 8601 datetime string"
