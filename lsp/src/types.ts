@@ -1270,6 +1270,41 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           "Add spoken variants (verbal_alert, verbal_pre, verbal_post, verbal_succinct) to each step",
       },
       {
+        name: "voice_instructions",
+        type: "boolean",
+        optional: true,
+        description:
+          "Add timed voice announcements (text and SSML) for the maneuver ending each step; needs steps: true",
+      },
+      {
+        name: "banner_instructions",
+        type: "boolean",
+        optional: true,
+        description:
+          "Add banner instructions (road, ref, destinations, lanes) for the maneuver ending each step; needs steps: true",
+      },
+      {
+        name: "roundabout_exits",
+        type: "boolean",
+        optional: true,
+        description:
+          "Give leaving a roundabout its own exit_roundabout step; needs steps: true",
+      },
+      {
+        name: "voice_units",
+        type: '"metric" | "imperial"',
+        optional: true,
+        description: "Distance units in voice announcements; defaults to units",
+        enumValues: [{ value: '"metric"' }, { value: '"imperial"' }],
+      },
+      {
+        name: "waypoint_names",
+        type: "string[] | string",
+        optional: true,
+        description:
+          'One name per point (origin, each waypoint, destination) for arrival instructions; "" keeps the default',
+      },
+      {
         name: "avoid_datasets",
         type: "string | string[]",
         optional: true,
@@ -1692,6 +1727,41 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           "Add spoken variants (verbal_alert, verbal_pre, verbal_post, verbal_succinct) to each step",
       },
       {
+        name: "voice_instructions",
+        type: "boolean",
+        optional: true,
+        description:
+          "Add timed voice announcements (text and SSML) for the maneuver ending each step; needs steps: true",
+      },
+      {
+        name: "banner_instructions",
+        type: "boolean",
+        optional: true,
+        description:
+          "Add banner instructions (road, ref, destinations, lanes) for the maneuver ending each step; needs steps: true",
+      },
+      {
+        name: "roundabout_exits",
+        type: "boolean",
+        optional: true,
+        description:
+          "Give leaving a roundabout its own exit_roundabout step; needs steps: true",
+      },
+      {
+        name: "voice_units",
+        type: '"metric" | "imperial"',
+        optional: true,
+        description: "Distance units in voice announcements; defaults to units",
+        enumValues: [{ value: '"metric"' }, { value: '"imperial"' }],
+      },
+      {
+        name: "waypoint_names",
+        type: "string[] | string",
+        optional: true,
+        description:
+          'One name per point (origin, each waypoint, destination) for arrival instructions; "" keeps the default',
+      },
+      {
         name: "avoid_datasets",
         type: "string | string[]",
         optional: true,
@@ -1887,6 +1957,11 @@ const ROUTE_KWARGS = [
   "units",
   "verbal",
   "avoid_datasets",
+  "voice_instructions",
+  "banner_instructions",
+  "roundabout_exits",
+  "voice_units",
+  "waypoint_names",
 ]
 const GEOCODE_FILTER_KWARGS = [
   "focus",

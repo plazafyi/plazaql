@@ -1009,6 +1009,33 @@ defmodule PlazaQL.TypeCheckerTest do
       assert error.message == "invalid `verbal:` for `ev_route()`"
       assert error.hint == "true or false"
     end
+
+    test "the navigation options pass with valid values" do
+      check!(
+        @route <>
+          ~s|, steps: true, voice_instructions: true, banner_instructions: true, roundabout_exits: false, voice_units: "imperial", waypoint_names: ["", "Home"]);|
+      )
+
+      check!(@route <> ~s|, steps: true, waypoint_names: ";Home");|)
+
+      check!(
+        ~s|ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, steps: true, voice_instructions: true, voice_units: "metric");|
+      )
+    end
+
+    test "navigation flags are booleans, voice_units metric or imperial, names strings" do
+      for key <- ~w(voice_instructions banner_instructions roundabout_exits) do
+        [error] = check_errors(@route <> ~s|, #{key}: "yes");|)
+        assert error.message == "invalid `#{key}:` for `route()`"
+        assert error.hint == "true or false"
+      end
+
+      [error] = check_errors(@route <> ~s|, voice_units: "furlongs");|)
+      assert error.message =~ ~s|`voice_units:` must be "metric" or "imperial"|
+
+      [error] = check_errors(@route <> ~s|, waypoint_names: [1, 2]);|)
+      assert error.message =~ "`waypoint_names:` must be a list of strings"
+    end
   end
 
   describe "truck options" do

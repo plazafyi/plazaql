@@ -412,6 +412,22 @@ describe("PlazaQL Completions", () => {
       }
     });
 
+    it("suggests the navigation options as route( and ev_route( params", () => {
+      const names = ["voice_instructions", "banner_instructions", "roundabout_exits", "voice_units", "waypoint_names"];
+      for (const fn of ["route", "ev_route"]) {
+        const src = `$$ = ${fn}(`;
+        const items = getCompletions(src, 1, src.length + 1);
+        for (const name of names) {
+          expect(items.some((i) => i.label === name)).toBe(true);
+        }
+      }
+
+      const units = "$$ = route(origin: point(0,0), destination: point(1,1), voice_units: ";
+      const unitItems = getCompletions(units, 1, units.length + 1);
+      expect(unitItems.some((i) => i.label === '"metric"')).toBe(true);
+      expect(unitItems.some((i) => i.label === '"imperial"')).toBe(true);
+    });
+
     it("suggests points for map_match( and elevation(", () => {
       for (const fn of ["map_match", "elevation"]) {
         const src = `$$ = ${fn}(`;

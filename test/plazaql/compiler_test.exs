@@ -466,6 +466,22 @@ defmodule PlazaQL.CompilerTest do
       assert {:matrix, %{mode: "truck", hazmat: false}} = plan.computation
     end
 
+    test "route accepts the navigation options like POST /route" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), steps: true, voice_instructions: true, banner_instructions: true, roundabout_exits: true, voice_units: "imperial", waypoint_names: ["", "Home"]);|
+        )
+
+      assert {:route,
+              %{
+                voice_instructions: true,
+                banner_instructions: true,
+                roundabout_exits: true,
+                voice_units: "imperial",
+                waypoint_names: ["", "Home"]
+              }} = plan.computation
+    end
+
     test "route and ev_route accept steps, lang, units and verbal like POST /route" do
       plan =
         first_plan(

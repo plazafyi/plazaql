@@ -35,6 +35,18 @@ route(
   lang: "de"
 );
 
+// Navigation: voice and banner instructions, roundabout exit steps, a named destination
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7580, -73.9855),
+  steps: true,
+  voice_instructions: true,
+  banner_instructions: true,
+  roundabout_exits: true,
+  voice_units: "imperial",
+  waypoint_names: ["", "Office"]
+);
+
 // 15-minute walking isochrone
 isochrone(
   center: point(40.7128, -74.0060),
