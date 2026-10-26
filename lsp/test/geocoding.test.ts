@@ -124,6 +124,10 @@ describe("dataset keywords", () => {
       '$$ = isochrone(center: point(38.8, -77.1), time: 600, datasets: ["campus-roads"]);',
       '$$ = matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], datasets: ["a"]);',
       '$$ = map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["campus-roads"]);',
+      '$$ = optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["campus-roads"]);',
+      '$$ = centroid(locations: [point(38.8, -77.1), point(38.8, -77.0)], datasets: "campus-roads");',
+      '$$ = expansion(action: "isochrone", center: point(38.8, -77.1), time: 300, datasets: ["campus-roads"]);',
+      '$$ = nearest(point(38.8, -77.1), datasets: ["campus-roads"]);',
       '$$ = centroid(locations: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: ["a"]);',
       '$$ = optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: "a");',
       '$$ = optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], exclude: "toll");',
@@ -136,11 +140,9 @@ describe("dataset keywords", () => {
   });
 
   it("rejects dataset keywords on computations that don't take them", () => {
-    const optimize = check(
-      '$$ = optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["x"]);',
-    );
-    expect(optimize.errors.map((e) => e.message)).toContain(
-      "`optimize()` does not accept `datasets:`",
+    const search = check('$$ = text_search("pizza", datasets: ["x"]);');
+    expect(search.errors.map((e) => e.message)).toContain(
+      "`text_search()` does not accept `datasets:`",
     );
 
     const geocode = check('$$ = geocode("Main St", avoid_datasets: ["x"]);');

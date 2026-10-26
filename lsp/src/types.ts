@@ -2139,6 +2139,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
       },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
+      },
     ],
     returnType: "Route",
     description: "Optimize waypoint ordering (TSP).",
@@ -2327,6 +2334,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description: "Element type",
       },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also snap to the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
+      },
     ],
     returnType: "PointSet",
     description: "Find nearest OSM features to a point.",
@@ -2368,6 +2382,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
       },
     ],
     returnType: "PointSet",
@@ -2453,6 +2474,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
       },
     ],
     returnType: "LineSet",
@@ -2573,7 +2601,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "lang",
     "datasets",
   ],
-  nearest: ["point", "radius"],
+  nearest: ["point", "radius", "datasets"],
   matrix: [
     "origins",
     "destinations",
@@ -2603,6 +2631,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "roundtrip",
     "exclude",
     "avoid_datasets",
+    "datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],
@@ -2614,6 +2643,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "metric",
     "exclude",
     "avoid_datasets",
+    "datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],
@@ -2629,6 +2659,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "exclude",
     "expansion_properties",
     "avoid_datasets",
+    "datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],

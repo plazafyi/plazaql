@@ -393,7 +393,7 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), depart_at
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), avoid_datasets: ["flood-zones"])
 ```
 
-`datasets` adds the roads of your datasets to the graph: a campus, a private estate, a new road OSM doesn't have yet. It takes up to 20 dataset slugs or ids; `"plaza"` and `"all"` are not accepted (REST: `datasets`). A road is a line feature with a `highway` (or `road_class`) property, read like an OSM way: `maxspeed`, `oneway`, `access`, `motor_vehicle`, `foot`, `bicycle`, `surface` and `toll` work as their OSM tags do, so cars stay off a `highway: "footway"` and `access: "private"` closes a road to them. A road joins the OSM network where one of its ends lies within 10 m of an OSM junction; elsewhere it only connects to the dataset's other roads. OSM turn restrictions and turn costs don't apply on dataset roads, and they carry no traffic profile or intersection delays. `duration_s` is timed the same way as on OSM roads. `isochrone()`, `matrix()`, `ev_route()` and `map_match()` take it too. Note the difference from `avoid_datasets`, whose polygons are areas to stay out of.
+`datasets` adds the roads of your datasets to the graph: a campus, a private estate, a new road OSM doesn't have yet. It takes up to 20 dataset slugs or ids; `"plaza"` and `"all"` are not accepted (REST: `datasets`). A road is a line feature with a `highway` (or `road_class`) property, read like an OSM way: `maxspeed`, `oneway`, `access`, `motor_vehicle`, `foot`, `bicycle`, `surface` and `toll` work as their OSM tags do, so cars stay off a `highway: "footway"` and `access: "private"` closes a road to them. A road joins the OSM network where one of its ends lies within 10 m of an OSM junction; elsewhere it only connects to the dataset's other roads. OSM turn restrictions and turn costs don't apply on dataset roads, and they carry no traffic profile or intersection delays. `duration_s` is timed the same way as on OSM roads. `isochrone()`, `matrix()`, `ev_route()`, `map_match()`, `optimize()`, `centroid()`, `expansion()` and `nearest()` take it too. Note the difference from `avoid_datasets`, whose polygons are areas to stay out of.
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), datasets: ["campus-roads"])
@@ -729,6 +729,7 @@ nearest(point: point(40.71, -74.00))
 |-----------|---------|--------------------------------|
 | `point`   | Point   | Reference point                |
 | `radius`  | number  | Search radius in meters (optional) |
+| `datasets` | string[]/string | Datasets whose roads count as well, as in `route()` (optional) |
 
 ### `matrix(origins:, destinations:, mode:?)`
 
@@ -788,6 +789,7 @@ The positional points are the waypoints; `waypoints: [...]` is the keyword form.
 | `roundtrip` | boolean | Return to the first point (optional)            |
 | `exclude`   | string[]/string | Road types to leave out, same values as `route()` (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
+| `datasets` | string[]/string | Datasets whose roads to travel as well, as in `route()` (optional) |
 
 ### `ev_route(origin:, destination:, battery:)`
 
@@ -828,6 +830,7 @@ search(node, amenity: "cafe").around(300, $meet).limit(5);
 | `metric`    | string   | `"time"` (default) or `"distance"`: the total to minimise |
 | `exclude`   | string[] | Road types to avoid, same as `route()` (optional)    |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
+| `datasets` | string[]/string | Datasets whose roads to travel as well, as in `route()` (optional) |
 
 The locations must lie within 2° of each other, and no one's trip may exceed
 2 hours (150 km with `metric: "distance"`). Same as REST `POST /api/v1/centroid`.
@@ -856,6 +859,7 @@ expansion(
 | `mode`                 | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `exclude`              | string[] | Road types to avoid (`route`, `matrix`; optional)   |
 | `avoid_datasets`       | string[]/string | Datasets whose polygons to stay out of, as in `route()` (every action; optional) |
+| `datasets`             | string[]/string | Datasets whose roads to travel as well, as in `route()` (every action; optional) |
 | `expansion_properties` | string[] | Per-edge properties: `"duration"` (default), `"distance"`, `"cost"`, `"cumulative_cost"`, `"edge_id"`, `"osm_way_id"` |
 
 Same as REST `POST /api/v1/expansion`, including its access rule: the server
