@@ -405,8 +405,8 @@ geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC", 
 | `postalcode`    | string                | Postal or ZIP code                                                       |
 | `country`       | string                | ISO 3166-1 alpha-2 code (`"US"`) or country name                         |
 | `focus`         | Point                 | Bias results toward this point                                           |
-| `country_code`  | string                | Free text only: restrict to one country                                  |
-| `bbox`          | Polygon               | Free text only: restrict to `bbox(south, west, north, east)`             |
+| `country_code`  | string                | Restrict results to one country                                          |
+| `bbox`          | Polygon               | Restrict results to `bbox(south, west, north, east)`                     |
 | `layers`        | string or string list | Only these layers (below)                                                |
 | `boundary_gid`  | string                | Only results inside this way or relation polygon (`"osm:relation:62422"`) |
 | `limit`         | number                | Maximum results                                                          |

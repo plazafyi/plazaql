@@ -1211,15 +1211,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         name: "country_code",
         type: "string",
         optional: true,
-        description:
-          "Free text only: ISO 3166-1 alpha-2 code to restrict results",
+        description: "ISO 3166-1 alpha-2 code to restrict results",
       },
       {
         name: "bbox",
         type: "Polygon",
         optional: true,
-        description:
-          "Free text only: restrict results to bbox(south, west, north, east)",
+        description: "Restrict results to bbox(south, west, north, east)",
       },
       {
         name: "layers",

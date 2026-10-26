@@ -72,6 +72,15 @@ describe("place_lookup()", () => {
     expect(result.errors.some((e) => e.message.includes('invalid GID "node/123"'))).toBe(true);
   });
 
+  it("rejects GIDs longer than a bigint", () => {
+    const result = check('$$ = place_lookup("osm:node:12345678901234567890");');
+    expect(result.errors.some((e) => e.message.includes("invalid GID"))).toBe(true);
+    const boundary = check(
+      '$$ = geocode("Cafe", boundary_gid: "osm:relation:12345678901234567890");',
+    );
+    expect(boundary.errors.some((e) => e.message.includes("invalid `boundary_gid:`"))).toBe(true);
+  });
+
   it("rejects a call with no GIDs", () => {
     const result = check("$$ = place_lookup();");
     expect(result.errors.some((e) => e.message.includes("at least one GID"))).toBe(true);

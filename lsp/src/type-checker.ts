@@ -966,8 +966,8 @@ function checkExpansionProperties(value: Expr, pos: Pos): TypeCheckError[] {
 
 // ── Geocoding ────────────────────────────────────────────────────────
 
-const BOUNDARY_GID = /^osm:(way|relation):[1-9][0-9]*$/
-const GID = /^osm:(node|way|relation|address|place):[1-9][0-9]*$/
+const BOUNDARY_GID = /^osm:(way|relation):[1-9][0-9]{0,18}$/
+const GID = /^osm:(node|way|relation|address|place):[1-9][0-9]{0,18}$/
 const MAX_PLACE_IDS = 50
 const STRUCTURED_REQUIRED = ["address", "locality", "region", "postalcode"]
 const GID_HINT =

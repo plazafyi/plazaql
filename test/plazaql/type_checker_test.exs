@@ -1080,6 +1080,16 @@ defmodule PlazaQL.TypeCheckerTest do
 
       [error] = check_errors(~s|place_lookup();|)
       assert error.message =~ "at least one GID"
+
+      [error] = check_errors(~s|place_lookup("osm:node:12345678901234567890");|)
+      assert error.message =~ "invalid GID"
+
+      check!(~s|place_lookup("osm:node:9223372036854775807");|)
+
+      [error] =
+        check_errors(~s|geocode("Cafe", boundary_gid: "osm:relation:12345678901234567890");|)
+
+      assert error.message =~ "invalid `boundary_gid:`"
     end
   end
 end

@@ -1207,8 +1207,8 @@ defmodule PlazaQL.TypeChecker do
   @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country)
   @structured_components ~w(address neighbourhood locality county region postalcode country)
   @structured_required ~w(address locality region postalcode)
-  @boundary_gid ~r/^osm:(way|relation):[1-9][0-9]*$/
-  @gid ~r/^osm:(node|way|relation|address|place):[1-9][0-9]*$/
+  @boundary_gid ~r/^osm:(way|relation):[1-9][0-9]{0,18}$/
+  @gid ~r/^osm:(node|way|relation|address|place):[1-9][0-9]{0,18}$/
   @max_place_ids 50
 
   defp check_geocode_option({:kwarg, "layers", {:string, value, _}}, pos) do
