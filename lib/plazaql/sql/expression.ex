@@ -109,6 +109,13 @@ defmodule PlazaQL.SQL.Expression do
     {"ST_IsClosed(#{geom})", [], idx}
   end
 
+  def to_sql({:geom_func, :distance, {:set_ref, name}, _pos}, _schema, _idx) do
+    raise NotCompilable,
+      reason: :unresolved_geometry_ref,
+      message:
+        "distance() references set #{inspect(name)}, which must be resolved by the executor before SQL generation"
+  end
+
   def to_sql({:geom_func, :distance, {lat, lng}, _pos}, schema, idx) do
     geom = schema.columns.geometry
     srid = schema.srid

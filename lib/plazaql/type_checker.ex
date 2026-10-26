@@ -1068,6 +1068,21 @@ defmodule PlazaQL.TypeChecker do
       if(arg2, do: check_filter_expr(arg2, parent_pos, scope), else: [])
   end
 
+  # distance($var): any geometry works, so only check the variable exists.
+  defp check_filter_expr({:geom_func, :distance, {:set_ref, _} = ref, pos}, parent_pos, scope) do
+    case ref do
+      {:set_ref, "$$." <> name} ->
+        if Map.has_key?(scope, "$$." <> name),
+          do: [],
+          else: check_output_var_ref(name, pos || parent_pos, scope)
+
+      {:set_ref, name} ->
+        if Map.has_key?(scope, "$" <> name),
+          do: [],
+          else: check_var_ref("$" <> name, pos || parent_pos, scope)
+    end
+  end
+
   defp check_filter_expr({:geom_func, :overlap_fraction, ref, pos}, parent_pos, scope) do
     check_geometry_ref(ref, pos || parent_pos, scope, report_undefined: true)
   end

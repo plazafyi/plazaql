@@ -227,6 +227,52 @@ defmodule PlazaQL.CompilerTest do
       assert plan.offset == nil
     end
 
+    test ".sort(distance($var)) keeps the variable for the executor to resolve" do
+      {:ok, %{plans: plans}} =
+        PlazaQL.compile(
+          ~s|$home = search(node, amenity: "cafe").bbox(1, 2, 3, 4); | <>
+            ~s|search(node).bbox(1, 2, 3, 4).sort(distance($home));|
+        )
+
+      assert {{:geom_func, :distance, {:set_ref, "home"}, _pos}, :asc} =
+               List.last(plans).sort_expr
+    end
+
+    test ".sort(distance($$.name)) refers to an output" do
+      {:ok, %{plans: [_, plan]}} =
+        PlazaQL.compile(
+          ~s|$$.parks = search(way, leisure: "park").bbox(1, 2, 3, 4); | <>
+            ~s|$$.cafes = search(node).bbox(1, 2, 3, 4).sort(distance($$.parks));|
+        )
+
+      assert {{:geom_func, :distance, {:set_ref, "$$.parks"}, _}, :asc} = plan.sort_expr
+    end
+
+    test "distance($p) with a point variable measures from that point" do
+      {:ok, %{plans: [plan]}} =
+        PlazaQL.compile(
+          ~s|$p = point(48.85, 2.35); search(node).around(500, $p).sort(distance($p));|
+        )
+
+      assert {{:geom_func, :distance, {48.85, 2.35}, _}, :asc} = plan.sort_expr
+    end
+
+    test "distance() of a polygon literal variable is a compile error" do
+      assert {:error, [error | _]} =
+               PlazaQL.compile(
+                 ~s|$a = bbox(1, 2, 3, 4); search(node).bbox(1, 2, 3, 4).sort(distance($a));|
+               )
+
+      assert error.message =~ "distance($a) needs a point"
+    end
+
+    test "distance() of an undefined variable is a compile error" do
+      assert {:error, [error | _]} =
+               PlazaQL.compile(~s|search(node).bbox(1, 2, 3, 4).sort(distance($nope));|)
+
+      assert error.message =~ "undefined variable `$nope`"
+    end
+
     test "a plan without .cursor has none" do
       assert first_plan(~s|$$ = search(amenity: "cafe").limit(10);|).cursor == nil
     end

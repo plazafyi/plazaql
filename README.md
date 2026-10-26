@@ -932,7 +932,7 @@ These match the REST `output.fields`, `output.include`, `output.precision` and `
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `.sort(expr, order?: :asc \| :desc)` | `GeoSet → GeoSet` | Sort by expression (`t["name"]`, `distance(point(...))`, `area()`, `length()`, `elevation()`) |
+| `.sort(expr, order?: :asc \| :desc)` | `GeoSet → GeoSet` | Sort by expression (`t["name"]`, `distance(point(...))`, `distance($var)`, `area()`, `length()`, `elevation()`) |
 | `.limit(n)` | `GeoSet → GeoSet` | Maximum number of results |
 | `.offset(n)` | `GeoSet → GeoSet` | Skip first n results |
 | `.cursor(token)` | `GeoSet → GeoSet` | Continue after the previous page (keyset pagination) |
@@ -980,6 +980,8 @@ search(node, amenity: "cafe")
 
 The compiler keeps the token in `Plan.cursor` and SQL generation ignores
 it. The server decodes it and resumes after that row.
+
+`distance($var)` measures to a variable: a `point(...)` variable works like the literal, and a variable holding a search or computation measures to its geometry (rows are NULL, sorted last, when it is empty).
 
 `.sort(by: :osm_id)` and `.sort(by: :name)` are the REST `output.sort=osm_id` and `output.sort=name`; see also `.sort(by: :qt)` below. Sorting by a string literal (`.sort("name")`) is a compile error, since it would sort every row by the same constant: write `.sort(t["name"])` or `.sort(by: :name)`.
 
