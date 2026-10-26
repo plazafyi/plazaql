@@ -263,6 +263,18 @@ defmodule PlazaQL.RestParityTest do
                ).spatial_filter
     end
 
+    test "the README variables example compiles" do
+      {:ok, result} =
+        PlazaQL.compile(~s"""
+        $center = point(40.7128, -74.0060);
+        $radius = 500;
+        $nyc = boundary(name: "New York City");
+        search(node, amenity: "cafe").around($radius, $center).within($nyc);
+        """)
+
+      assert [%{spatial_filter: {:predicate, :within, {:set_ref, "nyc"}}}] = result.plans
+    end
+
     test "geometry variables don't become steps" do
       {:ok, result} = PlazaQL.compile("$p = point(1, 2); search(node).around(500, $p);")
       assert result.steps == []

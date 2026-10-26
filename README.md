@@ -136,6 +136,8 @@ search(node, amenity: "cafe")
 
 Variables are immutable — once assigned, they cannot be reassigned.
 
+A variable holding a literal (`point(...)`, `linestring(...)`, `polygon(...)`, `bbox(...)`, `circle(...)` or a number) is replaced by that literal wherever it is used, so `.around($radius, $center)` compiles exactly like `.around(500, point(40.7128, -74.0060))`. A literal is a value, not a query: `$center;` on its own is a compile error. A variable holding a search, boundary or computation runs once, before the statements that use it.
+
 Named output variables (`$$.name`) can also be used as values in later expressions — see [Output Assignment](#output-assignment).
 
 ---
