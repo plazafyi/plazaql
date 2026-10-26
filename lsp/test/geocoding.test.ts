@@ -124,6 +124,10 @@ describe("dataset keywords", () => {
       '$$ = isochrone(center: point(38.8, -77.1), time: 600, datasets: ["campus-roads"]);',
       '$$ = matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], datasets: ["a"]);',
       '$$ = map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["campus-roads"]);',
+      '$$ = centroid(locations: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: ["a"]);',
+      '$$ = optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: "a");',
+      '$$ = map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: ["a"]);',
+      '$$ = expansion(action: "route", origin: point(38.8, -77.1), destination: point(38.8, -77.0), avoid_datasets: ["a"]);',
     ]) {
       expect(check(src).errors).toEqual([]);
     }

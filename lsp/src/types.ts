@@ -2090,6 +2090,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Also match to the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
       },
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): roads touching one are never matched.',
+      },
     ],
     returnType: "Route",
     description: "Snap a GPS trace to the road network.",
@@ -2111,6 +2118,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       ...TRUCK_PARAMS,
       ...ACTIVE_PARAMS,
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
     ],
     returnType: "Route",
     description: "Optimize waypoint ordering (TSP).",
@@ -2334,6 +2348,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Road types to avoid: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
     ],
     returnType: "PointSet",
     description:
@@ -2411,6 +2432,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           'Per-edge properties: "duration" (default), "distance", "cost", "cumulative_cost", "edge_id", "osm_way_id"',
+      },
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
       },
     ],
     returnType: "LineSet",
@@ -2550,6 +2578,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "radiuses",
     "datasets",
+    "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],
@@ -2557,6 +2586,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "waypoints",
     "mode",
     "roundtrip",
+    "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],
@@ -2567,6 +2597,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "metric",
     "exclude",
+    "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],
@@ -2581,6 +2612,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "exclude",
     "expansion_properties",
+    "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],

@@ -1538,6 +1538,22 @@ defmodule PlazaQL.TypeCheckerTest do
       check!(
         ~s|matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], avoid_datasets: ["a"]);|
       )
+
+      check!(
+        ~s|centroid(locations: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: ["a"]);|
+      )
+
+      check!(
+        ~s|optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: "a");|
+      )
+
+      check!(
+        ~s|map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], avoid_datasets: ["a"]);|
+      )
+
+      check!(
+        ~s|expansion(action: "route", origin: point(38.8, -77.1), destination: point(38.8, -77.0), avoid_datasets: ["a"]);|
+      )
     end
 
     test "datasets: names the roads routing computations also route over" do
