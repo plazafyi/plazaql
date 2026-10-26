@@ -6,6 +6,24 @@ geocode("1600 Pennsylvania Avenue, Washington DC");
 // Reverse geocode — coordinates to address
 reverse_geocode(point(38.8977, -77.0365));
 
+// Structured geocode — pre-parsed components, no address parsing
+geocode(
+  address: "1600 Pennsylvania Ave",
+  locality: "Washington",
+  region: "DC",
+  postalcode: "20500",
+  country: "US"
+);
+
+// City-only structured geocode returns the city itself
+geocode(locality: "Springfield", region: "IL");
+
+// Restrict to points of interest inside a boundary (Berlin)
+geocode("Cafe Einstein", layers: "poi", boundary_gid: "osm:relation:62422");
+
+// Look up results again by their gid
+place_lookup("osm:node:21154906", "osm:relation:62422");
+
 // Autocomplete — partial text to suggestions
 autocomplete("Eiffel Tow");
 

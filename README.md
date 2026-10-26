@@ -197,7 +197,7 @@ Result sets returned by search and computation functions.
 
 | Type         | Description                 | Produced by                                        |
 |--------------|-----------------------------|----------------------------------------------------|
-| `PointSet`   | Collection of point features | `search(node, ...)`, `geocode()`, `.centroid()`    |
+| `PointSet`   | Collection of point features | `search(node, ...)`, `geocode()`, `place_lookup()`, `.centroid()` |
 | `LineSet`    | Collection of line features  | `search(way, ...)` with linear features            |
 | `PolygonSet` | Collection of polygon features | `search(way, ...)` with area features, `.buffer()` |
 | `GeoSet`     | Mixed collection (supertype) | `search(...)` without element type, mixed unions   |
@@ -268,6 +268,7 @@ boundary(...)          → Boundary
 route(...)             → Route
 isochrone(...)         → Isochrone
 geocode(...)           → PointSet
+place_lookup(...)      → PointSet
 reverse_geocode(...)   → PointSet
 autocomplete(...)      → PointSet
 matrix(...)            → Matrix
@@ -380,13 +381,56 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 | `time`    | integer | Travel time in seconds         |
 | `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"` |
 
-### `geocode(address)`
+### `geocode(address)` / `geocode(address:, locality:, ...)`
 
 Forward geocode — address string to point features.
 
 ```plazaql
 geocode("1600 Pennsylvania Avenue, Washington DC")
 ```
+
+Pass pre-parsed components as keywords instead of a string for structured geocoding (REST: `POST /api/v1/geocode/structured`). Structured input skips address parsing, so results are deterministic and rank by how many components they match:
+
+```plazaql
+geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC", postalcode: "20500", country: "US")
+```
+
+| Parameter       | Type                  | Description                                                              |
+|-----------------|-----------------------|--------------------------------------------------------------------------|
+| `address`       | string                | House number and street (`"1600 Pennsylvania Ave"`, `"Rue de Rivoli 99"`) |
+| `neighbourhood` | string                | Neighbourhood or suburb                                                  |
+| `locality`      | string                | City, town or village                                                    |
+| `county`        | string                | County or district                                                       |
+| `region`        | string                | State, province or region                                                |
+| `postalcode`    | string                | Postal or ZIP code                                                       |
+| `country`       | string                | ISO 3166-1 alpha-2 code (`"US"`) or country name                         |
+| `focus`         | Point                 | Bias results toward this point                                           |
+| `country_code`  | string                | Free text only: restrict to one country                                  |
+| `bbox`          | Polygon               | Free text only: restrict to `bbox(south, west, north, east)`             |
+| `layers`        | string or string list | Only these layers (below)                                                |
+| `boundary_gid`  | string                | Only results inside this way or relation polygon (`"osm:relation:62422"`) |
+| `limit`         | number                | Maximum results                                                          |
+
+A structured call needs at least one of `address`, `locality`, `region` or `postalcode`.
+
+`layers` takes `"address"` (addresses, streets and postal codes), `"poi"`, `"admin"` (neighbourhood up to country), or single layers: `"street"`, `"postalcode"`, `"neighbourhood"`, `"locality"`, `"county"`, `"region"`, `"country"`. `autocomplete()` takes `layers` and `boundary_gid` too.
+
+Every result carries `gid` (`"osm:node:123"`), `layer`, `confidence` (0 to 1), `match_type` (`"exact"`, `"interpolated"`, `"fuzzy"`, `"fallback"`), `accuracy` (`"point"` or `"centroid"`) and categories (`category`, `subcategory`, `categories`). When nothing matches the address, the street, postal code, then the admin areas named in the query are tried in turn, and those results come back with `match_type: "fallback"` and confidence at most 0.5.
+
+```plazaql
+// Cafes, but only inside Berlin's boundary
+geocode("Cafe Einstein", layers: "poi", boundary_gid: "osm:relation:62422")
+```
+
+### `place_lookup(gid, ...)`
+
+Look up places by Plaza GID, the `gid` of any geocoding result (REST: `GET /api/v1/place?ids=...`). Takes up to 50 GIDs, positional or as `ids: [...]`, and returns them in order with their admin hierarchy and categories:
+
+```plazaql
+place_lookup("osm:node:21154906", "osm:relation:62422")
+```
+
+GIDs are `osm:{node|way|relation}:{osm_id}`, or `osm:address:{id}` / `osm:place:{id}` for Plaza's address and place rows.
 
 ### `reverse_geocode(point, include:?)`
 
@@ -1403,6 +1447,7 @@ unary_expr     = primary method_chain? ;
 
 primary        = search | boundary_call | route_call | isochrone_call
                | geocode_call | reverse_geocode_call | autocomplete_call
+               | place_lookup_call
                | matrix_call | map_match_call
                | optimize_call | ev_route_call | elevation_call
                | elevation_profile_call | nearest_call | centroid_call
@@ -1420,7 +1465,8 @@ route_call     = "route" "(" arg_list ")" ;
 isochrone_call = "isochrone" "(" arg_list ")" ;
 centroid_call  = "centroid" "(" arg_list ")" ;
 expansion_call = "expansion" "(" arg_list ")" ;
-geocode_call   = "geocode" "(" STRING ")" ;
+geocode_call   = "geocode" "(" (STRING | arg_list) ")" ;
+place_lookup_call = "place_lookup" "(" arg_list ")" ;
 dataset_call   = "dataset" "(" STRING ")" ;
 /* ... other function calls follow the same pattern */
 
