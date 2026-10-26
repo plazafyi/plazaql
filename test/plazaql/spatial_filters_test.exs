@@ -53,6 +53,14 @@ defmodule PlazaQL.SpatialFiltersTest do
     assert m =~ "expected an H3 cell string"
   end
 
+  test "a malformed directive reports where it is" do
+    assert {:error, [error]} =
+             PlazaQL.compile("$a = search(node).limit(1);\n#bbox(1, 2, 3);\nsearch(way);")
+
+    assert error.message =~ "expected bbox(south, west, north, east) numbers"
+    assert {error.line, error.col} == {2, 1}
+  end
+
   test "the SQL ANDs every filter" do
     {:ok, %{plans: [plan]}} =
       PlazaQL.compile("search(node).around(500, point(1, 2)).bbox(0, 0, 3, 3);")
