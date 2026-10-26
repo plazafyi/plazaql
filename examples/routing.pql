@@ -85,3 +85,22 @@ matrix(
   point(40.7484, -73.9856),
   point(40.7580, -73.9855)
 );
+
+// Meeting point for three friends on foot, then cafes near it
+$meet = centroid(
+  locations: [
+    point(48.8584, 2.2945),
+    point(48.8700, 2.3500),
+    point(48.8450, 2.3400)
+  ],
+  mode: "foot"
+);
+search(node, amenity: "cafe").around(300, $meet).limit(5);
+
+// Routing debug: every edge the router visited for a route
+expansion(
+  action: "route",
+  origin: point(48.8584, 2.2945),
+  destination: point(48.8700, 2.3500),
+  expansion_properties: ["duration", "cumulative_cost"]
+);

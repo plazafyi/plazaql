@@ -277,6 +277,8 @@ ev_route(...)          → Route
 elevation(...)         → Elevation
 elevation_profile(...) → Elevation
 nearest(...)           → PointSet
+centroid(...)          → PointSet
+expansion(...)         → LineSet
 dataset(...)           → (search source, not a standalone type)
 
 // Transforms that change type
@@ -505,6 +507,58 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `initial_charge_pct` | number  | Initial charge percentage (optional)     |
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
 | `depart_at`, `traffic_model`, `exclude` | | Same as `route()` (optional) |
+
+### `centroid(locations:, mode:?, metric:?, exclude:?)`
+
+Find the meeting point: the spot on the road network with the least total
+travel cost from every location. Each location travels to the meeting point,
+so one-way streets count in that direction. The result is a point, so it works
+as a geometry.
+
+```plazaql
+$meet = centroid(
+  locations: [point(48.858, 2.294), point(48.870, 2.350), point(48.845, 2.340)],
+  mode: "foot"
+);
+search(node, amenity: "cafe").around(300, $meet).limit(5);
+```
+
+| Parameter   | Type     | Description                                          |
+|-------------|----------|------------------------------------------------------|
+| `locations` | Point[]  | 2 to 50 starting points (required)                   |
+| `mode`      | string   | `"auto"`, `"foot"`, `"bicycle"` (optional)           |
+| `metric`    | string   | `"time"` (default) or `"distance"`: the total to minimise |
+| `exclude`   | string[] | Road types to avoid, same as `route()` (optional)    |
+
+Same as REST `POST /api/v1/centroid`.
+
+### `expansion(action:, ...)`
+
+Routing debug: every road edge the router settled while answering a route,
+isochrone or matrix request, one LineString per edge. Edges on the computed
+path have `on_path: true`. Pass the expanded computation's own keywords.
+
+```plazaql
+expansion(
+  action: "route",
+  origin: point(48.858, 2.294),
+  destination: point(48.870, 2.350),
+  expansion_properties: ["duration", "cumulative_cost"]
+);
+```
+
+| Parameter              | Type     | Description                                         |
+|------------------------|----------|-----------------------------------------------------|
+| `action`               | string   | `"route"`, `"isochrone"` or `"matrix"` (required)   |
+| `origin`, `destination`| Point    | Route endpoints (`route`)                           |
+| `center`, `time`       | Point, number or number[] | Isochrone center and budget(s) in seconds (`isochrone`) |
+| `origins`, `destinations` | Point[] | Matrix points, at most 100 pairs (`matrix`)        |
+| `mode`                 | string   | `"auto"`, `"foot"`, `"bicycle"` (optional)          |
+| `exclude`              | string[] | Road types to avoid (`route`, `matrix`; optional)   |
+| `expansion_properties` | string[] | Per-edge properties: `"duration"` (default), `"distance"`, `"cost"`, `"cumulative_cost"`, `"edge_id"`, `"osm_way_id"` |
+
+Same as REST `POST /api/v1/expansion`, including its access rule: the server
+runs it only with the `X-Plaza-Debug: true` header or an admin API key.
 
 ### `elevation(point)`
 
@@ -1350,7 +1404,8 @@ primary        = search | boundary_call | route_call | isochrone_call
                | geocode_call | reverse_geocode_call | autocomplete_call
                | matrix_call | map_match_call
                | optimize_call | ev_route_call | elevation_call
-               | elevation_profile_call | nearest_call | dataset_call
+               | elevation_profile_call | nearest_call | centroid_call
+               | expansion_call | dataset_call
                | constructor | variable | output_ref | output_named_ref
                | list_literal | "(" expression ")" ;
 
@@ -1362,6 +1417,8 @@ id_filter      = "id" ":" (NUMBER | "[" NUMBER ("," NUMBER)* "]") ;
 boundary_call  = "boundary" "(" tag_filters? ")" ;
 route_call     = "route" "(" arg_list ")" ;
 isochrone_call = "isochrone" "(" arg_list ")" ;
+centroid_call  = "centroid" "(" arg_list ")" ;
+expansion_call = "expansion" "(" arg_list ")" ;
 geocode_call   = "geocode" "(" STRING ")" ;
 dataset_call   = "dataset" "(" STRING ")" ;
 /* ... other function calls follow the same pattern */

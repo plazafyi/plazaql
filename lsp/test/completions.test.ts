@@ -407,6 +407,20 @@ describe("PlazaQL Completions", () => {
       }
     });
 
+    it("suggests locations and metric for centroid(", () => {
+      const src = "$$ = centroid(";
+      const items = getCompletions(src, 1, src.length + 1);
+      expect(items.some((i) => i.label === "locations")).toBe(true);
+      expect(items.some((i) => i.label === "metric")).toBe(true);
+    });
+
+    it("suggests action and expansion_properties for expansion(", () => {
+      const src = "$$ = expansion(";
+      const items = getCompletions(src, 1, src.length + 1);
+      expect(items.some((i) => i.label === "action")).toBe(true);
+      expect(items.some((i) => i.label === "expansion_properties")).toBe(true);
+    });
+
     it("suggests origins and destinations for matrix(", () => {
       const src = "$$ = matrix(";
       const items = getCompletions(src, 1, src.length + 1);

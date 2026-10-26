@@ -12,7 +12,10 @@ import type {
   TagFilter,
 } from "./types.js"
 import {
+  CENTROID_METRICS,
   computationType,
+  EXPANSION_ACTIONS,
+  EXPANSION_PROPERTIES,
   isOutputMode,
   methodCategory,
   methodGroup,
@@ -806,6 +809,12 @@ function checkComputationKwargs(
   args: Arg[],
   pos: Pos,
 ): TypeCheckError[] {
+  if (name === "centroid") {
+    return checkCentroidKwargs(args, pos)
+  }
+  if (name === "expansion") {
+    return checkExpansionKwargs(args, pos)
+  }
   if (name !== "reverse_geocode") {
     return []
   }
@@ -842,6 +851,105 @@ function checkComputationKwargs(
       return arg.value.items.flatMap(checkValue)
     }
     return [includeError("`include:` must be a string or a list of strings")]
+  })
+}
+
+const quoted = (values: string[]): string =>
+  values.map((v) => `"${v}"`).join(", ")
+
+function kwargError(pos: Pos, message: string, hint: string): TypeCheckError {
+  return { line: pos.line, col: pos.col, message, hint, severity: "error" }
+}
+
+function checkCentroidKwargs(args: Arg[], pos: Pos): TypeCheckError[] {
+  return args.flatMap((arg) => {
+    if (arg.type !== "kwarg" || arg.name !== "metric") {
+      return []
+    }
+    if (
+      arg.value.kind === "string" &&
+      CENTROID_METRICS.includes(arg.value.value)
+    ) {
+      return []
+    }
+    return [
+      kwargError(
+        pos,
+        `\`metric:\` must be one of ${quoted(CENTROID_METRICS)}`,
+        "the total travel cost the meeting point minimises",
+      ),
+    ]
+  })
+}
+
+function checkExpansionKwargs(args: Arg[], pos: Pos): TypeCheckError[] {
+  return [
+    ...checkExpansionAction(args, pos),
+    ...args.flatMap((arg) =>
+      arg.type === "kwarg" && arg.name === "expansion_properties"
+        ? checkExpansionProperties(arg.value, pos)
+        : [],
+    ),
+  ]
+}
+
+function checkExpansionAction(args: Arg[], pos: Pos): TypeCheckError[] {
+  const action = args.find((a) => a.type === "kwarg" && a.name === "action")
+  if (!action || action.type !== "kwarg") {
+    return [
+      kwargError(
+        pos,
+        "`expansion()` requires `action:`",
+        `one of ${quoted(EXPANSION_ACTIONS)}`,
+      ),
+    ]
+  }
+  if (
+    action.value.kind === "string" &&
+    EXPANSION_ACTIONS.includes(action.value.value)
+  ) {
+    return []
+  }
+  return [
+    kwargError(
+      pos,
+      `\`action:\` must be one of ${quoted(EXPANSION_ACTIONS)}`,
+      "the request whose search to show",
+    ),
+  ]
+}
+
+function checkExpansionProperties(value: Expr, pos: Pos): TypeCheckError[] {
+  const hint = `supported: ${quoted(EXPANSION_PROPERTIES)}`
+  if (value.kind !== "list") {
+    return [
+      kwargError(
+        pos,
+        "`expansion_properties:` must be a list of strings",
+        hint,
+      ),
+    ]
+  }
+  return value.items.flatMap((item) => {
+    if (item.kind !== "string") {
+      return [
+        kwargError(
+          pos,
+          "`expansion_properties:` list items must be strings",
+          hint,
+        ),
+      ]
+    }
+    if (EXPANSION_PROPERTIES.includes(item.value)) {
+      return []
+    }
+    return [
+      kwargError(
+        pos,
+        `unknown \`expansion_properties:\` value "${item.value}"`,
+        hint,
+      ),
+    ]
   })
 }
 
