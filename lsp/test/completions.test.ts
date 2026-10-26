@@ -323,6 +323,7 @@ describe("PlazaQL Completions", () => {
       // Should still include terminal + other late_chain
       expect(labels).toContain("count");
       expect(labels).toContain("offset");
+      expect(labels).toContain("cursor");
     });
 
     it("infers PointSet after .centroid()", () => {

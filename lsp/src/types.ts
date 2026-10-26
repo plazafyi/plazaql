@@ -352,7 +352,7 @@ const OUTPUT_SHAPE_METHODS = [
   "expand",
   "geometry",
 ]
-const ORDERING_METHODS = ["sort", "limit", "offset"]
+const ORDERING_METHODS = ["sort", "limit", "offset", "cursor"]
 const OUTPUT_MODE_METHODS = [
   "count",
   "ids",
@@ -829,6 +829,15 @@ export const METHOD_CATALOG: MethodInfo[] = [
     name: "offset",
     signature: ".offset(n: number)",
     description: "Skip the first n results. Requires `.limit()` first.",
+    phase: "Ordering",
+    ordinal: 7,
+    group: "late_chain",
+  },
+  {
+    name: "cursor",
+    signature: ".cursor(token: string)",
+    description:
+      "Continue from the previous page: pass the `next_cursor` the server returned with it. The cursor only works with the query that issued it. Cannot be combined with `.offset()`.",
     phase: "Ordering",
     ordinal: 7,
     group: "late_chain",

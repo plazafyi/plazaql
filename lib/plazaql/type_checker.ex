@@ -391,6 +391,8 @@ defmodule PlazaQL.TypeChecker do
       last_method_name: nil,
       has_around: false,
       has_limit: false,
+      has_offset: false,
+      has_cursor: false,
       output_mode_count: 0,
       current_type: base_type
     }
@@ -537,6 +539,8 @@ defmodule PlazaQL.TypeChecker do
         current_type: output_type,
         has_around: ctx.has_around or name == :around,
         has_limit: ctx.has_limit or name == :limit,
+        has_offset: ctx.has_offset or name == :offset,
+        has_cursor: ctx.has_cursor or name == :cursor,
         output_mode_count: ctx.output_mode_count + if(Types.output_mode?(name), do: 1, else: 0)
     }
 
@@ -798,6 +802,9 @@ defmodule PlazaQL.TypeChecker do
     end
   end
 
+  defp check_contextual(:offset, _args, %{has_cursor: true}, pos),
+    do: [cursor_offset_error(pos)]
+
   defp check_contextual(:offset, _args, %{has_limit: true}, _pos), do: []
 
   defp check_contextual(:offset, _args, _ctx, pos) do
@@ -807,6 +814,22 @@ defmodule PlazaQL.TypeChecker do
         col: pos.col,
         message: "`.offset()` requires `.limit()` to be set",
         hint: "add `.limit(n)` before `.offset()`: ...limit(20).offset(10)"
+      }
+    ]
+  end
+
+  defp check_contextual(:cursor, _args, %{has_offset: true}, pos),
+    do: [cursor_offset_error(pos)]
+
+  defp check_contextual(:cursor, [{:posarg, {:string, _token, _}}], _ctx, _pos), do: []
+
+  defp check_contextual(:cursor, _args, _ctx, pos) do
+    [
+      %Error{
+        line: pos.line,
+        col: pos.col,
+        message: "`.cursor()` takes one string, the `next_cursor` of the previous page",
+        hint: ~s|copy the token from the response: .cursor("SFMyNTY...")|
       }
     ]
   end
@@ -938,6 +961,15 @@ defmodule PlazaQL.TypeChecker do
   defp resolve_var_type(name, scope), do: Map.get(scope, name)
 
   # ── Join method arg validation ──────────────────────────────────
+
+  defp cursor_offset_error(pos) do
+    %Error{
+      line: pos.line,
+      col: pos.col,
+      message: "`.cursor()` and `.offset()` cannot be combined",
+      hint: "page with `.cursor(...)` alone; the cursor already says where the page starts"
+    }
+  end
 
   defp check_join_method_args(method, args, pos) do
     positional = Enum.filter(args, &match?({:posarg, _}, &1))

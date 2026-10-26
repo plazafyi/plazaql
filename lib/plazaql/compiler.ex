@@ -500,6 +500,13 @@ defmodule PlazaQL.Compiler do
     %{plan | offset: trunc(extract_single_number(args))}
   end
 
+  defp apply_method(plan, {:method, :cursor, args, _pos}, _env) do
+    case extract_single_value(args) do
+      {:string, token, _} -> %{plan | cursor: token}
+      other -> argument_error!("a cursor string", other)
+    end
+  end
+
   # -- Output mode methods --
 
   defp apply_method(plan, {:method, :count, _args, _pos}, _env), do: %{plan | output_mode: :count}

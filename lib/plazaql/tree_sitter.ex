@@ -25,7 +25,7 @@ defmodule PlazaQL.TreeSitter do
 
   # Safe atom allowlists (same as in the NimbleParsec parser)
   @method_atoms Map.new(
-                  ~w(area around avg bbox buffer centroid contains count crosses distance
+                  ~w(area around avg bbox buffer centroid contains count crosses cursor distance
                      elevation expand fields filter filter_expr first geom geometry group_by h3
                      has_member ids include index intersects last length limit max min
                      member_of not_contains not_intersects not_within offset overlap_fraction

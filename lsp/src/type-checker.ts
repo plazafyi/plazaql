@@ -405,6 +405,8 @@ interface ChainContext {
   lastMethodName: string | null
   hasAround: boolean
   hasLimit: boolean
+  hasOffset: boolean
+  hasCursor: boolean
   outputModeCount: number
   currentType: PqlType
 }
@@ -420,6 +422,8 @@ function checkMethodChain(
     lastMethodName: null,
     hasAround: false,
     hasLimit: false,
+    hasOffset: false,
+    hasCursor: false,
     outputModeCount: 0,
     currentType: baseType,
   }
@@ -523,17 +527,20 @@ function checkMethod(
     ctx.lastGroup = group
   }
   ctx.lastMethodName = method.name
-  if (method.name === "around") {
-    ctx.hasAround = true
-  }
-  if (method.name === "limit") {
-    ctx.hasLimit = true
-  }
-  if (isOutputMode(method.name)) {
-    ctx.outputModeCount++
-  }
+  recordMethod(ctx, method.name)
 
   return errors
+}
+
+// The chain facts later methods check (`.offset()` needs `.limit()`, ...).
+function recordMethod(ctx: ChainContext, name: string): void {
+  ctx.hasAround ||= name === "around"
+  ctx.hasLimit ||= name === "limit"
+  ctx.hasOffset ||= name === "offset"
+  ctx.hasCursor ||= name === "cursor"
+  if (isOutputMode(name)) {
+    ctx.outputModeCount++
+  }
 }
 
 // ── Method compatibility hints ───────────────────────────────────────
@@ -1448,6 +1455,34 @@ function checkContextual(
       : checkTileFilterArgs(args, pos)
   }
 
+  if (
+    (methodName === "offset" && ctx.hasCursor) ||
+    (methodName === "cursor" && ctx.hasOffset)
+  ) {
+    return [
+      {
+        line: pos.line,
+        col: pos.col,
+        message: "`.cursor()` and `.offset()` cannot be combined",
+        hint: "page with `.cursor(...)` alone; the cursor already says where the page starts",
+        severity: "error",
+      },
+    ]
+  }
+
+  if (methodName === "cursor" && !isCursorArgs(args)) {
+    return [
+      {
+        line: pos.line,
+        col: pos.col,
+        message:
+          "`.cursor()` takes one string, the `next_cursor` of the previous page",
+        hint: 'copy the token from the response: .cursor("SFMyNTY...")',
+        severity: "error",
+      },
+    ]
+  }
+
   if (methodName === "offset" && !ctx.hasLimit) {
     return [
       {
@@ -1561,6 +1596,15 @@ function checkTileKwarg(arg: KwArg, pos: Pos): TypeCheckError[] {
 }
 
 // ── Type guard ───────────────────────────────────────────────────────
+
+// .cursor("token"): exactly one positional string — mirrors PlazaQL.TypeChecker
+function isCursorArgs(args: Arg[] | TagFilter[]): boolean {
+  if (!isArgArray(args) || args.length !== 1) {
+    return false
+  }
+  const [arg] = args
+  return arg.type === "posarg" && arg.value.kind === "string"
+}
 
 function isArgArray(args: Arg[] | TagFilter[]): args is Arg[] {
   if (args.length === 0) {

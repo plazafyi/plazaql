@@ -935,10 +935,51 @@ These match the REST `output.fields`, `output.include`, `output.precision` and `
 | `.sort(expr, order?: :asc \| :desc)` | `GeoSet → GeoSet` | Sort by expression (`t["name"]`, `distance(point(...))`, `area()`, `length()`, `elevation()`) |
 | `.limit(n)` | `GeoSet → GeoSet` | Maximum number of results |
 | `.offset(n)` | `GeoSet → GeoSet` | Skip first n results |
+| `.cursor(token)` | `GeoSet → GeoSet` | Continue after the previous page (keyset pagination) |
 
 ```plazaql
 search(node, amenity: "cafe").sort(t["name"]).limit(10).offset(20);
 ```
+
+#### Pagination with `.cursor()`
+
+When a search with `.limit(n)` has more rows than `n`, the server returns
+the page with a `next_cursor` string. Run the same query again with
+`.cursor("<next_cursor>")` to get the next page. The last page has no
+`next_cursor`.
+
+```plazaql
+// Page 1
+search(node, amenity: "cafe").within(boundary(name: "Manhattan")).limit(100);
+
+// Page 2: the same query, plus the cursor from page 1
+search(node, amenity: "cafe")
+  .within(boundary(name: "Manhattan"))
+  .limit(100)
+  .cursor("SFMyNTY.g2gDYQFtAAAAEH...");
+```
+
+- The token is opaque and signed by the server. Copy it as returned. A
+  token from a different query, or one that was edited, is rejected with
+  `invalid_cursor`.
+- Changing `.limit()`, `.fields()` or `.precision()` between pages is fine.
+  Changing a filter, the spatial area, the sort or the element types makes
+  it a different query, so the old cursor no longer applies.
+- `.cursor()` cannot be combined with `.offset()`. It takes exactly one
+  string.
+- Each output of a multi-output query pages on its own:
+  `$$.cafes = search(...).limit(50).cursor("...");` gets its own
+  `next_cursor`.
+- Pages follow the query's sort. Without `.sort()`, rows come in element
+  type order (as listed in `search(...)`), then by OSM id. A cursor holds
+  the last row's sort value, so `.sort(distance(p))` pages continue at the
+  right distance. `text_search(...)` pages follow its score.
+- Plans that return one value or a combined set do not page: `.count()`,
+  aggregates, `.group_by()`, set operations (`+`, `-`, `&`), `.first()`,
+  `.last()`, `.index()` and `.tile()`. A cursor on them is an error.
+
+The compiler keeps the token in `Plan.cursor` and SQL generation ignores
+it. The server decodes it and resumes after that row.
 
 `.sort(by: :osm_id)` and `.sort(by: :name)` are the REST `output.sort=osm_id` and `output.sort=name`; see also `.sort(by: :qt)` below. Sorting by a string literal (`.sort("name")`) is a compile error, since it would sort every row by the same constant: write `.sort(t["name"])` or `.sort(by: :name)`.
 
@@ -1499,7 +1540,7 @@ Freely orderable (any order among themselves):
   Output shape     .fields() | .include() | .precision() | .expand()
 
 Late chain (must come after freely orderable):
-  Ordering         .sort() | .limit() | .offset()
+  Ordering         .sort() | .limit() | .offset() | .cursor()
   Narrowing        .first() | .last() | .index()
   Group by         .group_by(expr)
 

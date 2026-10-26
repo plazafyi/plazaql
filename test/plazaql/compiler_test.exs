@@ -219,6 +219,28 @@ defmodule PlazaQL.CompilerTest do
       assert plan.limit == 10
       assert plan.offset == 20
     end
+
+    test ".cursor keeps the server's token as given" do
+      plan = first_plan(~s|$$ = search(amenity: "cafe").limit(10).cursor("SFMyNTY.g2gD.x-_y");|)
+      assert plan.limit == 10
+      assert plan.cursor == "SFMyNTY.g2gD.x-_y"
+      assert plan.offset == nil
+    end
+
+    test "a plan without .cursor has none" do
+      assert first_plan(~s|$$ = search(amenity: "cafe").limit(10);|).cursor == nil
+    end
+
+    test ".cursor applies per output" do
+      {:ok, %{plans: [cafes, parks]}} =
+        PlazaQL.compile(
+          ~s|$$.cafes = search(node, amenity: "cafe").limit(5).cursor("a"); | <>
+            ~s|$$.parks = search(way, leisure: "park").limit(5);|
+        )
+
+      assert cafes.cursor == "a"
+      assert parks.cursor == nil
+    end
   end
 
   # ── Output modes ──────────────────────────────────────────────────

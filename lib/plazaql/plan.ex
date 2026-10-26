@@ -145,6 +145,7 @@ defmodule PlazaQL.Plan do
           distinct: boolean(),
           limit: non_neg_integer() | nil,
           offset: non_neg_integer() | nil,
+          cursor: String.t() | nil,
           sort_expr: {term(), :asc | :desc} | nil,
           aggregate_expr: term() | nil,
           group_by: term() | nil,
@@ -176,6 +177,10 @@ defmodule PlazaQL.Plan do
             distinct: false,
             limit: nil,
             offset: nil,
+            # `.cursor("...")`: an opaque keyset cursor issued by the server
+            # (`next_cursor` of the previous page). SQL generation ignores it;
+            # the server decodes it and resumes after that row.
+            cursor: nil,
             sort_expr: nil,
             aggregate_expr: nil,
             group_by: nil,
