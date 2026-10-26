@@ -990,6 +990,76 @@ const GEOCODE_LAYER_VALUES = GEOCODE_LAYERS.map((layer) => ({
   value: `"${layer}"`,
 }))
 
+// Vehicle options of route(), isochrone() and matrix() with mode: "truck"
+// (Plaza's POST /route `truck` object). Plaza checks the ranges.
+export const TRUCK_DIMENSIONS = [
+  "height",
+  "width",
+  "length",
+  "weight",
+  "axle_load",
+]
+export const TRUCK_OPTIONS = [...TRUCK_DIMENSIONS, "axle_count", "hazmat"]
+export const TRUCK_COMPUTATIONS = ["route", "isochrone", "matrix"]
+
+const TRUCK_PARAMS: ParamInfo[] = [
+  {
+    name: "height",
+    type: "number",
+    optional: true,
+    description:
+      'Truck height in metres (mode: "truck"; default 4.11, at most 10)',
+  },
+  {
+    name: "width",
+    type: "number",
+    optional: true,
+    description:
+      'Truck width in metres (mode: "truck"; default 2.6, at most 10)',
+  },
+  {
+    name: "length",
+    type: "number",
+    optional: true,
+    description:
+      'Truck length in metres (mode: "truck"; default 21.64, at most 60)',
+  },
+  {
+    name: "weight",
+    type: "number",
+    optional: true,
+    description:
+      'Gross weight in tonnes (mode: "truck"; default 21.77, at most 200)',
+  },
+  {
+    name: "axle_load",
+    type: "number",
+    optional: true,
+    description:
+      'Heaviest axle load in tonnes (mode: "truck"; at most 50; else weight / axle_count)',
+  },
+  {
+    name: "axle_count",
+    type: "number",
+    optional: true,
+    description: 'Number of axles, 2 to 20 (mode: "truck")',
+  },
+  {
+    name: "hazmat",
+    type: "boolean",
+    optional: true,
+    description:
+      'Carrying hazardous materials: avoids hazmat=no roads and ADR category B-E tunnels (mode: "truck")',
+  },
+]
+
+const TRUCK_MODE_VALUES = [
+  { value: '"auto"' },
+  { value: '"foot"' },
+  { value: '"bicycle"' },
+  { value: '"truck"' },
+]
+
 export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   search: {
     name: "search",
@@ -1112,6 +1182,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
       },
+      ...TRUCK_PARAMS,
     ],
     returnType: "Route",
     description: "Compute a route between waypoints.",
@@ -1137,12 +1208,9 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description: "Travel mode",
-        enumValues: [
-          { value: '"auto"' },
-          { value: '"foot"' },
-          { value: '"bicycle"' },
-        ],
+        enumValues: TRUCK_MODE_VALUES,
       },
+      ...TRUCK_PARAMS,
     ],
     returnType: "Isochrone",
     description: "Compute a travel-time or travel-distance polygon.",
@@ -1342,12 +1410,9 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description: "Travel mode",
-        enumValues: [
-          { value: '"auto"' },
-          { value: '"foot"' },
-          { value: '"bicycle"' },
-        ],
+        enumValues: TRUCK_MODE_VALUES,
       },
+      ...TRUCK_PARAMS,
     ],
     returnType: "Matrix",
     description: "Compute a distance/duration matrix between point sets.",

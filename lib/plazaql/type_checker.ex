@@ -230,7 +230,8 @@ defmodule PlazaQL.TypeChecker do
 
     kwarg_errors =
       check_computation_kwargs(comp_type, opts, pos) ++
-        check_computation_args(comp_type, args, opts, pos)
+        check_computation_args(comp_type, args, opts, pos) ++
+        check_truck_kwargs(comp_type, opts, pos)
 
     typed = {:computation, comp_type, args, opts, Map.put(pos, :type, type)}
     {typed, type, arg_errors ++ kwarg_errors}
@@ -1387,6 +1388,77 @@ defmodule PlazaQL.TypeChecker do
       }
     ]
   end
+
+  # ── Truck vehicle options ───────────────────────────────────────
+  #
+  # route(), isochrone() and matrix() with `mode: "truck"` take the vehicle
+  # of Plaza's POST /route `truck` object as keywords. Plaza checks the
+  # ranges (e.g. height at most 10 m); here only the shape.
+
+  @truck_computations [:route, :isochrone, :matrix]
+  @truck_dimensions ~w(height width length weight axle_load)
+  @truck_kwargs @truck_dimensions ++ ~w(axle_count hazmat)
+  @truck_hint ~s|e.g. `route(origin: ..., destination: ..., mode: "truck", height: 4.0, weight: 30, hazmat: true)`|
+
+  defp check_truck_kwargs(comp_type, opts, pos) do
+    case Enum.filter(opts, &match?({:kwarg, key, _} when key in @truck_kwargs, &1)) do
+      [] ->
+        []
+
+      truck_opts ->
+        check_truck_usage(comp_type, opts, pos) ++
+          Enum.flat_map(truck_opts, &check_truck_value(&1, pos))
+    end
+  end
+
+  # A mode that is not a literal (a variable, say) is checked by Plaza when
+  # it runs; only a missing mode or a literal other than "truck" is an error.
+  defp check_truck_usage(comp_type, opts, pos) when comp_type in @truck_computations do
+    case Enum.find(opts, &match?({:kwarg, "mode", _}, &1)) do
+      {:kwarg, "mode", {:string, "truck", _}} -> []
+      {:kwarg, "mode", {literal, _, _}} when literal in [:string, :atom] -> truck_mode_error(pos)
+      {:kwarg, "mode", _} -> []
+      nil -> truck_mode_error(pos)
+    end
+  end
+
+  defp check_truck_usage(comp_type, _opts, pos) do
+    route_option_error(
+      "`#{comp_type}()` has no truck options; they apply to `route()`, `isochrone()` and `matrix()` with `mode: \"truck\"`",
+      @truck_hint,
+      pos
+    )
+  end
+
+  defp truck_mode_error(pos) do
+    route_option_error(
+      "truck options (#{Enum.map_join(@truck_kwargs, ", ", &"`#{&1}:`")}) need `mode: \"truck\"`",
+      @truck_hint,
+      pos
+    )
+  end
+
+  defp check_truck_value({:kwarg, key, {:number, n, _}}, _pos)
+       when key in @truck_dimensions and n > 0,
+       do: []
+
+  defp check_truck_value({:kwarg, key, _}, pos) when key in @truck_dimensions do
+    unit = if key in ~w(height width length), do: "metres", else: "tonnes"
+    route_option_error("`#{key}:` must be a positive number (#{unit})", @truck_hint, pos)
+  end
+
+  # Whole numbers only; `5.0` counts, as in the LSP and in Plaza.
+  defp check_truck_value({:kwarg, "axle_count", {:number, n, _}}, _pos)
+       when n > 0 and n == trunc(n),
+       do: []
+
+  defp check_truck_value({:kwarg, "axle_count", _}, pos),
+    do: route_option_error("`axle_count:` must be a whole number of axles", @truck_hint, pos)
+
+  defp check_truck_value({:kwarg, "hazmat", {:bool, _, _}}, _pos), do: []
+
+  defp check_truck_value({:kwarg, "hazmat", _}, pos),
+    do: route_option_error("`hazmat:` must be `true` or `false`", @truck_hint, pos)
 
   # ── AST position extraction ───────────────────────────────────────
 

@@ -71,6 +71,19 @@ optimize(
   mode: "drive"
 );
 
+// Truck route: a 4 m, 30 t truck with a hazardous load
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7580, -73.9855),
+  mode: "truck",
+  height: 4.0,
+  weight: 30,
+  hazmat: true
+);
+
+// Area a default semi-trailer reaches in 20 minutes
+isochrone(center: point(40.7128, -74.0060), time: 1200, mode: "truck");
+
 // EV-aware routing with charge stops
 ev_route(
   origin: point(40.7128, -74.0060),

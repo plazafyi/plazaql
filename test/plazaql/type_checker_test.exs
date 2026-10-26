@@ -978,6 +978,61 @@ defmodule PlazaQL.TypeCheckerTest do
     end
   end
 
+  describe "truck options" do
+    @route ~s|route(origin: point(40.71, -74.00), destination: point(40.75, -73.98)|
+
+    test "route, isochrone and matrix take the vehicle with mode truck" do
+      check!(
+        @route <>
+          ~s|, mode: "truck", height: 4.1, width: 2.5, length: 16.5, weight: 30, axle_load: 9.5, axle_count: 5, hazmat: true);|
+      )
+
+      check!(~s|isochrone(center: point(40.71, -74.00), time: 600, mode: "truck", height: 3.8);|)
+
+      check!(
+        ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "truck", weight: 40);|
+      )
+
+      check!(@route <> ~s|, mode: "truck");|)
+    end
+
+    test "vehicle options need mode truck" do
+      [error] = check_errors(@route <> ~s|, height: 4.1);|)
+      assert error.message =~ ~s|need `mode: "truck"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "auto", hazmat: true);|)
+      assert error.message =~ ~s|need `mode: "truck"`|
+
+      # A mode from a variable is checked when the query runs.
+      check!(~s|$m = "truck"; | <> @route <> ~s|, mode: $m, height: 4.1);|)
+    end
+
+    test "other computations have no truck options" do
+      [error] =
+        check_errors(
+          ~s|centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], height: 4.0);|
+        )
+
+      assert error.message =~ "`centroid()` has no truck options"
+    end
+
+    test "values must have the right type" do
+      [error] = check_errors(@route <> ~s|, mode: "truck", height: "tall");|)
+      assert error.message == "`height:` must be a positive number (metres)"
+
+      [error] = check_errors(@route <> ~s|, mode: "truck", weight: 0);|)
+      assert error.message == "`weight:` must be a positive number (tonnes)"
+
+      check!(@route <> ~s|, mode: "truck", axle_count: 5.0);|)
+
+      [error] = check_errors(@route <> ~s|, mode: "truck", axle_count: 2.5);|)
+      assert error.message == "`axle_count:` must be a whole number of axles"
+
+      [error] = check_errors(@route <> ~s|, mode: "truck", hazmat: "yes");|)
+      assert error.message == "`hazmat:` must be `true` or `false`"
+    end
+  end
+
   describe "centroid options" do
     @locations ~s|locations: [point(48.858, 2.294), point(48.87, 2.35)]|
 
