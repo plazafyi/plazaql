@@ -28,6 +28,9 @@ import {
   REVERSE_GEOCODE_INCLUDES,
   STRUCTURED_GEOCODE_COMPONENTS,
   searchBaseType,
+  TRANSIT_COMPUTATIONS,
+  TRANSIT_OPTIONS,
+  TRANSIT_PREFERENCES,
   TRUCK_COMPUTATIONS,
   TRUCK_DIMENSIONS,
   TRUCK_OPTIONS,
@@ -234,6 +237,7 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
       const kwargErrors = [
         ...checkComputationKwargs(expr.name, expr.args, expr.pos),
         ...checkTruckKwargs(expr.name, expr.args, expr.pos),
+        ...checkTransitKwargs(expr.name, expr.args, expr.pos),
         ...checkDatasetKwargs(expr.args, expr.pos),
       ]
       return { type, errors: [...argErrors, ...kwargErrors] }
@@ -888,11 +892,12 @@ function checkKwargNames(
 ): TypeCheckError[] {
   const accepted = COMPUTATION_KWARGS[name] ?? []
   const hint = `accepted keywords: ${accepted.map((k) => `\`${k}:\``).join(", ")}`
-  // Truck options elsewhere get checkTruckOptions' own message.
+  // Truck and transit options elsewhere get their own checks' message.
   return args.flatMap((arg) =>
     arg.type === "kwarg" &&
     !accepted.includes(arg.name) &&
-    !TRUCK_OPTIONS.includes(arg.name)
+    !TRUCK_OPTIONS.includes(arg.name) &&
+    !TRANSIT_OPTIONS.includes(arg.name)
       ? [
           {
             line: pos.line,
@@ -1070,6 +1075,101 @@ function checkTruckValue(arg: Arg, pos: Pos): TypeCheckError[] {
     return []
   }
   return [kwargError(pos, "`hazmat:` must be `true` or `false`", TRUCK_HINT)]
+}
+
+// ── Transit options (route/isochrone with mode: "transit") ──────────
+
+const TRANSIT_HINT =
+  'e.g. `route(origin: ..., destination: ..., mode: "transit", depart_at: "2026-03-16T08:00:00-04:00", max_walk_m: 800)`'
+
+function checkTransitKwargs(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const transitArgs = args.filter(
+    (arg) => arg.type === "kwarg" && TRANSIT_OPTIONS.includes(arg.name),
+  )
+  if (transitArgs.length === 0) {
+    return []
+  }
+  return [
+    ...checkTransitUsage(name, args, pos),
+    ...transitArgs.flatMap((arg) => checkTransitValue(arg, pos)),
+  ]
+}
+
+function checkTransitUsage(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  if (!TRANSIT_COMPUTATIONS.includes(name)) {
+    return [
+      kwargError(
+        pos,
+        `\`${name}()\` has no transit options; they apply to \`route()\` and \`isochrone()\` with \`mode: "transit"\``,
+        TRANSIT_HINT,
+      ),
+    ]
+  }
+  // As for truck options: a mode that is not a literal is checked by Plaza.
+  const mode = args.find((arg) => arg.type === "kwarg" && arg.name === "mode")
+  if (mode && mode.type === "kwarg") {
+    const literal = mode.value.kind === "string" || mode.value.kind === "atom"
+    const transit =
+      mode.value.kind === "string" && mode.value.value === "transit"
+    if (transit || !literal) {
+      return []
+    }
+  }
+  const names = TRANSIT_OPTIONS.map((option) => `\`${option}:\``).join(", ")
+  return [
+    kwargError(
+      pos,
+      `transit options (${names}) need \`mode: "transit"\``,
+      TRANSIT_HINT,
+    ),
+  ]
+}
+
+function checkTransitValue(arg: Arg, pos: Pos): TypeCheckError[] {
+  if (arg.type !== "kwarg") {
+    return []
+  }
+  const { name, value } = arg
+  const isNumber = value.kind === "number"
+  if (TRANSIT_PREFERENCES.includes(name)) {
+    return isNumber && value.value >= 0 && value.value <= 1
+      ? []
+      : [
+          kwargError(
+            pos,
+            `\`${name}:\` must be a number from 0 to 1`,
+            "0 never uses it; 1 (default) has no penalty",
+          ),
+        ]
+  }
+  if (name === "max_walk_m") {
+    return isNumber && value.value >= 0
+      ? []
+      : [
+          kwargError(
+            pos,
+            "`max_walk_m:` must be a non-negative number of meters",
+            "the longest walk to, between and from stops",
+          ),
+        ]
+  }
+  return isNumber && Number.isInteger(value.value) && value.value >= 0
+    ? []
+    : [
+        kwargError(
+          pos,
+          "`max_transfers:` must be a whole number",
+          "the most changes between vehicles",
+        ),
+      ]
 }
 
 const quoted = (values: string[]): string =>

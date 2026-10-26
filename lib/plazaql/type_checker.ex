@@ -233,6 +233,7 @@ defmodule PlazaQL.TypeChecker do
         check_computation_kwargs(comp_type, opts, pos) ++
         check_computation_args(comp_type, args, opts, pos) ++
         check_truck_kwargs(comp_type, opts, pos) ++
+        check_transit_kwargs(comp_type, opts, pos) ++
         check_dataset_kwargs(opts, pos)
 
     typed = {:computation, comp_type, args, opts, Map.put(pos, :type, type)}
@@ -1141,12 +1142,17 @@ defmodule PlazaQL.TypeChecker do
   # truck vehicle options (`mode: "truck"`), checked by check_truck_kwargs/3.
   @truck_option_kwargs ~w(height width length weight axle_load axle_count hazmat)
 
+  # transit options (`mode: "transit"`), checked by check_transit_kwargs/3.
+  @transit_option_kwargs ~w(use_bus use_rail use_transfers max_walk_m max_transfers)
+
   @computation_kwargs %{
-    route: @route_kwargs ++ @truck_option_kwargs,
+    route: @route_kwargs ++ @truck_option_kwargs ++ @transit_option_kwargs,
     ev_route:
       @route_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
-    isochrone: ~w(center time mode denoise generalize avoid_datasets) ++ @truck_option_kwargs,
+    isochrone:
+      ~w(center time mode denoise generalize avoid_datasets depart_at) ++
+        @truck_option_kwargs ++ @transit_option_kwargs,
     geocode:
       ~w(query addresses address neighbourhood locality county region postalcode country) ++
         @geocode_filter_kwargs,
@@ -1188,6 +1194,7 @@ defmodule PlazaQL.TypeChecker do
     cond do
       key in accepted -> option_error(comp_type, key, value)
       key in @truck_option_kwargs -> nil
+      key in @transit_option_kwargs -> nil
       true -> unknown_kwarg_error(comp_type, key, accepted)
     end
   end
@@ -1405,6 +1412,14 @@ defmodule PlazaQL.TypeChecker do
   # /geocode/structured and /geocode/autocomplete.
   defp check_computation_kwargs(comp_type, opts, pos) when comp_type in [:geocode, :autocomplete] do
     Enum.flat_map(opts, &check_geocode_option(&1, pos))
+  end
+
+  # isochrone(mode: "transit", depart_at: ...): the same depart_at as route().
+  defp check_computation_kwargs(:isochrone, opts, pos) do
+    Enum.flat_map(opts, fn
+      {:kwarg, "depart_at", _} = opt -> check_route_option(opt, pos)
+      _ -> []
+    end)
   end
 
   defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
@@ -1779,6 +1794,87 @@ defmodule PlazaQL.TypeChecker do
 
   defp check_truck_value({:kwarg, "hazmat", _}, pos),
     do: route_option_error("`hazmat:` must be `true` or `false`", @truck_hint, pos)
+
+  # route() and isochrone() with `mode: "transit"` (Plaza's pedestrian +
+  # public transit routing) take its options as keywords. Plaza checks the
+  # upper bounds (max_walk_m, max_transfers); here the shape and the 0-1
+  # preference range.
+
+  @transit_computations [:route, :isochrone]
+  @transit_preferences ~w(use_bus use_rail use_transfers)
+  @transit_hint ~s|e.g. `route(origin: ..., destination: ..., mode: "transit", depart_at: "2026-03-16T08:00:00-04:00", max_walk_m: 800)`|
+
+  defp check_transit_kwargs(comp_type, opts, pos) do
+    case Enum.filter(opts, &match?({:kwarg, key, _} when key in @transit_option_kwargs, &1)) do
+      [] ->
+        []
+
+      transit_opts ->
+        check_transit_usage(comp_type, opts, pos) ++
+          Enum.flat_map(transit_opts, &check_transit_value(&1, pos))
+    end
+  end
+
+  # As for truck options: a mode that is not a literal is checked by Plaza.
+  defp check_transit_usage(comp_type, opts, pos) when comp_type in @transit_computations do
+    case Enum.find(opts, &match?({:kwarg, "mode", _}, &1)) do
+      {:kwarg, "mode", {:string, "transit", _}} -> []
+      {:kwarg, "mode", {literal, _, _}} when literal in [:string, :atom] -> transit_mode_error(pos)
+      {:kwarg, "mode", _} -> []
+      nil -> transit_mode_error(pos)
+    end
+  end
+
+  defp check_transit_usage(comp_type, _opts, pos) do
+    route_option_error(
+      "`#{comp_type}()` has no transit options; they apply to `route()` and `isochrone()` with `mode: \"transit\"`",
+      @transit_hint,
+      pos
+    )
+  end
+
+  defp transit_mode_error(pos) do
+    route_option_error(
+      "transit options (#{Enum.map_join(@transit_option_kwargs, ", ", &"`#{&1}:`")}) need `mode: \"transit\"`",
+      @transit_hint,
+      pos
+    )
+  end
+
+  defp check_transit_value({:kwarg, key, {:number, n, _}}, _pos)
+       when key in @transit_preferences and n >= 0 and n <= 1,
+       do: []
+
+  defp check_transit_value({:kwarg, key, _}, pos) when key in @transit_preferences,
+    do:
+      route_option_error(
+        "`#{key}:` must be a number from 0 to 1",
+        "0 never uses it; 1 (default) has no penalty",
+        pos
+      )
+
+  defp check_transit_value({:kwarg, "max_walk_m", {:number, n, _}}, _pos) when n >= 0, do: []
+
+  defp check_transit_value({:kwarg, "max_walk_m", _}, pos),
+    do:
+      route_option_error(
+        "`max_walk_m:` must be a non-negative number of meters",
+        "the longest walk to, between and from stops",
+        pos
+      )
+
+  # Whole numbers only; `2.0` counts, as in the LSP and in Plaza.
+  defp check_transit_value({:kwarg, "max_transfers", {:number, n, _}}, _pos)
+       when n >= 0 and n == trunc(n),
+       do: []
+
+  defp check_transit_value({:kwarg, "max_transfers", _}, pos),
+    do:
+      route_option_error(
+        "`max_transfers:` must be a whole number",
+        "the most changes between vehicles",
+        pos
+      )
 
   # ── AST position extraction ───────────────────────────────────────
 

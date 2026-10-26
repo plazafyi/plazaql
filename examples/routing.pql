@@ -143,3 +143,21 @@ expansion(
   destination: point(48.8700, 2.3500),
   expansion_properties: ["duration", "cumulative_cost"]
 );
+
+// Walk + public transit across Boston, leaving at 8 am local time
+route(
+  origin: point(42.3601, -71.0589),
+  destination: point(42.3736, -71.1190),
+  mode: "transit",
+  depart_at: "2026-03-16T08:00:00",
+  max_walk_m: 800,
+  use_bus: 0.5
+);
+
+// Where 15 and 30 minutes of walking and transit get you
+isochrone(
+  center: point(42.3601, -71.0589),
+  time: [900, 1800],
+  mode: "transit",
+  depart_at: "2026-03-16T08:00:00-04:00"
+);
