@@ -825,8 +825,11 @@ function checkKwargNames(
 ): TypeCheckError[] {
   const accepted = COMPUTATION_KWARGS[name] ?? []
   const hint = `accepted keywords: ${accepted.map((k) => `\`${k}:\``).join(", ")}`
+  // Truck options elsewhere get checkTruckOptions' own message.
   return args.flatMap((arg) =>
-    arg.type === "kwarg" && !accepted.includes(arg.name)
+    arg.type === "kwarg" &&
+    !accepted.includes(arg.name) &&
+    !TRUCK_OPTIONS.includes(arg.name)
       ? [
           {
             line: pos.line,

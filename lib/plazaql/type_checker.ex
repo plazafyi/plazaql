@@ -1110,12 +1110,15 @@ defmodule PlazaQL.TypeChecker do
 
   @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country)
 
+  # truck vehicle options (`mode: "truck"`), checked by check_truck_kwargs/3.
+  @truck_option_kwargs ~w(height width length weight axle_load axle_count hazmat)
+
   @computation_kwargs %{
-    route: @route_kwargs,
+    route: @route_kwargs ++ @truck_option_kwargs,
     ev_route:
       @route_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
-    isochrone: ~w(center time mode denoise generalize),
+    isochrone: ~w(center time mode denoise generalize) ++ @truck_option_kwargs,
     geocode:
       ~w(query addresses address neighbourhood locality county region postalcode country) ++
         @geocode_filter_kwargs,
@@ -1123,7 +1126,7 @@ defmodule PlazaQL.TypeChecker do
     text_search: ~w(query limit bbox focus),
     reverse_geocode: ~w(point radius limit include layer lang),
     nearest: ~w(point radius),
-    matrix: ~w(origins destinations mode annotations fallback_speed),
+    matrix: ~w(origins destinations mode annotations fallback_speed) ++ @truck_option_kwargs,
     map_match: ~w(points mode radiuses),
     optimize: ~w(waypoints mode roundtrip),
     elevation: ~w(point points),
@@ -1149,16 +1152,26 @@ defmodule PlazaQL.TypeChecker do
     end
   end
 
+  # Truck options on a computation without them get check_truck_kwargs/3's
+  # own message ("`centroid()` has no truck options"); one error, not two.
   defp kwarg_error(comp_type, key, value, accepted) do
-    if key in accepted do
-      case option_value_error(comp_type, key, value) do
-        nil -> nil
-        hint -> {"invalid `#{key}:` for `#{comp_type}()`", hint}
-      end
-    else
-      {"`#{comp_type}()` does not accept `#{key}:`",
-       "accepted keywords: #{Enum.map_join(accepted, ", ", &"`#{&1}:`")}"}
+    cond do
+      key in accepted -> option_error(comp_type, key, value)
+      key in @truck_option_kwargs -> nil
+      true -> unknown_kwarg_error(comp_type, key, accepted)
     end
+  end
+
+  defp option_error(comp_type, key, value) do
+    case option_value_error(comp_type, key, value) do
+      nil -> nil
+      hint -> {"invalid `#{key}:` for `#{comp_type}()`", hint}
+    end
+  end
+
+  defp unknown_kwarg_error(comp_type, key, accepted) do
+    {"`#{comp_type}()` does not accept `#{key}:`",
+     "accepted keywords: #{Enum.map_join(accepted, ", ", &"`#{&1}:`")}"}
   end
 
   # Values of the REST options added as keywords. nil when valid, otherwise

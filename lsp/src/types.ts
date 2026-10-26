@@ -1714,8 +1714,18 @@ const GEOCODE_FILTER_KWARGS = [
  * Keywords each computation accepts: the parameters of the REST endpoint it
  * stands in for. Mirrors `@computation_kwargs` in lib/plazaql/type_checker.ex.
  */
+const TRUCK_OPTION_KWARGS = [
+  "height",
+  "width",
+  "length",
+  "weight",
+  "axle_load",
+  "axle_count",
+  "hazmat",
+]
+
 export const COMPUTATION_KWARGS: Record<string, string[]> = {
-  route: ROUTE_KWARGS,
+  route: [...ROUTE_KWARGS, ...TRUCK_OPTION_KWARGS],
   ev_route: [
     ...ROUTE_KWARGS,
     "battery",
@@ -1725,7 +1735,14 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "connector_types",
     "min_power_kw",
   ],
-  isochrone: ["center", "time", "mode", "denoise", "generalize"],
+  isochrone: [
+    "center",
+    "time",
+    "mode",
+    "denoise",
+    "generalize",
+    ...TRUCK_OPTION_KWARGS,
+  ],
   geocode: [
     "query",
     "addresses",
@@ -1742,7 +1759,14 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
   text_search: ["query", "limit", "bbox", "focus"],
   reverse_geocode: ["point", "radius", "limit", "include", "layer", "lang"],
   nearest: ["point", "radius"],
-  matrix: ["origins", "destinations", "mode", "annotations", "fallback_speed"],
+  matrix: [
+    "origins",
+    "destinations",
+    "mode",
+    "annotations",
+    "fallback_speed",
+    ...TRUCK_OPTION_KWARGS,
+  ],
   map_match: ["points", "mode", "radiuses"],
   optimize: ["waypoints", "mode", "roundtrip"],
   elevation: ["point", "points"],
