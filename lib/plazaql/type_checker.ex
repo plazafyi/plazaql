@@ -1130,7 +1130,9 @@ defmodule PlazaQL.TypeChecker do
   # it stands in for. Anything else is a type error naming the computation, so
   # a misspelt or misplaced keyword is never silently dropped.
   @route_kwargs ~w(origin destination mode steps alternatives waypoints depart_at traffic_model
-                   exclude overview geometries annotations lang units verbal avoid_datasets)
+                   exclude overview geometries annotations lang units verbal avoid_datasets
+                   voice_instructions banner_instructions roundabout_exits voice_units
+                   waypoint_names)
   @geocode_filter_kwargs ~w(focus country_code bbox layers layer boundary_gid limit lang
                            datasets dataset_name_field)
 
@@ -1207,11 +1209,10 @@ defmodule PlazaQL.TypeChecker do
   @route_types [:route, :ev_route]
   @lang ~r/\A[a-z]{2,3}\z/
 
-  defp option_value_error(_type, key, {:bool, _, _}) when key in ~w(steps roundtrip verbal),
-    do: nil
+  @flag_kwargs ~w(steps roundtrip verbal voice_instructions banner_instructions roundabout_exits)
 
-  defp option_value_error(_type, key, _value) when key in ~w(steps roundtrip verbal),
-    do: "true or false"
+  defp option_value_error(_type, key, {:bool, _, _}) when key in @flag_kwargs, do: nil
+  defp option_value_error(_type, key, _value) when key in @flag_kwargs, do: "true or false"
 
   defp option_value_error(type, "annotations", {:bool, _, _}) when type in @route_types, do: nil
 
@@ -1309,6 +1310,7 @@ defmodule PlazaQL.TypeChecker do
   @route_langs ~w(ar da de en es fi fr hi id it ja ko nb nl pl pt ru sv th tr vi zh)
   @route_lang_aliases %{"no" => "nb", "nn" => "nb", "in" => "id"}
   @route_units ["km", "mi"]
+  @voice_units ["metric", "imperial", "km", "mi"]
   @route_exclusions ~w(toll ferry unpaved motorway trunk primary secondary tertiary)
   @centroid_metrics ["time", "distance"]
   @expansion_actions ["route", "isochrone", "matrix"]
@@ -1620,6 +1622,30 @@ defmodule PlazaQL.TypeChecker do
     )
   end
 
+  defp check_route_option({:kwarg, "voice_units", {:string, units, _}}, _pos)
+       when units in @voice_units,
+       do: []
+
+  defp check_route_option({:kwarg, "voice_units", _}, pos) do
+    route_option_error(
+      ~s|`voice_units:` must be "metric" or "imperial"|,
+      "distance units in voice announcements; defaults to `units:`",
+      pos
+    )
+  end
+
+  # One name per point (origin, each waypoint, destination); "" keeps the
+  # default arrival instruction. Plaza checks the count.
+  defp check_route_option({:kwarg, "waypoint_names", {:string, _, _}}, _pos), do: []
+
+  defp check_route_option({:kwarg, "waypoint_names", {:list, items, _}}, pos) do
+    if Enum.all?(items, &match?({:string, _, _}, &1)),
+      do: [],
+      else: waypoint_names_error(pos)
+  end
+
+  defp check_route_option({:kwarg, "waypoint_names", _}, pos), do: waypoint_names_error(pos)
+
   defp check_route_option({:kwarg, "exclude", {:string, value, _}}, pos) do
     value
     |> String.split(",", trim: true)
@@ -1637,6 +1663,14 @@ defmodule PlazaQL.TypeChecker do
     do: exclude_error("`exclude:` must be a string or a list of strings", pos)
 
   defp check_route_option(_opt, _pos), do: []
+
+  defp waypoint_names_error(pos) do
+    route_option_error(
+      "`waypoint_names:` must be a list of strings",
+      ~s|one per point: origin, each waypoint, destination ("" for no name), or a ";"-separated string|,
+      pos
+    )
+  end
 
   defp lang_error(message, pos),
     do: route_option_error(message, "supported: #{Enum.join(@route_langs, ", ")}", pos)

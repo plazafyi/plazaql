@@ -374,6 +374,11 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 | `lang`          | string          | BCP 47 language tag for step instructions (optional, default `"en"`); see below |
 | `units`         | string          | `"km"` or `"mi"` for distances inside instructions (optional); defaults to `"mi"` when the `lang` region is US, GB, LR or MM, otherwise `"km"` |
 | `verbal`        | boolean         | Add spoken variants `verbal_alert`, `verbal_pre`, `verbal_post`, `verbal_succinct` to each step (optional) |
+| `voice_instructions` | boolean    | Add timed voice announcements (text and SSML) to each step, for the maneuver that ends it (optional; needs `steps`) |
+| `banner_instructions` | boolean   | Add banner instructions (road, ref, signposted destinations, lanes) to each step (optional; needs `steps`) |
+| `roundabout_exits` | boolean      | Give leaving a roundabout its own `exit_roundabout` step (optional; needs `steps`) |
+| `voice_units`   | string          | `"metric"` or `"imperial"` for distances in voice announcements (optional, defaults to `units`) |
+| `waypoint_names` | string[]/string | One name per point (origin, each waypoint, destination) for arrival instructions; `""` keeps the default; a list or a `;`-separated string (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons the route stays out of (optional, below) |
 
 ```plazaql
@@ -411,6 +416,18 @@ Turn-by-turn steps in French, with spoken variants:
 ```plazaql
 route(origin: point(48.8606, 2.3376), destination: point(48.8566, 2.3522), steps: true, lang: "fr", verbal: true)
 ```
+
+Navigation output for a turn-by-turn app: voice and banner instructions on
+every step, announcements in imperial units, and a named destination:
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), steps: true, voice_instructions: true, banner_instructions: true, voice_units: "imperial", waypoint_names: ["", "Office"])
+```
+
+With `steps`, each step also has its `geometry`, `intersections` (bearings,
+entry flags, `lanes` from `turn:lanes`), `weight` and `mode`, and the route
+has `legs` (summary, per-coordinate `annotations` with `annotations: true`)
+and snapped `waypoints`, as POST /route returns them.
 
 `lang` is the same parameter as POST /route's. The primary subtag picks the
 language (`"pt-BR"` uses `"pt"`, `"zh-Hans"` uses `"zh"`) and the region sets
@@ -645,7 +662,7 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `battery`            | number  | Battery capacity in watt-hours (required) |
 | `initial_charge_pct` | number  | Initial charge percentage (optional)     |
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
-| `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `steps`, `lang`, `units`, `verbal` | | Same as `route()` (optional) |
+| `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names` | | Same as `route()` (optional) |
 
 ### `centroid(locations:, mode:?, metric:?, exclude:?)`
 

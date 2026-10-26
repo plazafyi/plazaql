@@ -1213,7 +1213,8 @@ defmodule PlazaQL.Compiler do
     "ids",
     "addresses",
     "datasets",
-    "avoid_datasets"
+    "avoid_datasets",
+    "waypoint_names"
   ]
 
   defp compile_kwargs(opts) do
@@ -1253,7 +1254,9 @@ defmodule PlazaQL.Compiler do
                                 min_charge_pct min_power_kw neighbourhood origins points
                                 postalcode region traffic_model waypoints weight width steps
                                 roundtrip overview geometries annotations denoise generalize
-                                fallback_speed radiuses lang layer addresses units verbal)a,
+                                fallback_speed radiuses lang layer addresses units verbal
+                                voice_instructions banner_instructions roundabout_exits voice_units
+                                waypoint_names)a,
                              &{Atom.to_string(&1), &1}
                            )
 
