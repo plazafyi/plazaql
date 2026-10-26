@@ -498,10 +498,27 @@ describe("PlazaQL Type Checker", () => {
     });
 
     it("rejects truck options on other computations", () => {
-      const result = check(
-        '$$ = centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], height: 4.0);'
-      );
-      expect(result.errors.some((e) => e.message.includes("`centroid()` has no truck options"))).toBe(true);
+      const result = check(`$$ = ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, height: 4.0);`);
+      expect(
+        result.errors.some((e) =>
+          e.message.includes(
+            "`ev_route()` has no truck options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
+          )
+        )
+      ).toBe(true);
+    });
+
+    it("accepts truck options on optimize, centroid, expansion and map_match", () => {
+      const a = "point(48.858, 2.294)";
+      const b = "point(48.87, 2.35)";
+      for (const src of [
+        `$$ = optimize(waypoints: [${a}, ${b}], mode: "truck", height: 4.0);`,
+        `$$ = centroid(locations: [${a}, ${b}], mode: "truck", height: 4.0, hazmat: true);`,
+        `$$ = expansion(action: "route", origin: ${a}, destination: ${b}, mode: "truck", weight: 30);`,
+        `$$ = map_match(points: [${a}, ${b}], mode: "truck", axle_count: 5);`,
+      ]) {
+        expect(check(src).errors).toHaveLength(0);
+      }
     });
 
     it("checks value types like the Elixir type checker", () => {
@@ -590,12 +607,23 @@ describe("PlazaQL Type Checker", () => {
     });
 
     it("rejects them on other computations", () => {
-      const result = check(
-        '$$ = centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], mode: "foot", walking_speed: 4);'
-      );
+      const result = check(`$$ = ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, mode: "foot", walking_speed: 4);`);
       expect(
-        result.errors.some((e) => e.message.includes("`centroid()` has no bicycle, pedestrian or motorcycle options"))
+        result.errors.some((e) => e.message.includes("`ev_route()` has no bicycle, pedestrian or motorcycle options"))
       ).toBe(true);
+    });
+
+    it("accepts them on optimize, centroid, expansion and map_match", () => {
+      const a = "point(48.858, 2.294)";
+      const b = "point(48.87, 2.35)";
+      for (const src of [
+        `$$ = optimize(waypoints: [${a}, ${b}], mode: "motor_scooter", use_primary: 0);`,
+        `$$ = centroid(locations: [${a}, ${b}], mode: "motorcycle", style: "adventure");`,
+        `$$ = expansion(action: "route", origin: ${a}, destination: ${b}, mode: "foot", walking_speed: 4);`,
+        `$$ = map_match(points: [${a}, ${b}], mode: "bicycle", bicycle_type: "road");`,
+      ]) {
+        expect(check(src).errors).toHaveLength(0);
+      }
     });
 
     it("checks values like the Elixir type checker", () => {
