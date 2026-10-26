@@ -1250,13 +1250,14 @@ defmodule PlazaQL.TypeChecker do
     matrix:
       ~w(origins destinations mode annotations fallback_speed avoid_datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
-    map_match: ~w(points mode radiuses),
-    optimize: ~w(waypoints mode roundtrip),
+    map_match: ~w(points mode radiuses) ++ @truck_option_kwargs ++ @active_option_kwargs,
+    optimize: ~w(waypoints mode roundtrip) ++ @truck_option_kwargs ++ @active_option_kwargs,
     elevation: ~w(point points),
     elevation_profile: ~w(points),
-    centroid: ~w(locations mode metric exclude),
+    centroid: ~w(locations mode metric exclude) ++ @truck_option_kwargs ++ @active_option_kwargs,
     expansion:
-      ~w(action origin destination center time origins destinations mode exclude expansion_properties),
+      ~w(action origin destination center time origins destinations mode exclude expansion_properties) ++
+        @truck_option_kwargs ++ @active_option_kwargs,
     place_lookup: ~w(ids)
   }
 
@@ -1932,11 +1933,13 @@ defmodule PlazaQL.TypeChecker do
 
   # ── Truck vehicle options ───────────────────────────────────────
   #
-  # route(), isochrone() and matrix() with `mode: "truck"` take the vehicle
-  # of Plaza's POST /route `truck` object as keywords. Plaza checks the
-  # ranges (e.g. height at most 10 m); here only the shape.
+  # route(), isochrone(), matrix(), optimize(), centroid(), expansion() and
+  # map_match() with `mode: "truck"` take the vehicle of Plaza's `truck`
+  # object as keywords. Plaza checks the ranges (e.g. height at most 10 m);
+  # here only the shape.
 
-  @truck_computations [:route, :isochrone, :matrix]
+  @truck_computations [:route, :isochrone, :matrix, :optimize, :centroid, :expansion, :map_match]
+  @vehicle_computation_names "`route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
   @truck_dimensions ~w(height width length weight axle_load)
   @truck_kwargs @truck_dimensions ++ ~w(axle_count hazmat)
   @truck_hint ~s|e.g. `route(origin: ..., destination: ..., mode: "truck", height: 4.0, weight: 30, hazmat: true)`|
@@ -1965,7 +1968,7 @@ defmodule PlazaQL.TypeChecker do
 
   defp check_truck_usage(comp_type, _opts, pos) do
     route_option_error(
-      "`#{comp_type}()` has no truck options; they apply to `route()`, `isochrone()` and `matrix()` with `mode: \"truck\"`",
+      "`#{comp_type}()` has no truck options; they apply to #{@vehicle_computation_names} with `mode: \"truck\"`",
       @truck_hint,
       pos
     )
@@ -2123,14 +2126,14 @@ defmodule PlazaQL.TypeChecker do
         pos
       )
 
-  # route(), isochrone() and matrix() with `mode: "bicycle"` take the
+  # The same computations as for trucks with `mode: "bicycle"` take the
   # rider options of Plaza's POST /route `bicycle` object as keywords, with
   # `mode: "foot"` the walker options of its `pedestrian` object, with
   # `mode: "motorcycle"` its `motorcycle` object and with
   # `mode: "motor_scooter"` its `motor_scooter` object. `use_hills` belongs
   # to whichever mode is set. Plaza checks the same ranges again.
 
-  @active_computations [:route, :isochrone, :matrix]
+  @active_computations @truck_computations
   @bicycle_types ~w(road hybrid cross mountain)
   @motorcycle_styles ~w(touring adventure)
   @active_hint ~s|e.g. `route(origin: ..., destination: ..., mode: "bicycle", bicycle_type: "road", use_hills: 0.2)`, `route(..., mode: "foot", walking_speed: 4, wheelchair: true)` or `route(..., mode: "motorcycle", style: "adventure")`|
@@ -2205,7 +2208,7 @@ defmodule PlazaQL.TypeChecker do
 
   defp check_active_usage(comp_type, _opts, _active_opts, pos) do
     route_option_error(
-      ~s|`#{comp_type}()` has no bicycle, pedestrian or motorcycle options; they apply to `route()`, `isochrone()` and `matrix()` with `mode: "bicycle"`, `"foot"`, `"motorcycle"` or `"motor_scooter"`|,
+      ~s|`#{comp_type}()` has no bicycle, pedestrian or motorcycle options; they apply to #{@vehicle_computation_names} with `mode: "bicycle"`, `"foot"`, `"motorcycle"` or `"motor_scooter"`|,
       @active_hint,
       pos
     )

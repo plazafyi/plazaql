@@ -394,7 +394,7 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), avoid_dat
 
 #### Truck options
 
-With `mode: "truck"`, `route()`, `isochrone()` and `matrix()` take the vehicle as keywords (Plaza's REST `truck` object). The router skips roads whose OSM `maxheight`, `maxwidth`, `maxlength`, `maxweight` or `maxaxleload` is below the vehicle's, keeps to roads trucks may use, follows one-way streets and times the trip at truck speeds. Any option left out takes its default, a standard US semi-trailer. Plaza rejects values out of range.
+With `mode: "truck"`, `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()` take the vehicle as keywords (Plaza's REST `truck` object). The router skips roads whose OSM `maxheight`, `maxwidth`, `maxlength`, `maxweight` or `maxaxleload` is below the vehicle's, keeps to roads trucks may use, follows one-way streets and times the trip at truck speeds. Any option left out takes its default, a standard US semi-trailer. Plaza rejects values out of range.
 
 | Parameter    | Type    | Description                                                                   |
 |--------------|---------|-------------------------------------------------------------------------------|
@@ -410,11 +410,11 @@ With `mode: "truck"`, `route()`, `isochrone()` and `matrix()` take the vehicle a
 route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "truck", height: 4.0, weight: 30, hazmat: true)
 ```
 
-The options need `mode: "truck"` and are only accepted by these three functions. A truck route's properties include `mode`, the `truck` it was planned for and `warnings` about restrictions it exceeds on roads next to the route.
+The options need `mode: "truck"` and are only accepted by these functions. A truck route's properties include `mode`, the `truck` it was planned for and `warnings` about restrictions it exceeds on roads next to the route.
 
 #### Bicycle and pedestrian options
 
-With `mode: "bicycle"`, `route()`, `isochrone()` and `matrix()` take the rider's options as keywords (Plaza's REST `bicycle` object); with `mode: "foot"`, the walker's (REST `pedestrian` object). Options left out take their defaults. The bike type and the two speeds change travel times. The other options only change which way a route goes: they never add to its `duration_s`. `use_hills` belongs to whichever mode is set. Plaza rejects values out of range.
+With `mode: "bicycle"`, `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()` take the rider's options as keywords (Plaza's REST `bicycle` object); with `mode: "foot"`, the walker's (REST `pedestrian` object). Options left out take their defaults. The bike type and the two speeds change travel times. The other options only change which way a route goes: they never add to its `duration_s`. `use_hills` belongs to whichever mode is set. Plaza rejects values out of range.
 
 | Bicycle option       | Type   | Description                                                             |
 |----------------------|--------|-------------------------------------------------------------------------|
@@ -440,11 +440,11 @@ route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "bi
 route(origin: point(40.71, -74.00), destination: point(40.72, -73.99), mode: "foot", use_lit: 1, wheelchair: true)
 ```
 
-The options need their mode and are only accepted by these three functions.
+The options need their mode and are only accepted by these functions.
 
 #### Motorcycle and motor scooter options
 
-`mode: "motorcycle"` (alias `"motorbike"`) and `mode: "motor_scooter"` (aliases `"scooter"`, `"moped"`) route on roads open to them: OSM `motorcycle=*` decides for motorcycles and `moped=*` for scooters, before `motor_vehicle`, `vehicle` and `access`. Both follow one-way streets like cars. Scooters never use motorways, or roads tagged `motorroad=yes` unless `moped` allows them, and ride at most 45 km/h unless `top_speed` says otherwise. `route()`, `isochrone()` and `matrix()` take the rider's options as keywords (Plaza's REST `motorcycle` and `motor_scooter` objects). Except `use_trails`, which decides whether tracks are ridden at all, they only change which way a route goes, not its `duration_s`. Plaza rejects values out of range.
+`mode: "motorcycle"` (alias `"motorbike"`) and `mode: "motor_scooter"` (aliases `"scooter"`, `"moped"`) route on roads open to them: OSM `motorcycle=*` decides for motorcycles and `moped=*` for scooters, before `motor_vehicle`, `vehicle` and `access`. Both follow one-way streets like cars. Scooters never use motorways, or roads tagged `motorroad=yes` unless `moped` allows them, and ride at most 45 km/h unless `top_speed` says otherwise. `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()` take the rider's options as keywords (Plaza's REST `motorcycle` and `motor_scooter` objects). Except `use_trails`, which decides whether tracks are ridden at all, they only change which way a route goes, not its `duration_s`. Plaza rejects values out of range.
 
 | Motorcycle option | Type   | Description |
 |-------------------|--------|-------------|
@@ -464,7 +464,7 @@ route(origin: point(46.55, 8.56), destination: point(46.63, 8.6), mode: "motorcy
 route(origin: point(41.89, 12.48), destination: point(41.91, 12.5), mode: "motor_scooter", use_primary: 0, top_speed: 50)
 ```
 
-The options need their mode and are only accepted by these three functions. A motorcycle or scooter route's properties include `mode`, the options it was planned with, `curviness_avg` and `surface_breakdown`.
+The options need their mode and are only accepted by these functions. A motorcycle or scooter route's properties include `mode`, the options it was planned with, `curviness_avg` and `surface_breakdown`.
 
 #### Transit options
 
@@ -752,7 +752,7 @@ A `linestring(...)` works as the trace too: `map_match(linestring(point(40.71, -
 | Parameter | Type    | Description                                |
 |-----------|---------|--------------------------------------------|
 | `points`  | Point[] | GPS trace, two or more points in order     |
-| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"` (optional) |
+| `mode`    | string  | Match only to roads this mode may use: `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional; without it any road matches) |
 | `radiuses` | number[] | Search radius in meters per point, default 50 (optional) |
 
 ### `optimize(points..., mode:)`
@@ -768,7 +768,7 @@ The positional points are the waypoints; `waypoints: [...]` is the keyword form.
 | Parameter   | Type    | Description                                     |
 |-------------|---------|-------------------------------------------------|
 | `waypoints` | Point[] | Points to visit, 2 to 50 (or pass them positionally) |
-| `mode`      | string  | `"auto"`, `"foot"`, `"bicycle"` (optional)      |
+| `mode`      | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `roundtrip` | boolean | Return to the first point (optional)            |
 
 ### `ev_route(origin:, destination:, battery:)`
@@ -806,7 +806,7 @@ search(node, amenity: "cafe").around(300, $meet).limit(5);
 | Parameter   | Type     | Description                                          |
 |-------------|----------|------------------------------------------------------|
 | `locations` | Point[]  | 2 to 50 starting points (required)                   |
-| `mode`      | string   | `"auto"`, `"foot"`, `"bicycle"` (optional)           |
+| `mode`      | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `metric`    | string   | `"time"` (default) or `"distance"`: the total to minimise |
 | `exclude`   | string[] | Road types to avoid, same as `route()` (optional)    |
 
@@ -834,7 +834,7 @@ expansion(
 | `origin`, `destination`| Point    | Route endpoints (`route`)                           |
 | `center`, `time`       | Point, number or number[] | Isochrone center and budget(s) in seconds (`isochrone`) |
 | `origins`, `destinations` | Point[] | Matrix points, at most 100 pairs (`matrix`)        |
-| `mode`                 | string   | `"auto"`, `"foot"`, `"bicycle"` (optional)          |
+| `mode`                 | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `exclude`              | string[] | Road types to avoid (`route`, `matrix`; optional)   |
 | `expansion_properties` | string[] | Per-edge properties: `"duration"` (default), `"distance"`, `"cost"`, `"cumulative_cost"`, `"edge_id"`, `"osm_way_id"` |
 

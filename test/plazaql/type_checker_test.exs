@@ -1070,10 +1070,28 @@ defmodule PlazaQL.TypeCheckerTest do
     test "other computations have no truck options" do
       [error] =
         check_errors(
-          ~s|centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], height: 4.0);|
+          ~s|ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, height: 4.0);|
         )
 
-      assert error.message =~ "`centroid()` has no truck options"
+      assert error.message ==
+               "`ev_route()` has no truck options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()` with `mode: \"truck\"`"
+    end
+
+    test "optimize, centroid, expansion and map_match take the truck options" do
+      a = "point(48.858, 2.294)"
+      b = "point(48.87, 2.35)"
+
+      for source <- [
+            ~s|optimize(waypoints: [#{a}, #{b}], mode: "truck", height: 4.0);|,
+            ~s|centroid(locations: [#{a}, #{b}], mode: "truck", height: 4.0, hazmat: true);|,
+            ~s|expansion(action: "route", origin: #{a}, destination: #{b}, mode: "truck", weight: 30);|,
+            ~s|map_match(points: [#{a}, #{b}], mode: "truck", axle_count: 5);|
+          ] do
+        check!(source)
+      end
+
+      [error] = check_errors(~s|centroid(locations: [#{a}, #{b}], height: 4.0);|)
+      assert error.message =~ ~s|need `mode: "truck"`|
     end
 
     test "values must have the right type" do
@@ -1184,10 +1202,30 @@ defmodule PlazaQL.TypeCheckerTest do
     test "other computations have no bicycle, pedestrian or motorcycle options" do
       [error] =
         check_errors(
-          ~s|centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], mode: "foot", walking_speed: 4);|
+          ~s|ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, mode: "foot", walking_speed: 4);|
         )
 
-      assert error.message =~ "`centroid()` has no bicycle, pedestrian or motorcycle options"
+      assert error.message =~
+               "`ev_route()` has no bicycle, pedestrian or motorcycle options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
+    end
+
+    test "optimize, centroid, expansion and map_match take the rider and walker options" do
+      a = "point(48.858, 2.294)"
+      b = "point(48.87, 2.35)"
+
+      for source <- [
+            ~s|optimize(waypoints: [#{a}, #{b}], mode: "motor_scooter", use_primary: 0);|,
+            ~s|centroid(locations: [#{a}, #{b}], mode: "motorcycle", style: "adventure");|,
+            ~s|expansion(action: "route", origin: #{a}, destination: #{b}, mode: "foot", walking_speed: 4);|,
+            ~s|map_match(points: [#{a}, #{b}], mode: "bicycle", bicycle_type: "road");|
+          ] do
+        check!(source)
+      end
+
+      [error] =
+        check_errors(~s|centroid(locations: [#{a}, #{b}], mode: "auto", style: "adventure");|)
+
+      assert error.message =~ ~s|need `mode: "motorcycle"`|
     end
 
     test "values must be in range" do

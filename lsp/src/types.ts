@@ -1034,8 +1034,9 @@ const GEOCODE_LAYER_VALUES = GEOCODE_LAYERS.map((layer) => ({
   value: `"${layer}"`,
 }))
 
-// Vehicle options of route(), isochrone() and matrix() with mode: "truck"
-// (Plaza's POST /route `truck` object). Plaza checks the ranges.
+// Vehicle options of route(), isochrone(), matrix(), optimize(), centroid(),
+// expansion() and map_match() with mode: "truck" (Plaza's `truck` object).
+// Plaza checks the ranges.
 export const TRUCK_DIMENSIONS = [
   "height",
   "width",
@@ -1044,7 +1045,18 @@ export const TRUCK_DIMENSIONS = [
   "axle_load",
 ]
 export const TRUCK_OPTIONS = [...TRUCK_DIMENSIONS, "axle_count", "hazmat"]
-export const TRUCK_COMPUTATIONS = ["route", "isochrone", "matrix"]
+export const TRUCK_COMPUTATIONS = [
+  "route",
+  "isochrone",
+  "matrix",
+  "optimize",
+  "centroid",
+  "expansion",
+  "map_match",
+]
+/** The computations that take every vehicle mode, as a message lists them. */
+export const VEHICLE_COMPUTATION_NAMES =
+  "`route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
 
 const TRUCK_PARAMS: ParamInfo[] = [
   {
@@ -1202,7 +1214,7 @@ export const ACTIVE_OPTIONS = [
     ...MOTOR_SCOOTER_OPTIONS,
   ]),
 ]
-export const ACTIVE_COMPUTATIONS = ["route", "isochrone", "matrix"]
+export const ACTIVE_COMPUTATIONS = TRUCK_COMPUTATIONS
 export const BICYCLE_MODES = ["bicycle", "bike"]
 export const FOOT_MODES = ["foot", "walk"]
 export const MOTORCYCLE_MODES = ["motorcycle", "motorbike"]
@@ -2032,12 +2044,10 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description: "Travel mode",
-        enumValues: [
-          { value: '"auto"' },
-          { value: '"foot"' },
-          { value: '"bicycle"' },
-        ],
+        enumValues: TRUCK_MODE_VALUES,
       },
+      ...TRUCK_PARAMS,
+      ...ACTIVE_PARAMS,
     ],
     returnType: "Route",
     description: "Snap a GPS trace to the road network.",
@@ -2055,12 +2065,10 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description: "Travel mode",
-        enumValues: [
-          { value: '"auto"' },
-          { value: '"foot"' },
-          { value: '"bicycle"' },
-        ],
+        enumValues: TRUCK_MODE_VALUES,
       },
+      ...TRUCK_PARAMS,
+      ...ACTIVE_PARAMS,
     ],
     returnType: "Route",
     description: "Optimize waypoint ordering (TSP).",
@@ -2259,12 +2267,10 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description: "Travel mode",
-        enumValues: [
-          { value: '"auto"' },
-          { value: '"foot"' },
-          { value: '"bicycle"' },
-        ],
+        enumValues: TRUCK_MODE_VALUES,
       },
+      ...TRUCK_PARAMS,
+      ...ACTIVE_PARAMS,
       {
         name: "metric",
         type: '"time" | "distance"',
@@ -2339,12 +2345,10 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description: "Travel mode",
-        enumValues: [
-          { value: '"auto"' },
-          { value: '"foot"' },
-          { value: '"bicycle"' },
-        ],
+        enumValues: TRUCK_MODE_VALUES,
       },
+      ...TRUCK_PARAMS,
+      ...ACTIVE_PARAMS,
       {
         name: "exclude",
         type: "string[]",
@@ -2487,11 +2491,30 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     ...ACTIVE_OPTIONS,
     ...COSTING_OPTIONS,
   ],
-  map_match: ["points", "mode", "radiuses"],
-  optimize: ["waypoints", "mode", "roundtrip"],
+  map_match: [
+    "points",
+    "mode",
+    "radiuses",
+    ...TRUCK_OPTION_KWARGS,
+    ...ACTIVE_OPTIONS,
+  ],
+  optimize: [
+    "waypoints",
+    "mode",
+    "roundtrip",
+    ...TRUCK_OPTION_KWARGS,
+    ...ACTIVE_OPTIONS,
+  ],
   elevation: ["point", "points"],
   elevation_profile: ["points"],
-  centroid: ["locations", "mode", "metric", "exclude"],
+  centroid: [
+    "locations",
+    "mode",
+    "metric",
+    "exclude",
+    ...TRUCK_OPTION_KWARGS,
+    ...ACTIVE_OPTIONS,
+  ],
   expansion: [
     "action",
     "origin",
@@ -2503,6 +2526,8 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "exclude",
     "expansion_properties",
+    ...TRUCK_OPTION_KWARGS,
+    ...ACTIVE_OPTIONS,
   ],
   place_lookup: ["ids"],
 }

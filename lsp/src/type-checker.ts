@@ -52,6 +52,7 @@ import {
   TRUCK_DIMENSIONS,
   TRUCK_OPTIONS,
   unionType,
+  VEHICLE_COMPUTATION_NAMES,
   validSpatialArgTypes,
 } from "./types.js"
 
@@ -1144,7 +1145,7 @@ function checkTruckUsage(
     return [
       kwargError(
         pos,
-        `\`${name}()\` has no truck options; they apply to \`route()\`, \`isochrone()\` and \`matrix()\` with \`mode: "truck"\``,
+        `\`${name}()\` has no truck options; they apply to ${VEHICLE_COMPUTATION_NAMES} with \`mode: "truck"\``,
         TRUCK_HINT,
       ),
     ]
@@ -1397,7 +1398,7 @@ function checkActiveUsage(
     return [
       kwargError(
         pos,
-        `\`${name}()\` has no bicycle, pedestrian or motorcycle options; they apply to \`route()\`, \`isochrone()\` and \`matrix()\` with \`mode: "bicycle"\`, \`"foot"\`, \`"motorcycle"\` or \`"motor_scooter"\``,
+        `\`${name}()\` has no bicycle, pedestrian or motorcycle options; they apply to ${VEHICLE_COMPUTATION_NAMES} with \`mode: "bicycle"\`, \`"foot"\`, \`"motorcycle"\` or \`"motor_scooter"\``,
         ACTIVE_HINT,
       ),
     ]

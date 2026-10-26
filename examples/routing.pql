@@ -232,3 +232,17 @@ route(
   destination: point(40.7580, -73.9855),
   approaches: ";curb"
 );
+
+// Where should three scooter riders meet? Scooters keep off motorways
+centroid(
+  locations: [point(41.3874, 2.1686), point(41.4036, 2.1744), point(41.3809, 2.1228)],
+  mode: "motor_scooter",
+  use_primary: 0
+);
+
+// Visiting order for a tall truck: roads under 4.2 m are skipped
+optimize(
+  waypoints: [point(51.5072, -0.1276), point(51.5155, -0.0922), point(51.5033, -0.1195)],
+  mode: "truck",
+  height: 4.2
+);

@@ -17,6 +17,10 @@ First Hex release of the PlazaQL Elixir package.
   `matrix()`, with the keywords `style`, `use_trails` and `use_curves`
   (motorcycle) and `use_primary` and `use_hills` (motor scooter). The type
   checker and the LSP reject them without their mode or out of range.
+- `optimize()`, `centroid()`, `expansion()` and `map_match()` take every
+  vehicle mode too: the truck keywords with `mode: "truck"` and the bicycle,
+  pedestrian, motorcycle and scooter keywords with their modes, as
+  `route()`, `isochrone()` and `matrix()` do. LSP signatures list them.
 - `approaches:` on `route()`, one entry per point: `"curb"` reaches the
   point on the driving side (Plaza's `preferred_sides: "same"`),
   `"unrestricted"` is the default. The type checker and the LSP reject
