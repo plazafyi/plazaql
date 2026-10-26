@@ -1351,6 +1351,7 @@ export const LOCATION_OPTIONS = [
   "headings",
   "heading_tolerances",
   "preferred_sides",
+  "approaches",
 ]
 
 const preferenceParam = (name: string, what: string, modes: string) => ({
@@ -1443,6 +1444,13 @@ const LOCATION_PARAMS: ParamInfo[] = [
     optional: true,
     description:
       'Side of the road for each point: "same" (driving side), "opposite" or "either" (default)',
+  },
+  {
+    name: "approaches",
+    type: "string[] | string",
+    optional: true,
+    description:
+      'How the route reaches each point: "curb" (on the driving side, as preferred_sides "same") or "unrestricted" (default)',
   },
   {
     name: "recostings",

@@ -1218,7 +1218,7 @@ defmodule PlazaQL.TypeChecker do
                     ["shortest"] ++ @costing_speed_kwargs ++ @costing_penalty_kwargs
 
   # Per-point route options (one entry per point) and recostings.
-  @location_kwargs ~w(location_types headings heading_tolerances preferred_sides)
+  @location_kwargs ~w(location_types headings heading_tolerances preferred_sides approaches)
 
   @computation_kwargs %{
     route:
@@ -1316,6 +1316,9 @@ defmodule PlazaQL.TypeChecker do
   defp costing_value_error("preferred_sides", value),
     do:
       per_point_error(value, &(&1 in ~w(same opposite either)), ~s|"same", "opposite" or "either"|)
+
+  defp costing_value_error("approaches", value),
+    do: per_point_error(value, &(&1 in ~w(unrestricted curb)), ~s|"unrestricted" or "curb"|)
 
   defp costing_value_error("headings", value), do: degrees_error(value, 360, "a heading")
 

@@ -1247,6 +1247,7 @@ defmodule PlazaQL.Compiler do
     "waypoint_names",
     "location_types",
     "preferred_sides",
+    "approaches",
     "recostings"
   ]
 
@@ -1296,7 +1297,7 @@ defmodule PlazaQL.Compiler do
                                 wheelchair use_highways use_tolls use_ferries
                                 use_living_streets use_tracks shortest top_speed fixed_speed
                                 maneuver_penalty service_penalty location_types headings
-                                heading_tolerances preferred_sides recostings style use_trails
+                                heading_tolerances preferred_sides approaches recostings style use_trails
                                 use_curves use_primary)a,
                              &{Atom.to_string(&1), &1}
                            )

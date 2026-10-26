@@ -386,7 +386,7 @@ describe("PlazaQL Type Checker", () => {
       for (const src of [
         `$$ = route(${route}, use_highways: 0.2, use_tolls: 0, use_ferries: 1, use_living_streets: 0.5, top_speed: 100, fixed_speed: 60, maneuver_penalty: 5, service_penalty: 15);`,
         `$$ = route(${route}, mode: "foot", use_tracks: 1, shortest: true);`,
-        `$$ = route(${route}, waypoints: [point(40.72, -74.00)], location_types: ["break", "through", "break"], headings: [90, 0, 180], heading_tolerances: "45;;", preferred_sides: ["", "", "same"], recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);`,
+        `$$ = route(${route}, waypoints: [point(40.72, -74.00)], location_types: ["break", "through", "break"], headings: [90, 0, 180], heading_tolerances: "45;;", preferred_sides: ["", "", "same"], approaches: ";;curb", recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);`,
         "$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], use_tolls: 0);",
         "$$ = ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000, use_tolls: 0);",
         "$$ = isochrone(center: point(40.71, -74.00), time: 600, top_speed: 50);",
@@ -407,6 +407,10 @@ describe("PlazaQL Type Checker", () => {
         [
           'location_types: ["stop", "break"]',
           '`location_types:` must be one entry per point (origin, waypoints, destination): "break", "through" or "via", or a ";"-separated string',
+        ],
+        [
+          'approaches: ["kerb", ""]',
+          '`approaches:` must be one entry per point (origin, waypoints, destination): "unrestricted" or "curb", or a ";"-separated string',
         ],
         ["headings: [400, 0]", "`headings:` must be a heading in degrees from 0 to 360 per point, or a \";\"-separated string with empty entries for points without one"],
         ["recostings: [1]", '`recostings:` must be a list of strings such as ["no_tolls: use_tolls=0", "walk: mode=foot"]'],

@@ -216,3 +216,10 @@ route(
   location_types: ["break", "through", "break"],
   preferred_sides: ";;same"
 );
+
+// The same with Mapbox's approaches: arrive on the curb side
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7580, -73.9855),
+  approaches: ";curb"
+);

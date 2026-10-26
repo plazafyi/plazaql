@@ -1082,6 +1082,7 @@ const COSTING_CHECKS: Record<string, (value: Expr) => string | null> = {
   location_types: (value) => perPointError(value, ["break", "through", "via"]),
   preferred_sides: (value) =>
     perPointError(value, ["same", "opposite", "either"]),
+  approaches: (value) => perPointError(value, ["unrestricted", "curb"]),
   headings: degreesError(360, "a heading"),
   heading_tolerances: degreesError(180, "a tolerance"),
   recostings: recostingsError,
