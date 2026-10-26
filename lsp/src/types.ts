@@ -2091,6 +2091,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           'Also match to the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
       },
       {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types the trace is never matched to: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
+      {
         name: "avoid_datasets",
         type: "string | string[]",
         optional: true,
@@ -2118,6 +2125,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       ...TRUCK_PARAMS,
       ...ACTIVE_PARAMS,
+      {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to leave out of the graph: "toll", "cash_only_tolls" (toll booths taking only cash), "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
       {
         name: "avoid_datasets",
         type: "string | string[]",
@@ -2577,6 +2591,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "points",
     "mode",
     "radiuses",
+    "exclude",
     "datasets",
     "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
@@ -2586,6 +2601,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "waypoints",
     "mode",
     "roundtrip",
+    "exclude",
     "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
