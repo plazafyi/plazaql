@@ -615,7 +615,7 @@ function getParamValueCompletions(
   }))
 }
 
-// Methods whose argument is a value expression (t["key"], number(...), …)
+// Methods whose argument is a value expression (t["key"], p["key"], number(...), …)
 const EXPRESSION_METHODS = ["sum", "min", "max", "avg", "group_by"]
 
 // Expression functions offered alongside tag keys inside .filter(
@@ -658,6 +658,15 @@ function getSortExpressionCompletions(): CompletionItem[] {
       detail: "Tag value",
       insertText: 't["',
       sortText: "a1",
+    },
+    {
+      label: 'p["',
+      kind: "value",
+      detail: "Property value",
+      documentation:
+        'Same accessor as t["key"], spelled for dataset feature properties',
+      insertText: 'p["',
+      sortText: "a1p",
     },
     {
       label: "distance(",

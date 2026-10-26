@@ -486,6 +486,14 @@ describe("PlazaQL Completions", () => {
       expect(items.some((i) => i.label === "id()")).toBe(true);
     });
 
+    it("suggests the p[ property accessor next to t[ for .sort( and .group_by(", () => {
+      for (const src of ["$$ = search().sort(", "$$ = search().group_by("]) {
+        const items = getCompletions(src, 1, src.length + 1);
+        expect(items.some((i) => i.label === 't["')).toBe(true);
+        expect(items.some((i) => i.label === 'p["' && i.insertText === 'p["')).toBe(true);
+      }
+    });
+
     it("suggests by: and order: params for .sort(", () => {
       const items = getCompletions("$$ = search().sort(", 1, 20);
       expect(items.some((i) => i.label === "by" && i.kind === "param")).toBe(true);

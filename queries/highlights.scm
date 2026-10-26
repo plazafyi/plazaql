@@ -59,7 +59,7 @@
 
 ; ── Filter expression functions ─────────────────────────────────
 (tag_access
-  "t" @variable.builtin)
+  ["t" "p"] @variable.builtin)
 
 (prop_accessor
   name: (identifier) @function.builtin)

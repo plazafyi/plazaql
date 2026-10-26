@@ -1414,10 +1414,11 @@ t["population"]      // → "3677000" (string — use number() for arithmetic)
 t["cuisine"]         // → "italian"
 ```
 
-`p["key"]` is the same accessor under another name, for reading dataset feature properties where "tag" reads oddly. The formatter writes it back as `t["key"]`.
+`p["key"]` is the same accessor under another name, for reading dataset feature properties where "tag" reads oddly. It works everywhere `t["key"]` does (`.filter()`, `.sort()`, `.group_by()`, the aggregates, `#filter()`) and compiles to the same SQL. The formatter writes it back as `t["key"]`.
 
 ```plazaql
 search(dataset("census-tracts")).filter(number(p["population"]) > 5000);
+search(dataset("census-counties")).group_by(p["state_abbr"]).sum(number(p["population"]));
 ```
 
 ### Property Accessors

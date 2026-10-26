@@ -1,6 +1,7 @@
 // US Census queries — Plaza-curated census datasets, area-weighted
 // apportionment with overlap_fraction(), and census geographies in
-// reverse geocoding. Dataset properties are read with t["key"].
+// reverse geocoding. Dataset properties are read with t["key"] or its
+// alias p["key"].
 
 // Which county contains a point?
 search(dataset("census-counties")).contains(point(40.7484, -73.9856)).first();
@@ -26,3 +27,8 @@ reverse_geocode(point(40.7484, -73.9856), include: "census");
 search(dataset("census-counties"))
   .filter(t["state_abbr"] == "NY")
   .sum(number(t["population"]));
+
+// Average county median household income per state, reading properties with p["key"]
+search(dataset("census-counties"))
+  .group_by(p["state_abbr"])
+  .avg(number(p["median_household_income"]));
