@@ -12,13 +12,13 @@ function check(source: string) {
 describe(".tile(z, x, y)", () => {
   it("accepts a tile output on a search", () => {
     const result = check(
-      'search(node, amenity: "cafe").fields("name").tile(14, 4823, 6157, layers: ["pois"]);',
+      'search(node, amenity: "cafe").fields("name").tile(14, 4823, 6160, layers: ["pois"]);',
     );
     expect(result.errors).toHaveLength(0);
   });
 
   it("is terminal: nothing may follow it", () => {
-    const result = check('search(node, amenity: "cafe").tile(14, 4823, 6157).limit(5);');
+    const result = check('search(node, amenity: "cafe").tile(14, 4823, 6160).limit(5);');
     expect(result.errors.length).toBeGreaterThan(0);
   });
 

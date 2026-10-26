@@ -3,7 +3,7 @@
 // Restaurants with a cuisine tag, as one tile over lower Manhattan
 search(node, amenity: "restaurant", cuisine: *)
   .fields("name", "cuisine")
-  .tile(14, 4823, 6157);
+  .tile(14, 4823, 6160);
 
 // Buildings and addresses as Shortbread layers
-search(nwr, building: *).tile(15, 9647, 12314, layers: ["buildings", "addresses"]);
+search(nwr, building: *).tile(15, 9647, 12320, layers: ["buildings", "addresses"]);

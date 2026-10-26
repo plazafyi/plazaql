@@ -938,12 +938,12 @@ Only one output mode per chain. These are terminal — no further chaining allow
 // Restaurants with a cuisine tag, as one tile over lower Manhattan
 search(node, amenity: "restaurant", cuisine: *)
   .fields("name", "cuisine")
-  .tile(14, 4823, 6157);
+  .tile(14, 4823, 6160);
 ```
 
 ```plazaql
 // Shortbread layers instead of the filtered `features` layer
-search(nwr, building: *).tile(15, 9647, 12314, layers: ["buildings", "addresses"]);
+search(nwr, building: *).tile(15, 9647, 12320, layers: ["buildings", "addresses"]);
 ```
 
 Tag filters are limited to `key: "value"` and `key: *`, the two forms the REST endpoint takes. The server decides the zoom range it serves and the layer names it knows.
