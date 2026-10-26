@@ -534,6 +534,47 @@ defmodule PlazaQL.CompilerTest do
       assert {:matrix, %{mode: "truck", hazmat: false}} = plan.computation
     end
 
+    test "route, isochrone and matrix pass the bicycle and pedestrian keywords through" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "bicycle", bicycle_type: "road", cycling_speed: 24, use_roads: 0.2, use_hills: 0.1, avoid_bad_surfaces: 1);|
+        )
+
+      assert {:route,
+              %{
+                mode: "bicycle",
+                bicycle_type: "road",
+                cycling_speed: 24,
+                use_roads: 0.2,
+                use_hills: 0.1,
+                avoid_bad_surfaces: 1
+              }} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = isochrone(center: point(40.71, -74.00), time: 600, mode: "foot", walking_speed: 4, use_lit: 1, walkway_factor: 0.8, sidewalk_factor: 0.9, step_penalty: 60, max_hiking_difficulty: 2, wheelchair: true);|
+        )
+
+      assert {:isochrone,
+              %{
+                mode: "foot",
+                walking_speed: 4,
+                use_lit: 1,
+                walkway_factor: 0.8,
+                sidewalk_factor: 0.9,
+                step_penalty: 60,
+                max_hiking_difficulty: 2,
+                wheelchair: true
+              }} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "foot", use_hills: 0);|
+        )
+
+      assert {:matrix, %{mode: "foot", use_hills: 0}} = plan.computation
+    end
+
     test "route accepts the navigation options like POST /route" do
       plan =
         first_plan(

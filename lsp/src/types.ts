@@ -1154,6 +1154,132 @@ const TRANSIT_PARAMS: ParamInfo[] = [
 
 const TRANSIT_MODE_VALUE = { value: '"transit"' }
 
+// Rider options of route(), isochrone() and matrix() with mode: "bicycle"
+// (Plaza's POST /route `bicycle` object) and walker options with
+// mode: "foot" (its `pedestrian` object). `use_hills` is both.
+export const BICYCLE_OPTIONS = [
+  "bicycle_type",
+  "cycling_speed",
+  "use_roads",
+  "use_hills",
+  "avoid_bad_surfaces",
+]
+export const PEDESTRIAN_OPTIONS = [
+  "walking_speed",
+  "use_hills",
+  "use_lit",
+  "walkway_factor",
+  "sidewalk_factor",
+  "step_penalty",
+  "max_hiking_difficulty",
+  "wheelchair",
+]
+export const ACTIVE_OPTIONS = [
+  ...new Set([...BICYCLE_OPTIONS, ...PEDESTRIAN_OPTIONS]),
+]
+export const ACTIVE_COMPUTATIONS = ["route", "isochrone", "matrix"]
+export const BICYCLE_MODES = ["bicycle", "bike"]
+export const FOOT_MODES = ["foot", "walk"]
+export const BICYCLE_TYPES = ["road", "hybrid", "cross", "mountain"]
+
+/** [min, max, unit] of the numeric bicycle and pedestrian options. */
+export const ACTIVE_RANGES = new Map<string, [number, number, string | null]>([
+  ["cycling_speed", [5, 50, "km/h"]],
+  ["use_roads", [0, 1, null]],
+  ["use_hills", [0, 1, null]],
+  ["avoid_bad_surfaces", [0, 1, null]],
+  ["walking_speed", [1, 10, "km/h"]],
+  ["use_lit", [0, 1, null]],
+  ["walkway_factor", [0.1, 10, null]],
+  ["sidewalk_factor", [0.1, 10, null]],
+  ["step_penalty", [0, 3600, "seconds"]],
+])
+
+const ACTIVE_PARAMS: ParamInfo[] = [
+  {
+    name: "bicycle_type",
+    type: "string",
+    optional: true,
+    description:
+      'Bike type (mode: "bicycle"; default "hybrid"): sets cruising speed and how much rough surfaces slow it',
+    enumValues: BICYCLE_TYPES.map((type) => ({ value: `"${type}"` })),
+  },
+  {
+    name: "cycling_speed",
+    type: "number",
+    optional: true,
+    description: 'Cruising speed in km/h (mode: "bicycle"; 5 to 50)',
+  },
+  {
+    name: "use_roads",
+    type: "number",
+    optional: true,
+    description:
+      'Willingness to ride busy roads without cycle lanes, 0 to 1 (mode: "bicycle"; default 0.5)',
+  },
+  {
+    name: "use_hills",
+    type: "number",
+    optional: true,
+    description:
+      'Willingness to climb, 0 to 1 (mode: "bicycle" or "foot"; default 0.5). Needs elevation data.',
+  },
+  {
+    name: "avoid_bad_surfaces",
+    type: "number",
+    optional: true,
+    description:
+      'How much to avoid unpaved and rough ways, 0 to 1 (mode: "bicycle"; default 0.25)',
+  },
+  {
+    name: "walking_speed",
+    type: "number",
+    optional: true,
+    description: 'Walking speed in km/h (mode: "foot"; default 5, 1 to 10)',
+  },
+  {
+    name: "use_lit",
+    type: "number",
+    optional: true,
+    description: 'Preference for lit ways, 0 to 1 (mode: "foot"; default 0)',
+  },
+  {
+    name: "walkway_factor",
+    type: "number",
+    optional: true,
+    description:
+      'Cost multiplier for footways and paths, 0.1 to 10 (mode: "foot"; default 1; below 1 prefers them)',
+  },
+  {
+    name: "sidewalk_factor",
+    type: "number",
+    optional: true,
+    description:
+      'Cost multiplier for roads with a sidewalk, 0.1 to 10 (mode: "foot"; default 1)',
+  },
+  {
+    name: "step_penalty",
+    type: "number",
+    optional: true,
+    description:
+      'Seconds added to the cost of each flight of steps (mode: "foot"; default 30, at most 3600)',
+  },
+  {
+    name: "max_hiking_difficulty",
+    type: "number",
+    optional: true,
+    description:
+      'Hardest SAC-scale trail to use, 1 (hiking) to 6 (mode: "foot"; default 1)',
+  },
+  {
+    name: "wheelchair",
+    type: "boolean",
+    optional: true,
+    description:
+      'Wheelchair routing: no steps, grades of 8% at most, smooth surfaces (mode: "foot")',
+  },
+]
+
 export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
   search: {
     name: "search",
@@ -1279,6 +1405,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       ...TRUCK_PARAMS,
       ...TRANSIT_PARAMS,
+      ...ACTIVE_PARAMS,
       {
         name: "steps",
         type: "boolean",
@@ -1401,6 +1528,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         enumValues: [...TRUCK_MODE_VALUES, TRANSIT_MODE_VALUE],
       },
       ...TRUCK_PARAMS,
+      ...ACTIVE_PARAMS,
       {
         name: "depart_at",
         type: "string",
@@ -1653,6 +1781,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         enumValues: TRUCK_MODE_VALUES,
       },
       ...TRUCK_PARAMS,
+      ...ACTIVE_PARAMS,
       {
         name: "avoid_datasets",
         type: "string | string[]",
@@ -2061,7 +2190,12 @@ const TRUCK_OPTION_KWARGS = [
 ]
 
 export const COMPUTATION_KWARGS: Record<string, string[]> = {
-  route: [...ROUTE_KWARGS, ...TRUCK_OPTION_KWARGS, ...TRANSIT_OPTIONS],
+  route: [
+    ...ROUTE_KWARGS,
+    ...TRUCK_OPTION_KWARGS,
+    ...TRANSIT_OPTIONS,
+    ...ACTIVE_OPTIONS,
+  ],
   ev_route: [
     ...ROUTE_KWARGS,
     "battery",
@@ -2081,6 +2215,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "depart_at",
     ...TRUCK_OPTION_KWARGS,
     ...TRANSIT_OPTIONS,
+    ...ACTIVE_OPTIONS,
   ],
   geocode: [
     "query",
@@ -2114,6 +2249,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "fallback_speed",
     "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
+    ...ACTIVE_OPTIONS,
   ],
   map_match: ["points", "mode", "radiuses"],
   optimize: ["waypoints", "mode", "roundtrip"],
