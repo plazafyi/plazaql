@@ -517,6 +517,7 @@ matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], sh
 | `headings`           | number[]/string   | Direction of travel at the point, degrees from north. The point snaps to the nearest road it can be travelled along that way |
 | `heading_tolerances` | number[]/string   | Largest difference from the heading accepted, degrees (default 60) |
 | `preferred_sides`    | string[]/string   | `"same"` (the point on the driving side), `"opposite"` or `"either"` (default) |
+| `approaches`         | string[]/string   | `"curb"` (reach the point on the driving side, the same as `preferred_sides` `"same"`) or `"unrestricted"` (default). A `"curb"` point can't have `preferred_sides` `"opposite"` |
 | `recostings`         | string[]          | Price the route found under other costing models: `"name: key=value, ..."` with any costing option and an optional `mode=auto`, `foot`, `bicycle`, `motorcycle` or `motor_scooter` (at most 5) |
 
 ```plazaql

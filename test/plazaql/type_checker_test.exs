@@ -1287,7 +1287,7 @@ defmodule PlazaQL.TypeCheckerTest do
     test "per-point options and recostings on route()" do
       check!(
         @route <>
-          ~s|, waypoints: [point(40.72, -74.00)], location_types: ["break", "through", "break"], headings: [90, 0, 180], heading_tolerances: "45;;", preferred_sides: ["", "", "same"], recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);|
+          ~s|, waypoints: [point(40.72, -74.00)], location_types: ["break", "through", "break"], headings: [90, 0, 180], heading_tolerances: "45;;", preferred_sides: ["", "", "same"], approaches: ";;curb", recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);|
       )
 
       [error] =
@@ -1308,6 +1308,7 @@ defmodule PlazaQL.TypeCheckerTest do
             {~s|location_types: ["stop", "break"]|,
              "`location_types:` must be one entry per point"},
             {~s|preferred_sides: ["left", ""]|, "`preferred_sides:` must be one entry per point"},
+            {~s|approaches: ["kerb", ""]|, "`approaches:` must be one entry per point"},
             {"headings: [400, 0]", "`headings:` must be a heading in degrees from 0 to 360"},
             {"recostings: [1]", "`recostings:` must be a list of strings"}
           ] do
