@@ -210,6 +210,8 @@ export type ComputationName =
   | "elevation"
   | "elevation_profile"
   | "nearest"
+  | "centroid"
+  | "expansion"
 
 export interface MethodNode {
   kind: "method"
@@ -550,6 +552,8 @@ const COMPUTATION_TYPES: Record<string, PqlType> = {
   elevation: "Elevation",
   // biome-ignore lint/style/useNamingConvention: PQL name
   elevation_profile: "Elevation",
+  centroid: "PointSet",
+  expansion: "LineSet",
 }
 
 export function computationType(name: string): PqlType {
@@ -1328,10 +1332,144 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
     returnType: "PointSet",
     description: "Find nearest OSM features to a point.",
   },
+  centroid: {
+    name: "centroid",
+    params: [
+      {
+        name: "locations",
+        type: "Point[]",
+        description: "2 to 50 places people are coming from",
+      },
+      {
+        name: "mode",
+        type: "string",
+        optional: true,
+        description: "Travel mode",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"foot"' },
+          { value: '"bicycle"' },
+        ],
+      },
+      {
+        name: "metric",
+        type: '"time" | "distance"',
+        optional: true,
+        description: "Total travel cost to minimise (default time)",
+        enumValues: [{ value: '"time"' }, { value: '"distance"' }],
+      },
+      {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to avoid: "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
+    ],
+    returnType: "PointSet",
+    description:
+      "Find the meeting point on the road network with the least total travel cost from every location.",
+  },
+  expansion: {
+    name: "expansion",
+    params: [
+      {
+        name: "action",
+        type: '"route" | "isochrone" | "matrix"',
+        description:
+          "Search to expand; pass that computation's own keywords (origin/destination, center/time, origins/destinations)",
+        enumValues: [
+          { value: '"route"' },
+          { value: '"isochrone"' },
+          { value: '"matrix"' },
+        ],
+      },
+      {
+        name: "origin",
+        type: "Point",
+        optional: true,
+        description: "Route start (route)",
+      },
+      {
+        name: "destination",
+        type: "Point",
+        optional: true,
+        description: "Route end (route)",
+      },
+      {
+        name: "center",
+        type: "Point",
+        optional: true,
+        description: "Isochrone center (isochrone)",
+      },
+      {
+        name: "time",
+        type: "number | number[]",
+        optional: true,
+        description: "Isochrone time budget(s) in seconds (isochrone)",
+      },
+      {
+        name: "origins",
+        type: "Point[]",
+        optional: true,
+        description: "Matrix origins (matrix)",
+      },
+      {
+        name: "destinations",
+        type: "Point[]",
+        optional: true,
+        description: "Matrix destinations (matrix)",
+      },
+      {
+        name: "mode",
+        type: "string",
+        optional: true,
+        description: "Travel mode",
+        enumValues: [
+          { value: '"auto"' },
+          { value: '"foot"' },
+          { value: '"bicycle"' },
+        ],
+      },
+      {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to avoid (route, matrix): "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
+      {
+        name: "expansion_properties",
+        type: "string[]",
+        optional: true,
+        description:
+          'Per-edge properties: "duration" (default), "distance", "cost", "cumulative_cost", "edge_id", "osm_way_id"',
+      },
+    ],
+    returnType: "LineSet",
+    description:
+      "Debug: the road edges the router visited for a route, isochrone or matrix, with the path marked on_path. Needs the X-Plaza-Debug header or an admin key.",
+  },
 }
 
 /** Values accepted by `reverse_geocode(include: ...)`. */
 export const REVERSE_GEOCODE_INCLUDES = ["census"]
+
+/** Values accepted by `centroid(metric: ...)`. */
+export const CENTROID_METRICS = ["time", "distance"]
+
+/** Values accepted by `expansion(action: ...)`. */
+export const EXPANSION_ACTIONS = ["route", "isochrone", "matrix"]
+
+/** Values accepted by `expansion(expansion_properties: [...])`. */
+export const EXPANSION_PROPERTIES = [
+  "duration",
+  "distance",
+  "cost",
+  "cumulative_cost",
+  "edge_id",
+  "osm_way_id",
+]
 
 /**
  * Expression-only functions (valid inside `.filter()`, `.sort()`, `.sum()`,

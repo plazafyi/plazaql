@@ -1955,3 +1955,74 @@ Parenthesized expression
       (union_expression
         left: (variable_ref)
         right: (variable_ref)))))
+
+================
+Centroid computation
+================
+
+centroid(locations: [point(1, 2), point(3, 4)], metric: "distance");
+
+---
+
+(program
+  (bare_statement
+    (computation
+      (computation_name)
+      (keyword_argument
+        (identifier)
+        (list_literal
+          (point_constructor
+            (number)
+            (number))
+          (point_constructor
+            (number)
+            (number))))
+      (keyword_argument
+        (identifier)
+        (string)))))
+
+================
+Expansion computation
+================
+
+expansion(action: "route", origin: point(1, 2), destination: point(3, 4));
+
+---
+
+(program
+  (bare_statement
+    (computation
+      (computation_name)
+      (keyword_argument
+        (identifier)
+        (string))
+      (keyword_argument
+        (identifier)
+        (point_constructor
+          (number)
+          (number)))
+      (keyword_argument
+        (identifier)
+        (point_constructor
+          (number)
+          (number))))))
+
+================
+Centroid method is still a method
+================
+
+search(way, building: "yes").centroid();
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      (search_expression
+        (element_type)
+        (tag_filter_list
+          (tag_filter
+            (identifier)
+            (string))))
+      (method
+        (identifier)))))

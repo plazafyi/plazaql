@@ -79,9 +79,11 @@ defmodule PlazaQL.TreeSitter do
       File.write!(tmp_path, source)
 
       # Use --lib-path with cached dylib if available, otherwise fall back to -p
+      lib_path = lib_path()
+
       {args, opts} =
-        if File.exists?(@lib_path) do
-          {["parse", "-x", "--lib-path", @lib_path, "--lang-name", "plazaql", tmp_path],
+        if File.exists?(lib_path) do
+          {["parse", "-x", "--lib-path", lib_path, "--lang-name", "plazaql", tmp_path],
            [stderr_to_stdout: false]}
         else
           {["parse", "-x", "-p", @grammar_path, tmp_path],
@@ -120,6 +122,11 @@ defmodule PlazaQL.TreeSitter do
       File.rm(tmp_path)
     end
   end
+
+  # PLAZAQL_TREE_SITTER_LIB points at a parser library built from another
+  # checkout's grammar (a language branch), so testing it never replaces the
+  # shared one in ~/.cache/tree-sitter/lib.
+  defp lib_path(), do: System.get_env("PLAZAQL_TREE_SITTER_LIB") || @lib_path
 
   # ── XML parsing ─────────────────────────────────────────────────
 

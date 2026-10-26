@@ -109,6 +109,31 @@ make test               # run ALL tests (Elixir + LSP must also pass)
 
 Never edit `src/parser.c` directly — it's generated.
 
+Both WASM copies (`tree-sitter-plazaql.wasm` and `lsp/src/tree-sitter-plazaql.wasm`)
+must be rebuilt too. If `tree-sitter build --wasm` fails with `stdlib.h` not
+found (wasi-sdk 34 dropped the `wasm32-wasi` target the 0.26 CLI asks for),
+build the side module with the cached SDK; this reproduces the committed
+file byte for byte:
+
+```bash
+W=~/.cache/tree-sitter/wasi-sdk
+$W/bin/clang --target=wasm32-wasip1 --sysroot=$W/share/wasi-sysroot -fPIC -shared -Os \
+  -fvisibility=hidden -Wl,--export=tree_sitter_plazaql -Wl,--allow-undefined \
+  -Wl,--no-entry -nostdlib -I src src/parser.c -o tree-sitter-plazaql.wasm
+cp tree-sitter-plazaql.wasm lsp/src/tree-sitter-plazaql.wasm
+```
+
+The Elixir parser uses the library cached at `~/.cache/tree-sitter/lib/plazaql.dylib`
+when it exists, which every checkout on the machine shares. To test a grammar
+branch without replacing it, build the library elsewhere and point
+`PLAZAQL_TREE_SITTER_LIB` at it (set `TREE_SITTER_LIBDIR` too, so
+`tree-sitter test` compiles into the same place):
+
+```bash
+clang -dynamiclib -fPIC -O2 -I src src/parser.c -o /tmp/ts/plazaql.dylib
+PLAZAQL_TREE_SITTER_LIB=/tmp/ts/plazaql.dylib TREE_SITTER_LIBDIR=/tmp/ts make test
+```
+
 ## Elixir AST Format
 
 The parser produces tuples consumed by type-checker, formatter, and plaza's compiler:

@@ -460,6 +460,39 @@ defmodule PlazaQL.CompilerTest do
       assert {_elevation, %{points: {:list, [{:point, 40.71, -74.00, _}], _}}} = plan.computation
     end
 
+    test "centroid takes locations, mode, metric and exclude" do
+      plan =
+        first_plan(
+          ~s|$$ = centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], mode: "foot", metric: "distance", exclude: ["ferry"]);|
+        )
+
+      assert {:centroid, params} = plan.computation
+      assert {:list, [{:point, 48.858, 2.294, _}, {:point, 48.87, 2.35, _}], _} = params.locations
+      assert params.mode == "foot"
+      assert params.metric == "distance"
+      assert params.exclude == ["ferry"]
+    end
+
+    test "expansion takes an action, that action's keywords and expansion_properties" do
+      plan =
+        first_plan(
+          ~s|$$ = expansion(action: "route", origin: point(48.858, 2.294), destination: point(48.87, 2.35), expansion_properties: ["duration", "cumulative_cost"]);|
+        )
+
+      assert {:expansion, params} = plan.computation
+      assert params.action == "route"
+      assert {:point, 48.858, 2.294, _} = params.origin
+
+      assert params.expansion_properties == ["duration", "cumulative_cost"]
+
+      plan =
+        first_plan(
+          ~s|$$ = expansion(action: "isochrone", center: point(48.858, 2.294), time: 600);|
+        )
+
+      assert {:expansion, %{action: "isochrone", time: 600}} = plan.computation
+    end
+
     test "unknown keyword names are still rejected" do
       {:ok, ast} = Parser.parse(~s|$$ = route(point(1.0, 2.0), point(1.1, 2.1), bogus: 1);|)
       assert {:error, [%{message: message}]} = Compiler.compile(ast)

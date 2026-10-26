@@ -303,4 +303,54 @@ describe("PlazaQL Type Checker", () => {
     const result = check('$$ =search(way, building: "yes").centroid().simplify(10);');
     expect(result.errors).toHaveLength(0);
   });
+
+  // ── centroid() and expansion() ─────────────────────────────────
+
+  describe("centroid()", () => {
+    const locations = "locations: [point(48.858, 2.294), point(48.87, 2.35)]";
+
+    it("is a PointSet usable as a geometry", () => {
+      const result = check(
+        `$m = centroid(${locations}, metric: "distance"); $$ = search(node, amenity: "cafe").around(300, $m);`
+      );
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("rejects an unknown metric", () => {
+      const result = check(`$$ = centroid(${locations}, metric: "vibes");`);
+      expect(result.errors.some((e) => e.message.includes("`metric:` must be one of"))).toBe(true);
+    });
+  });
+
+  describe("expansion()", () => {
+    const route = "origin: point(48.858, 2.294), destination: point(48.87, 2.35)";
+
+    it("accepts each action", () => {
+      for (const src of [
+        `$$ = expansion(action: "route", ${route}, expansion_properties: ["duration", "distance"]);`,
+        '$$ = expansion(action: "isochrone", center: point(48.858, 2.294), time: 600);',
+        '$$ = expansion(action: "matrix", origins: [point(48.858, 2.294)], destinations: [point(48.87, 2.35)]);',
+      ]) {
+        expect(check(src).errors).toHaveLength(0);
+      }
+    });
+
+    it("requires a known action", () => {
+      expect(
+        check(`$$ = expansion(${route});`).errors.some((e) => e.message.includes("requires `action:`"))
+      ).toBe(true);
+      expect(
+        check(`$$ = expansion(action: "teleport", ${route});`).errors.some((e) =>
+          e.message.includes("`action:` must be one of")
+        )
+      ).toBe(true);
+    });
+
+    it("rejects unknown expansion_properties", () => {
+      const result = check(
+        `$$ = expansion(action: "route", ${route}, expansion_properties: ["vibes"]);`
+      );
+      expect(result.errors.some((e) => e.message.includes('"vibes"'))).toBe(true);
+    });
+  });
 });

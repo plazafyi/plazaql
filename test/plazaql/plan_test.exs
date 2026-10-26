@@ -104,7 +104,9 @@ defmodule PlazaQL.PlanTest do
       :elevation_profile,
       :search,
       :autocomplete,
-      :nearest
+      :nearest,
+      :centroid,
+      :expansion
     ]
 
     test "all computation types can be used in a plan" do

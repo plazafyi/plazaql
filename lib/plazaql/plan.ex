@@ -63,6 +63,8 @@ defmodule PlazaQL.Plan do
           | :search
           | :autocomplete
           | :nearest
+          | :centroid
+          | :expansion
 
   @type computation :: {computation_type(), map()}
 
