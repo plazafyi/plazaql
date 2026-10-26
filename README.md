@@ -530,7 +530,8 @@ search(node, amenity: "cafe").around(300, $meet).limit(5);
 | `metric`    | string   | `"time"` (default) or `"distance"`: the total to minimise |
 | `exclude`   | string[] | Road types to avoid, same as `route()` (optional)    |
 
-Same as REST `POST /api/v1/centroid`.
+The locations must lie within 2° of each other, and no one's trip may exceed
+2 hours (150 km with `metric: "distance"`). Same as REST `POST /api/v1/centroid`.
 
 ### `expansion(action:, ...)`
 

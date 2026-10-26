@@ -419,6 +419,7 @@ describe("PlazaQL Completions", () => {
       const items = getCompletions(src, 1, src.length + 1);
       expect(items.some((i) => i.label === "action")).toBe(true);
       expect(items.some((i) => i.label === "expansion_properties")).toBe(true);
+      expect(items.some((i) => i.label === "exclude")).toBe(true);
     });
 
     it("suggests origins and destinations for matrix(", () => {

@@ -1432,6 +1432,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         ],
       },
       {
+        name: "exclude",
+        type: "string[]",
+        optional: true,
+        description:
+          'Road types to avoid (route, matrix): "toll", "ferry", "unpaved", "motorway", "trunk", "primary", "secondary", "tertiary"',
+      },
+      {
         name: "expansion_properties",
         type: "string[]",
         optional: true,
