@@ -1250,13 +1250,19 @@ defmodule PlazaQL.TypeChecker do
     matrix:
       ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
-    map_match: ~w(points mode radiuses datasets) ++ @truck_option_kwargs ++ @active_option_kwargs,
-    optimize: ~w(waypoints mode roundtrip) ++ @truck_option_kwargs ++ @active_option_kwargs,
+    map_match:
+      ~w(points mode radiuses datasets avoid_datasets) ++
+        @truck_option_kwargs ++ @active_option_kwargs,
+    optimize:
+      ~w(waypoints mode roundtrip avoid_datasets) ++ @truck_option_kwargs ++ @active_option_kwargs,
     elevation: ~w(point points),
     elevation_profile: ~w(points),
-    centroid: ~w(locations mode metric exclude) ++ @truck_option_kwargs ++ @active_option_kwargs,
+    centroid:
+      ~w(locations mode metric exclude avoid_datasets) ++
+        @truck_option_kwargs ++ @active_option_kwargs,
     expansion:
-      ~w(action origin destination center time origins destinations mode exclude expansion_properties) ++
+      ~w(action origin destination center time origins destinations mode exclude avoid_datasets
+           expansion_properties) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     place_lookup: ~w(ids)
   }

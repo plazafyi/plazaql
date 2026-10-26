@@ -23,6 +23,8 @@ First Hex release of the PlazaQL Elixir package.
   `map_match()`: datasets whose roads Plaza routes over as well as OSM's
   (REST `datasets` on the routing endpoints). `avoid_datasets:` stays the
   areas to keep out of. LSP signatures list it.
+- `centroid()`, `expansion()`, `optimize()` and `map_match()` take
+  `avoid_datasets:` like `route()`, `isochrone()` and `matrix()`.
 - `optimize()`, `centroid()`, `expansion()` and `map_match()` take every
   vehicle mode too: the truck keywords with `mode: "truck"` and the bicycle,
   pedestrian, motorcycle and scooter keywords with their modes, as

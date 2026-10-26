@@ -768,6 +768,7 @@ A `linestring(...)` works as the trace too: `map_match(linestring(point(40.71, -
 | `mode`    | string  | Match only to roads this mode may use: `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional; without it any road matches) |
 | `radiuses` | number[] | Search radius in meters per point, default 50 (optional) |
 | `datasets` | string[]/string | Datasets whose roads the trace may match too, as in `route()`; a matched dataset road is named by its `name` property (optional) |
+| `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()`: no point is matched to a road that touches one (optional) |
 
 ### `optimize(points..., mode:)`
 
@@ -784,6 +785,7 @@ The positional points are the waypoints; `waypoints: [...]` is the keyword form.
 | `waypoints` | Point[] | Points to visit, 2 to 50 (or pass them positionally) |
 | `mode`      | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `roundtrip` | boolean | Return to the first point (optional)            |
+| `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 
 ### `ev_route(origin:, destination:, battery:)`
 
@@ -802,7 +804,7 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
 | `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names`, the [costing options](#costing-options) | | Same as `route()` (optional) |
 
-### `centroid(locations:, mode:?, metric:?, exclude:?)`
+### `centroid(locations:, mode:?, metric:?, exclude:?, avoid_datasets:?)`
 
 Find the meeting point: the spot on the road network with the least total
 travel cost from every location. Each location travels to the meeting point,
@@ -823,6 +825,7 @@ search(node, amenity: "cafe").around(300, $meet).limit(5);
 | `mode`      | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `metric`    | string   | `"time"` (default) or `"distance"`: the total to minimise |
 | `exclude`   | string[] | Road types to avoid, same as `route()` (optional)    |
+| `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 
 The locations must lie within 2° of each other, and no one's trip may exceed
 2 hours (150 km with `metric: "distance"`). Same as REST `POST /api/v1/centroid`.
@@ -850,6 +853,7 @@ expansion(
 | `origins`, `destinations` | Point[] | Matrix points, at most 100 pairs (`matrix`)        |
 | `mode`                 | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"`, with that mode's options (optional) |
 | `exclude`              | string[] | Road types to avoid (`route`, `matrix`; optional)   |
+| `avoid_datasets`       | string[]/string | Datasets whose polygons to stay out of, as in `route()` (every action; optional) |
 | `expansion_properties` | string[] | Per-edge properties: `"duration"` (default), `"distance"`, `"cost"`, `"cumulative_cost"`, `"edge_id"`, `"osm_way_id"` |
 
 Same as REST `POST /api/v1/expansion`, including its access rule: the server
