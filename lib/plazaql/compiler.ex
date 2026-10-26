@@ -702,6 +702,22 @@ defmodule PlazaQL.Compiler do
     Map.merge(base, compile_kwargs(opts))
   end
 
+  # place_lookup("osm:node:1", "osm:way:2") or place_lookup(ids: [...]):
+  # positional GIDs and `ids:` both land in `ids`.
+  defp compile_computation_params(:place_lookup, args, opts, _env) do
+    positional = for {:posarg, {:string, gid, _}} <- args, do: gid
+    kwargs = compile_kwargs(opts)
+
+    ids =
+      case Map.get(kwargs, :ids) do
+        nil -> positional
+        gid when is_binary(gid) -> positional ++ [gid]
+        gids when is_list(gids) -> positional ++ gids
+      end
+
+    Map.put(kwargs, :ids, ids)
+  end
+
   @point_computations [:reverse_geocode, :nearest]
 
   defp compile_computation_params(type, args, opts, _env) when type in @point_computations do
@@ -755,7 +771,7 @@ defmodule PlazaQL.Compiler do
   end
 
   # Keywords whose `[...]` value compiles to a plain list of strings.
-  @string_list_kwargs ["include", "exclude", "expansion_properties"]
+  @string_list_kwargs ["include", "exclude", "expansion_properties", "layers", "ids"]
 
   defp compile_kwargs(opts) do
     Map.new(opts, fn
@@ -786,11 +802,12 @@ defmodule PlazaQL.Compiler do
   # atom *values*). Kept separate so adding a computation option never makes a
   # new atom value legal.
   @computation_kwarg_names Map.new(
-                             ~w(action alternatives battery battery_capacity_wh
-                                connector_types depart_at destinations exclude
-                                expansion_properties include initial_charge_pct locations
-                                metric min_charge_pct min_power_kw origins points
-                                traffic_model waypoints)a,
+                             ~w(action address alternatives battery battery_capacity_wh
+                                boundary_gid connector_types country country_code county
+                                depart_at destinations exclude expansion_properties focus ids
+                                include initial_charge_pct layers locality locations metric
+                                min_charge_pct min_power_kw neighbourhood origins points
+                                postalcode region traffic_model waypoints)a,
                              &{Atom.to_string(&1), &1}
                            )
 

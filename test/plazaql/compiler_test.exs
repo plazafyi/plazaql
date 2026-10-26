@@ -493,6 +493,51 @@ defmodule PlazaQL.CompilerTest do
       assert {:expansion, %{action: "isochrone", time: 600}} = plan.computation
     end
 
+    test "geocode takes structured components and filters as keywords" do
+      plan =
+        first_plan(
+          ~s|$$ = geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC", postalcode: "20500", country: "US", layers: ["address", "poi"], boundary_gid: "osm:relation:62422", limit: 5);|
+        )
+
+      assert {:geocode, params} = plan.computation
+      refute Map.has_key?(params, :query)
+      assert params.address == "1600 Pennsylvania Ave"
+      assert params.locality == "Washington"
+      assert params.region == "DC"
+      assert params.postalcode == "20500"
+      assert params.country == "US"
+      assert params.layers == ["address", "poi"]
+      assert params.boundary_gid == "osm:relation:62422"
+      assert params.limit == 5
+    end
+
+    test "free-text geocode keeps its query next to focus, country_code and county" do
+      plan =
+        first_plan(
+          ~s|$$ = geocode("Main St", focus: point(38.9, -77.0), country_code: "US", layers: "address");|
+        )
+
+      assert {:geocode, %{query: "Main St", country_code: "US", layers: "address"} = params} =
+               plan.computation
+
+      assert {:point, 38.9, -77.0, _} = params.focus
+
+      plan =
+        first_plan(
+          ~s|$$ = geocode(locality: "Springfield", county: "Sangamon", neighbourhood: "Enos Park");|
+        )
+
+      assert {:geocode, %{county: "Sangamon", neighbourhood: "Enos Park"}} = plan.computation
+    end
+
+    test "place_lookup collects positional GIDs and ids: into ids" do
+      plan = first_plan(~s|$$ = place_lookup("osm:node:123", "osm:way:456");|)
+      assert {:place_lookup, %{ids: ["osm:node:123", "osm:way:456"]}} = plan.computation
+
+      plan = first_plan(~s|$$ = place_lookup(ids: ["osm:relation:789"]);|)
+      assert {:place_lookup, %{ids: ["osm:relation:789"]}} = plan.computation
+    end
+
     test "unknown keyword names are still rejected" do
       {:ok, ast} = Parser.parse(~s|$$ = route(point(1.0, 2.0), point(1.1, 2.1), bogus: 1);|)
       assert {:error, [%{message: message}]} = Compiler.compile(ast)

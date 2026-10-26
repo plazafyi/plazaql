@@ -60,6 +60,7 @@ defmodule PlazaQL.Plan do
           | :ev_route
           | :elevation_lookup
           | :elevation_profile
+          | :place_lookup
           | :search
           | :autocomplete
           | :nearest

@@ -227,7 +227,11 @@ defmodule PlazaQL.TypeChecker do
   defp check_expr({:computation, comp_type, args, opts, pos}, scope) do
     type = computation_type(comp_type)
     arg_errors = check_var_refs_in_args(args ++ opts, scope)
-    kwarg_errors = check_computation_kwargs(comp_type, opts, pos)
+
+    kwarg_errors =
+      check_computation_kwargs(comp_type, opts, pos) ++
+        check_computation_args(comp_type, args, opts, pos)
+
     typed = {:computation, comp_type, args, opts, Map.put(pos, :type, type)}
     {typed, type, arg_errors ++ kwarg_errors}
   end
@@ -879,7 +883,8 @@ defmodule PlazaQL.TypeChecker do
     elevation: :elevation,
     elevation_profile: :elevation,
     centroid: :point_set,
-    expansion: :line_set
+    expansion: :line_set,
+    place_lookup: :point_set
   }
 
   defp computation_type(comp), do: Map.get(@computation_types, comp, :geo_set)
@@ -1172,6 +1177,12 @@ defmodule PlazaQL.TypeChecker do
     action_errors ++ option_errors
   end
 
+  # geocode()/autocomplete() filters shared with POST /geocode,
+  # /geocode/structured and /geocode/autocomplete.
+  defp check_computation_kwargs(comp_type, opts, pos) when comp_type in [:geocode, :autocomplete] do
+    Enum.flat_map(opts, &check_geocode_option(&1, pos))
+  end
+
   defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
 
   defp check_expansion_property({:string, value, _}, _pos) when value in @expansion_properties,
@@ -1190,6 +1201,118 @@ defmodule PlazaQL.TypeChecker do
       pos
     )
   end
+
+  # ── Geocoding ───────────────────────────────────────────────────
+
+  @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country)
+  @structured_components ~w(address neighbourhood locality county region postalcode country)
+  @structured_required ~w(address locality region postalcode)
+  @boundary_gid ~r/^osm:(way|relation):[1-9][0-9]*$/
+  @gid ~r/^osm:(node|way|relation|address|place):[1-9][0-9]*$/
+  @max_place_ids 50
+
+  defp check_geocode_option({:kwarg, "layers", {:string, value, _}}, pos) do
+    value
+    |> String.split(",", trim: true)
+    |> Enum.flat_map(&check_layer_value(String.trim(&1), pos))
+  end
+
+  defp check_geocode_option({:kwarg, "layers", {:list, items, _}}, pos) do
+    Enum.flat_map(items, fn
+      {:string, value, _} -> check_layer_value(value, pos)
+      _ -> geocode_error("`layers:` list items must be strings", layers_hint(), pos)
+    end)
+  end
+
+  defp check_geocode_option({:kwarg, "layers", _}, pos),
+    do: geocode_error("`layers:` must be a string or a list of strings", layers_hint(), pos)
+
+  defp check_geocode_option({:kwarg, "boundary_gid", {:string, gid, _}}, pos) do
+    if Regex.match?(@boundary_gid, gid),
+      do: [],
+      else: geocode_error("invalid `boundary_gid:` #{inspect(gid)}", boundary_hint(), pos)
+  end
+
+  defp check_geocode_option({:kwarg, "boundary_gid", _}, pos),
+    do: geocode_error("`boundary_gid:` must be a string", boundary_hint(), pos)
+
+  defp check_geocode_option({:kwarg, "postalcode", {:number, _, _}}, _pos), do: []
+
+  defp check_geocode_option({:kwarg, key, value}, pos) when key in @structured_components do
+    case value do
+      {:string, _, _} -> []
+      _ -> geocode_error("`#{key}:` must be a string", nil, pos)
+    end
+  end
+
+  defp check_geocode_option(_opt, _pos), do: []
+
+  defp check_layer_value(value, _pos) when value in @geocode_layers, do: []
+
+  defp check_layer_value(value, pos),
+    do: geocode_error("unknown `layers:` value #{inspect(value)}", layers_hint(), pos)
+
+  defp layers_hint(), do: "supported: #{Enum.map_join(@geocode_layers, ", ", &inspect/1)}"
+  defp boundary_hint(), do: "a way or relation GID, e.g. `boundary_gid: \"osm:relation:62422\"`"
+
+  # geocode() needs query text or a structured component; place_lookup()
+  # needs 1-50 GIDs.
+  defp check_computation_args(:geocode, args, opts, pos) do
+    has_query =
+      Enum.any?(args, &match?({:posarg, {:string, _, _}}, &1)) or
+        Enum.any?(opts, &match?({:kwarg, "query", _}, &1))
+
+    has_component = Enum.any?(opts, &match?({:kwarg, key, _} when key in @structured_required, &1))
+
+    if has_query or has_component,
+      do: [],
+      else:
+        geocode_error(
+          "`geocode()` needs an address string or one of `address:`, `locality:`, `region:`, `postalcode:`",
+          ~s|e.g. `geocode("1600 Pennsylvania Ave, Washington DC")` or `geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC")`|,
+          pos
+        )
+  end
+
+  defp check_computation_args(:place_lookup, args, opts, pos) do
+    gid_args =
+      for({:posarg, value} <- args, do: value) ++
+        Enum.flat_map(opts, fn
+          {:kwarg, "ids", {:list, items, _}} -> items
+          {:kwarg, "ids", value} -> [value]
+          _ -> []
+        end)
+
+    errors =
+      Enum.flat_map(gid_args, fn
+        {:string, gid, _} ->
+          if Regex.match?(@gid, gid),
+            do: [],
+            else: geocode_error("invalid GID #{inspect(gid)}", gid_hint(), pos)
+
+        _ ->
+          geocode_error("`place_lookup()` takes GID strings", gid_hint(), pos)
+      end)
+
+    cond do
+      gid_args == [] ->
+        geocode_error("`place_lookup()` needs at least one GID", gid_hint(), pos)
+
+      length(gid_args) > @max_place_ids ->
+        geocode_error("`place_lookup()` takes at most #{@max_place_ids} GIDs", gid_hint(), pos)
+
+      true ->
+        errors
+    end
+  end
+
+  defp check_computation_args(_comp_type, _args, _opts, _pos), do: []
+
+  defp gid_hint(),
+    do: ~s|GIDs look like "osm:node:123", "osm:way:456" or "osm:relation:789"|
+
+  defp geocode_error(message, hint, pos),
+    do: [%Error{line: pos.line, col: pos.col, message: message, hint: hint}]
 
   defp check_route_option({:kwarg, "depart_at", {:string, _, _}}, _pos), do: []
 

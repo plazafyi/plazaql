@@ -114,7 +114,7 @@ defmodule PlazaQL.TypeCheckerTest do
     end
 
     test "geocode() infers :point_set" do
-      assert var_type(~s|$g = geocode(text: "Berlin"); $$ = $g;|, "$g") == :point_set
+      assert var_type(~s|$g = geocode(query: "Berlin"); $$ = $g;|, "$g") == :point_set
     end
 
     test "matrix() infers :matrix" do
@@ -1038,6 +1038,48 @@ defmodule PlazaQL.TypeCheckerTest do
     test "map_match and elevation take points" do
       check!(~s|map_match(points: [point(40.71, -74.00), point(40.72, -74.01)]);|)
       check!(~s|elevation(points: [point(40.71, -74.00)]);|)
+    end
+  end
+
+  describe "geocoding" do
+    test "structured geocode and filters pass" do
+      check!(
+        ~s|geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC", postalcode: 20500, country: "US");|
+      )
+
+      check!(~s|geocode("Main St", layers: "address,poi", boundary_gid: "osm:relation:62422");|)
+      check!(~s|autocomplete("Caf", layers: ["poi"], boundary_gid: "osm:way:42");|)
+    end
+
+    test "geocode needs query text or a component" do
+      [error] = check_errors(~s|geocode(country: "US");|)
+      assert error.message =~ "needs an address string"
+    end
+
+    test "unknown layers are rejected with the supported values" do
+      [error] = check_errors(~s|geocode("Main St", layers: ["venue"]);|)
+      assert error.message =~ ~s|unknown `layers:` value "venue"|
+      assert error.hint =~ ~s|"poi"|
+    end
+
+    test "boundary_gid must be a way or relation GID" do
+      [error] = check_errors(~s|geocode("Main St", boundary_gid: "osm:node:1");|)
+      assert error.message =~ "invalid `boundary_gid:`"
+    end
+
+    test "components must be strings" do
+      [error] = check_errors(~s|geocode(locality: 42);|)
+      assert error.message =~ "`locality:` must be a string"
+    end
+
+    test "place_lookup returns a point set and checks its GIDs" do
+      assert output_type(~s|$$ = place_lookup("osm:node:1", "osm:address:7");|) == :point_set
+
+      [error] = check_errors(~s|place_lookup("node/1");|)
+      assert error.message =~ ~s|invalid GID "node/1"|
+
+      [error] = check_errors(~s|place_lookup();|)
+      assert error.message =~ "at least one GID"
     end
   end
 end
