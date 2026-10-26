@@ -204,8 +204,8 @@ defmodule PlazaQL.Compiler do
     %{env | plans: [plan | env.plans], output_names: [nil | env.output_names]}
   end
 
-  defp process_top_level({:directive, method_name, args, _pos}, env) do
-    %{env | directives: env.directives ++ [{method_name, args}]}
+  defp process_top_level({:directive, method_name, args, pos}, env) do
+    %{env | directives: env.directives ++ [{method_name, args, pos}]}
   end
 
   defp process_top_level(node, env) do
@@ -318,7 +318,7 @@ defmodule PlazaQL.Compiler do
 
   defp find_within_geometry(directives) do
     Enum.find_value(directives, fn
-      {:within, args} -> {:predicate, :within, extract_geometry_arg(args)}
+      {:within, args, _pos} -> {:predicate, :within, extract_geometry_arg(args)}
       _ -> nil
     end)
   end
@@ -349,8 +349,8 @@ defmodule PlazaQL.Compiler do
   defp apply_directives(plan, [], _env), do: plan
 
   defp apply_directives(plan, directives, env) do
-    Enum.reduce(directives, plan, fn {method_name, args}, acc ->
-      apply_method(acc, {:method, method_name, args, %{}}, env)
+    Enum.reduce(directives, plan, fn {method_name, args, pos}, acc ->
+      at_position(pos, fn -> apply_method(acc, {:method, method_name, args, pos}, env) end)
     end)
   end
 
