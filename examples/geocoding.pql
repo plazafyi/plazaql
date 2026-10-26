@@ -30,11 +30,14 @@ autocomplete("Eiffel Tow");
 // Text search — full-text search across place names
 text_search("pizza near Times Square");
 
-// Find nearest features to a point
-nearest(
-  point(40.7128, -74.0060),
-  amenity: "hospital"
-);
+// Snap a point to the nearest road (nearest() takes no tag filters)
+nearest(point: point(40.7128, -74.0060), radius: 500);
+
+// Closest hospitals to a point
+search(nwr, amenity: "hospital")
+  .around(2000, point(40.7128, -74.0060))
+  .sort(distance(point(40.7128, -74.0060)))
+  .limit(3);
 
 // Geocode then search nearby — using $$.name references
 $$.location = geocode("350 Fifth Avenue, New York");
