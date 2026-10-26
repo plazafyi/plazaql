@@ -430,6 +430,68 @@ describe("PlazaQL Type Checker", () => {
     });
   });
 
+  describe("bicycle and pedestrian options", () => {
+    const route = "origin: point(40.71, -74.00), destination: point(40.75, -73.98)";
+    const messages = (src: string) => check(src).errors.map((e) => e.message);
+
+    it("accepts rider and walker options on route, isochrone and matrix", () => {
+      for (const src of [
+        `$$ = route(${route}, mode: "bicycle", bicycle_type: "road", cycling_speed: 24, use_roads: 0.2, use_hills: 0.1, avoid_bad_surfaces: 1);`,
+        `$$ = route(${route}, mode: "foot", walking_speed: 4, use_hills: 0.5, use_lit: 1, walkway_factor: 0.8, sidewalk_factor: 0.9, step_penalty: 60, max_hiking_difficulty: 3.0, wheelchair: true);`,
+        '$$ = isochrone(center: point(40.71, -74.00), time: 600, mode: "walk", wheelchair: true);',
+        '$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "bike", use_hills: 0);',
+      ]) {
+        expect(check(src).errors).toHaveLength(0);
+      }
+    });
+
+    it("needs the matching mode", () => {
+      expect(messages(`$$ = route(${route}, bicycle_type: "road");`)).toContain(
+        '`bicycle_type:` need `mode: "bicycle"`'
+      );
+      expect(messages(`$$ = route(${route}, mode: "auto", use_hills: 0.2);`)).toContain(
+        '`use_hills:` need `mode: "bicycle"` or `mode: "foot"`'
+      );
+      expect(messages(`$$ = route(${route}, mode: "bicycle", wheelchair: true);`)).toContain(
+        '`wheelchair:` need `mode: "foot"`'
+      );
+      expect(messages(`$$ = route(${route}, mode: "foot", use_roads: 0.5);`)).toContain(
+        '`use_roads:` need `mode: "bicycle"`'
+      );
+    });
+
+    it("leaves a mode from a variable to the server", () => {
+      expect(check(`$m = "bicycle"; $$ = route(${route}, mode: $m, use_roads: 0.5);`).errors).toHaveLength(0);
+    });
+
+    it("rejects them on other computations", () => {
+      const result = check(
+        '$$ = centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], mode: "foot", walking_speed: 4);'
+      );
+      expect(
+        result.errors.some((e) => e.message.includes("`centroid()` has no bicycle or pedestrian options"))
+      ).toBe(true);
+    });
+
+    it("checks values like the Elixir type checker", () => {
+      expect(messages(`$$ = route(${route}, mode: "bicycle", bicycle_type: "tandem");`)).toContain(
+        '`bicycle_type:` must be one of "road", "hybrid", "cross", "mountain"'
+      );
+      expect(messages(`$$ = route(${route}, mode: "bicycle", use_roads: 2);`)).toContain(
+        "`use_roads:` must be a number from 0 to 1"
+      );
+      expect(messages(`$$ = route(${route}, mode: "foot", walking_speed: 20);`)).toContain(
+        "`walking_speed:` must be a number from 1 to 10 (km/h)"
+      );
+      expect(messages(`$$ = route(${route}, mode: "foot", max_hiking_difficulty: 2.5);`)).toContain(
+        "`max_hiking_difficulty:` must be a whole number from 1 to 6"
+      );
+      expect(messages(`$$ = route(${route}, mode: "foot", wheelchair: "yes");`)).toContain(
+        "`wheelchair:` must be `true` or `false`"
+      );
+    });
+  });
+
   describe("centroid()", () => {
     const locations = "locations: [point(48.858, 2.294), point(48.87, 2.35)]";
 

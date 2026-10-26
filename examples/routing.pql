@@ -111,6 +111,25 @@ route(
 // Area a default semi-trailer reaches in 20 minutes
 isochrone(center: point(40.7128, -74.0060), time: 1200, mode: "truck");
 
+// Road bike that keeps off busy roads and steep climbs
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7580, -73.9855),
+  mode: "bicycle",
+  bicycle_type: "road",
+  use_roads: 0.2,
+  use_hills: 0.1
+);
+
+// Wheelchair route that prefers lit streets
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7210, -73.9980),
+  mode: "foot",
+  wheelchair: true,
+  use_lit: 1
+);
+
 // EV-aware routing with charge stops
 ev_route(
   origin: point(40.7128, -74.0060),

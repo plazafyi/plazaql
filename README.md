@@ -411,6 +411,36 @@ route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "tr
 
 The options need `mode: "truck"` and are only accepted by these three functions. A truck route's properties include `mode`, the `truck` it was planned for and `warnings` about restrictions it exceeds on roads next to the route.
 
+#### Bicycle and pedestrian options
+
+With `mode: "bicycle"`, `route()`, `isochrone()` and `matrix()` take the rider's options as keywords (Plaza's REST `bicycle` object); with `mode: "foot"`, the walker's (REST `pedestrian` object). Options left out take their defaults. The bike type and the two speeds change travel times. The other options only change which way a route goes: they never add to its `duration_s`. `use_hills` belongs to whichever mode is set. Plaza rejects values out of range.
+
+| Bicycle option       | Type   | Description                                                             |
+|----------------------|--------|-------------------------------------------------------------------------|
+| `bicycle_type`       | string | `"road"`, `"hybrid"` (default), `"cross"`, `"mountain"`: cruising speed, and how much rough surfaces slow the bike |
+| `cycling_speed`      | number | Cruising speed in km/h, 5 to 50 (default: the type's)                   |
+| `use_roads`          | number | 0 to 1, default 0.5. Lower values avoid busy roads without cycle lanes or tracks |
+| `use_hills`          | number | 0 to 1, default 0.5. Lower values avoid climbs (needs elevation data)   |
+| `avoid_bad_surfaces` | number | 0 to 1, default 0.25. Higher values avoid unpaved and rough ways        |
+
+| Pedestrian option       | Type    | Description                                                         |
+|-------------------------|---------|---------------------------------------------------------------------|
+| `walking_speed`         | number  | km/h on flat ground, 1 to 10, default 5                             |
+| `use_hills`             | number  | 0 to 1, default 0.5. Lower values avoid steep ways, up or down      |
+| `use_lit`               | number  | 0 to 1, default 0. Higher values prefer lit ways                    |
+| `walkway_factor`        | number  | Cost multiplier for footways and paths, 0.1 to 10, default 1        |
+| `sidewalk_factor`       | number  | Cost multiplier for roads with a sidewalk, 0.1 to 10, default 1     |
+| `step_penalty`          | number  | Seconds added per flight of steps, 0 to 3600, default 30            |
+| `max_hiking_difficulty` | integer | Hardest SAC-scale trail, 1 (hiking) to 6, default 1                 |
+| `wheelchair`            | boolean | No steps, no grades over 8%, smooth surfaces (default `false`)      |
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "bicycle", bicycle_type: "road", use_roads: 0.2)
+route(origin: point(40.71, -74.00), destination: point(40.72, -73.99), mode: "foot", use_lit: 1, wheelchair: true)
+```
+
+The options need their mode and are only accepted by these three functions.
+
 #### Transit options
 
 With `mode: "transit"`, `route()` and `isochrone()` plan walking plus public transit over the GTFS feeds Plaza has loaded (REST: `mode: "transit"` on `POST /route` and `POST /isochrone`). `depart_at` with an offset (`"...Z"`, `"...-04:00"`) is an instant; without one it is local time at the feed; `"now"` is the default.
@@ -428,7 +458,7 @@ route(origin: point(42.3601, -71.0589), destination: point(42.3736, -71.1190), m
 isochrone(center: point(42.3601, -71.0589), time: [900, 1800], mode: "transit", depart_at: "2026-03-16T08:00:00")
 ```
 
-The options need `mode: "transit"` and are only accepted by these two functions. Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
+The options need `mode: "transit"` and are only accepted by these two functions. Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck, bicycle and pedestrian options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
 
 Turn-by-turn steps in French, with spoken variants:
 

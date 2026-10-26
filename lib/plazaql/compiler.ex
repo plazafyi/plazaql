@@ -1287,7 +1287,10 @@ defmodule PlazaQL.Compiler do
                                 fallback_speed radiuses lang layer addresses units verbal
                                 voice_instructions banner_instructions roundabout_exits voice_units
                                 waypoint_names use_bus use_rail use_transfers max_walk_m
-                                max_transfers)a,
+                                max_transfers bicycle_type cycling_speed use_roads use_hills
+                                avoid_bad_surfaces walking_speed use_lit walkway_factor
+                                sidewalk_factor step_penalty max_hiking_difficulty
+                                wheelchair)a,
                              &{Atom.to_string(&1), &1}
                            )
 

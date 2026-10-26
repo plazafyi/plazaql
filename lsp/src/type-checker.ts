@@ -14,17 +14,25 @@ import type {
   TagFilter,
 } from "./types.js"
 import {
+  ACTIVE_COMPUTATIONS,
+  ACTIVE_OPTIONS,
+  ACTIVE_RANGES,
+  BICYCLE_MODES,
+  BICYCLE_OPTIONS,
+  BICYCLE_TYPES,
   CENTROID_METRICS,
   COMPUTATION_KWARGS,
   computationType,
   EXPANSION_ACTIONS,
   EXPANSION_PROPERTIES,
+  FOOT_MODES,
   GEOCODE_LAYERS,
   isOutputMode,
   methodCategory,
   methodGroup,
   methodOutputType,
   methodPhase,
+  PEDESTRIAN_OPTIONS,
   REVERSE_GEOCODE_INCLUDES,
   STRUCTURED_GEOCODE_COMPONENTS,
   searchBaseType,
@@ -238,6 +246,7 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
         ...checkComputationKwargs(expr.name, expr.args, expr.pos),
         ...checkTruckKwargs(expr.name, expr.args, expr.pos),
         ...checkTransitKwargs(expr.name, expr.args, expr.pos),
+        ...checkActiveKwargs(expr.name, expr.args, expr.pos),
         ...checkDatasetKwargs(expr.args, expr.pos),
       ]
       return { type, errors: [...argErrors, ...kwargErrors] }
@@ -904,7 +913,8 @@ function checkKwargNames(
     arg.type === "kwarg" &&
     !accepted.includes(arg.name) &&
     !TRUCK_OPTIONS.includes(arg.name) &&
-    !TRANSIT_OPTIONS.includes(arg.name)
+    !TRANSIT_OPTIONS.includes(arg.name) &&
+    !ACTIVE_OPTIONS.includes(arg.name)
       ? [
           {
             line: pos.line,
@@ -1177,6 +1187,187 @@ function checkTransitValue(arg: Arg, pos: Pos): TypeCheckError[] {
           "the most changes between vehicles",
         ),
       ]
+}
+
+// ── Bicycle and pedestrian options (mode: "bicycle" / "foot") ───────
+
+const ACTIVE_HINT =
+  'e.g. `route(origin: ..., destination: ..., mode: "bicycle", bicycle_type: "road", use_hills: 0.2)` or `route(..., mode: "foot", walking_speed: 4, wheelchair: true)`'
+
+function checkActiveKwargs(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const activeArgs = args.filter(
+    (arg) => arg.type === "kwarg" && ACTIVE_OPTIONS.includes(arg.name),
+  )
+  if (activeArgs.length === 0) {
+    return []
+  }
+  const keys = activeArgs.flatMap((arg) =>
+    arg.type === "kwarg" ? [arg.name] : [],
+  )
+  return [
+    ...checkActiveUsage(name, args, keys, pos),
+    ...activeArgs.flatMap((arg) => checkActiveValue(arg, pos)),
+  ]
+}
+
+function checkActiveUsage(
+  name: string,
+  args: Arg[],
+  keys: string[],
+  pos: Pos,
+): TypeCheckError[] {
+  if (!ACTIVE_COMPUTATIONS.includes(name)) {
+    return [
+      kwargError(
+        pos,
+        `\`${name}()\` has no bicycle or pedestrian options; they apply to \`route()\`, \`isochrone()\` and \`matrix()\` with \`mode: "bicycle"\` or \`mode: "foot"\``,
+        ACTIVE_HINT,
+      ),
+    ]
+  }
+  switch (activeMode(args)) {
+    case "dynamic":
+      // As for truck options: a mode that is not a literal is checked by Plaza.
+      return []
+    case "bicycle":
+      return strayActiveError(
+        keys.filter((key) => !BICYCLE_OPTIONS.includes(key)),
+        "foot",
+        pos,
+      )
+    case "foot":
+      return strayActiveError(
+        keys.filter((key) => !PEDESTRIAN_OPTIONS.includes(key)),
+        "bicycle",
+        pos,
+      )
+    default:
+      return [activeModeError(keys, pos)]
+  }
+}
+
+/** The kind of `mode:` given: a bicycle or foot literal, another literal or none, or a variable. */
+function activeMode(args: Arg[]): "bicycle" | "foot" | "other" | "dynamic" {
+  const mode = args.find((arg) => arg.type === "kwarg" && arg.name === "mode")
+  if (mode?.type !== "kwarg") {
+    return "other"
+  }
+  const { value } = mode
+  if (value.kind === "string") {
+    if (BICYCLE_MODES.includes(value.value)) {
+      return "bicycle"
+    }
+    return FOOT_MODES.includes(value.value) ? "foot" : "other"
+  }
+  return value.kind === "atom" ? "other" : "dynamic"
+}
+
+function activeModeError(keys: string[], pos: Pos): TypeCheckError {
+  const bicycle = keys.every((key) => BICYCLE_OPTIONS.includes(key))
+  const foot = keys.every((key) => PEDESTRIAN_OPTIONS.includes(key))
+  let needed = '`mode: "foot"`'
+  if (bicycle && foot) {
+    needed = '`mode: "bicycle"` or `mode: "foot"`'
+  } else if (bicycle) {
+    needed = '`mode: "bicycle"`'
+  }
+  const names = [...new Set(keys)].map((key) => `\`${key}:\``).join(", ")
+  return kwargError(pos, `${names} need ${needed}`, ACTIVE_HINT)
+}
+
+function strayActiveError(
+  stray: string[],
+  otherMode: string,
+  pos: Pos,
+): TypeCheckError[] {
+  if (stray.length === 0) {
+    return []
+  }
+  const names = stray.map((key) => `\`${key}:\``).join(", ")
+  return [
+    kwargError(pos, `${names} need \`mode: "${otherMode}"\``, ACTIVE_HINT),
+  ]
+}
+
+function checkActiveValue(arg: Arg, pos: Pos): TypeCheckError[] {
+  if (arg.type !== "kwarg") {
+    return []
+  }
+  switch (arg.name) {
+    case "bicycle_type":
+      return checkBicycleType(arg.value, pos)
+    case "wheelchair":
+      return arg.value.kind === "bool"
+        ? []
+        : [
+            kwargError(
+              pos,
+              "`wheelchair:` must be `true` or `false`",
+              ACTIVE_HINT,
+            ),
+          ]
+    case "max_hiking_difficulty":
+      return checkHikingDifficulty(arg.value, pos)
+    default:
+      return checkActiveRange(arg.name, arg.value, pos)
+  }
+}
+
+function checkBicycleType(value: Expr, pos: Pos): TypeCheckError[] {
+  return value.kind === "string" && BICYCLE_TYPES.includes(value.value)
+    ? []
+    : [
+        kwargError(
+          pos,
+          `\`bicycle_type:\` must be one of ${quoted(BICYCLE_TYPES)}`,
+          ACTIVE_HINT,
+        ),
+      ]
+}
+
+// Whole numbers only; `3.0` counts, as in Elixir and in Plaza.
+function checkHikingDifficulty(value: Expr, pos: Pos): TypeCheckError[] {
+  const valid =
+    value.kind === "number" &&
+    Number.isInteger(value.value) &&
+    value.value >= 1 &&
+    value.value <= 6
+  return valid
+    ? []
+    : [
+        kwargError(
+          pos,
+          "`max_hiking_difficulty:` must be a whole number from 1 to 6",
+          "the hardest trail on the SAC scale: 1 hiking to 6 difficult alpine hiking",
+        ),
+      ]
+}
+
+function checkActiveRange(
+  name: string,
+  value: Expr,
+  pos: Pos,
+): TypeCheckError[] {
+  const range = ACTIVE_RANGES.get(name)
+  if (!range) {
+    return []
+  }
+  const [min, max, unit] = range
+  if (value.kind === "number" && value.value >= min && value.value <= max) {
+    return []
+  }
+  const suffix = unit ? ` (${unit})` : ""
+  return [
+    kwargError(
+      pos,
+      `\`${name}:\` must be a number from ${min} to ${max}${suffix}`,
+      ACTIVE_HINT,
+    ),
+  ]
 }
 
 const quoted = (values: string[]): string =>

@@ -1093,6 +1093,79 @@ defmodule PlazaQL.TypeCheckerTest do
     end
   end
 
+  describe "bicycle and pedestrian options" do
+    @route ~s|route(origin: point(40.71, -74.00), destination: point(40.75, -73.98)|
+
+    test "route, isochrone and matrix take rider options with mode bicycle" do
+      check!(
+        @route <>
+          ~s|, mode: "bicycle", bicycle_type: "road", cycling_speed: 24, use_roads: 0.2, use_hills: 0.1, avoid_bad_surfaces: 1);|
+      )
+
+      check!(~s|isochrone(center: point(40.71, -74.00), time: 600, mode: "bike", use_hills: 0);|)
+
+      check!(
+        ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "bicycle", bicycle_type: "mountain");|
+      )
+    end
+
+    test "route, isochrone and matrix take walker options with mode foot" do
+      check!(
+        @route <>
+          ~s|, mode: "foot", walking_speed: 4, use_hills: 0.5, use_lit: 1, walkway_factor: 0.8, sidewalk_factor: 0.9, step_penalty: 60, max_hiking_difficulty: 3.0, wheelchair: true);|
+      )
+
+      check!(
+        ~s|isochrone(center: point(40.71, -74.00), time: 600, mode: "walk", wheelchair: true);|
+      )
+    end
+
+    test "options need their mode" do
+      [error] = check_errors(@route <> ~s|, bicycle_type: "road");|)
+      assert error.message == ~s|`bicycle_type:` need `mode: "bicycle"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "auto", use_hills: 0.2);|)
+      assert error.message == ~s|`use_hills:` need `mode: "bicycle"` or `mode: "foot"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "bicycle", wheelchair: true);|)
+      assert error.message == ~s|`wheelchair:` need `mode: "foot"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "foot", use_roads: 0.5);|)
+      assert error.message == ~s|`use_roads:` need `mode: "bicycle"`|
+
+      # A mode from a variable is checked when the query runs.
+      check!(~s|$m = "bicycle"; | <> @route <> ~s|, mode: $m, use_roads: 0.5);|)
+    end
+
+    test "other computations have no bicycle or pedestrian options" do
+      [error] =
+        check_errors(
+          ~s|centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], mode: "foot", walking_speed: 4);|
+        )
+
+      assert error.message =~ "`centroid()` has no bicycle or pedestrian options"
+    end
+
+    test "values must be in range" do
+      [error] = check_errors(@route <> ~s|, mode: "bicycle", bicycle_type: "tandem");|)
+
+      assert error.message ==
+               ~s|`bicycle_type:` must be one of "road", "hybrid", "cross", "mountain"|
+
+      [error] = check_errors(@route <> ~s|, mode: "bicycle", use_roads: 2);|)
+      assert error.message == "`use_roads:` must be a number from 0 to 1"
+
+      [error] = check_errors(@route <> ~s|, mode: "foot", walking_speed: 20);|)
+      assert error.message == "`walking_speed:` must be a number from 1 to 10 (km/h)"
+
+      [error] = check_errors(@route <> ~s|, mode: "foot", max_hiking_difficulty: 2.5);|)
+      assert error.message == "`max_hiking_difficulty:` must be a whole number from 1 to 6"
+
+      [error] = check_errors(@route <> ~s|, mode: "foot", wheelchair: "yes");|)
+      assert error.message == "`wheelchair:` must be `true` or `false`"
+    end
+  end
+
   describe "transit options" do
     @route ~s|route(origin: point(40.71, -74.00), destination: point(40.75, -73.98)|
 
