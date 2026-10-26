@@ -822,6 +822,8 @@ $walk = isochrone(center: point(40.7484, -73.9856), time: 900, mode: "foot");
 search(dataset("census-tracts")).intersects($walk);
 ```
 
+Spatial methods combine: every one in a chain applies, so `search(node, amenity: "cafe").around(500, $home).within($city)` keeps cafes that are both near `$home` and inside `$city`. Two `.around()` calls keep what is near both points. A `#within(...)` or `#bbox(...)` directive applies on top of the chain's own spatial methods. `.bbox()` also takes keywords: `.bbox(south: 40.7, west: -74.0, north: 40.8, east: -73.9)`.
+
 `.within()` and `.not_within()` keep their type rule with variables: the variable must hold a `Boundary`, `Isochrone`, `Polygon` or `PolygonSet`. For a variable holding a general feature set (for example a `dataset(...)` search), use `.intersects($var)`.
 
 ### Tag Filter (Phase 3b)

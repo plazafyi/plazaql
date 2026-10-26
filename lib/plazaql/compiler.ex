@@ -360,10 +360,10 @@ defmodule PlazaQL.Compiler do
   defp apply_method(plan, {:method, :around, args, _pos}, _env) do
     case args do
       [{:posarg, {:number, distance, _}}, {:posarg, geom}] ->
-        %{plan | spatial_filter: around_filter(distance, geom)}
+        add_spatial(plan, around_filter(distance, geom))
 
       [{:kwarg, "distance", {:number, distance, _}}, {:kwarg, "geometry", geom}] ->
-        %{plan | spatial_filter: around_filter(distance, geom)}
+        add_spatial(plan, around_filter(distance, geom))
 
       other ->
         around_error!(other)
@@ -378,17 +378,20 @@ defmodule PlazaQL.Compiler do
         {:posarg, {:number, n, _}},
         {:posarg, {:number, e, _}}
       ] ->
-        %{plan | spatial_filter: {:bbox, s, w, n, e}}
+        add_spatial(plan, {:bbox, s, w, n, e})
 
-      _ ->
-        plan
+      kwargs when length(kwargs) == 4 ->
+        add_spatial(plan, bbox_from_keywords(kwargs))
+
+      other ->
+        argument_error!("bbox(south, west, north, east) numbers", other)
     end
   end
 
   defp apply_method(plan, {:method, :h3, args, _pos}, _env) do
     case args do
-      [{:posarg, {:string, cell, _}}] -> %{plan | spatial_filter: {:h3, cell}}
-      _ -> plan
+      [{:posarg, {:string, cell, _}}] -> add_spatial(plan, {:h3, cell})
+      other -> argument_error!("an H3 cell string", other)
     end
   end
 
@@ -396,7 +399,7 @@ defmodule PlazaQL.Compiler do
        when method_name in @predicate_methods do
     geometry = extract_geometry_arg(args)
 
-    %{plan | spatial_filter: {:predicate, method_name, geometry}}
+    add_spatial(plan, {:predicate, method_name, geometry})
   end
 
   # -- Transform methods --
@@ -872,6 +875,29 @@ defmodule PlazaQL.Compiler do
         )
     end
   end
+
+  # `.bbox(south: s, west: w, north: n, east: e)`, in any order.
+  defp bbox_from_keywords(kwargs) do
+    # Directive arguments arrive as tag filters: `#bbox(south: 47.0, ...)`.
+    values =
+      Map.new(kwargs, fn
+        {:kwarg, key, {:number, v, _}} -> {key, v}
+        {:posarg, {:eq_num, key, v}} -> {key, v}
+        other -> {other, nil}
+      end)
+
+    case values do
+      %{"south" => s, "west" => w, "north" => n, "east" => e} -> {:bbox, s, w, n, e}
+      _ -> argument_error!("south:, west:, north: and east: numbers", kwargs)
+    end
+  end
+
+  # Every spatial method ANDs: the first becomes `spatial_filter`, later ones
+  # (and directive filters the methods add to) go to `spatial_filters`.
+  defp add_spatial(%Plan{spatial_filter: nil} = plan, filter), do: %{plan | spatial_filter: filter}
+
+  defp add_spatial(%Plan{spatial_filters: filters} = plan, filter),
+    do: %{plan | spatial_filters: filters ++ [filter]}
 
   defp around_filter(distance, {:point, lat, lng, _}), do: {:around, lat, lng, distance}
   defp around_filter(distance, {:var_ref, "$" <> name, _}), do: {:around_set, name, distance}

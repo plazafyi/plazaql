@@ -134,6 +134,7 @@ defmodule PlazaQL.Plan do
           element_types: [element_type()],
           tag_filters: [tag_filter()],
           spatial_filter: spatial_filter() | nil,
+          spatial_filters: [spatial_filter()],
           scope_geometry: spatial_filter() | nil,
           osm_ids: [integer()] | nil,
           metadata_filters: [metadata_filter()],
@@ -162,6 +163,9 @@ defmodule PlazaQL.Plan do
   defstruct element_types: [:node, :way, :relation],
             tag_filters: [],
             spatial_filter: nil,
+            # Further spatial methods, ANDed with `spatial_filter`
+            # (`.around(...).within(...)`).
+            spatial_filters: [],
             scope_geometry: nil,
             osm_ids: nil,
             metadata_filters: [],

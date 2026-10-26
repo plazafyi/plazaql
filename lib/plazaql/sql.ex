@@ -195,8 +195,8 @@ defmodule PlazaQL.SQL do
       "WHERE EXISTS (SELECT 1 FROM #{cte_name} i WHERE i.#{id} = b.#{id} AND i.__type__ = b.__type__)"
   end
 
-  defp inherit_spatial(%Plan{spatial_filter: nil} = sub, %Plan{spatial_filter: parent_spatial}) do
-    %{sub | spatial_filter: parent_spatial}
+  defp inherit_spatial(%Plan{spatial_filter: nil} = sub, %Plan{} = parent) do
+    %{sub | spatial_filter: parent.spatial_filter, spatial_filters: parent.spatial_filters}
   end
 
   defp inherit_spatial(sub, _parent), do: sub

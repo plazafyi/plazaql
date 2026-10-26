@@ -272,7 +272,10 @@ defmodule PlazaQL.RestParityTest do
         search(node, amenity: "cafe").around($radius, $center).within($nyc);
         """)
 
-      assert [%{spatial_filter: {:predicate, :within, {:set_ref, "nyc"}}}] = result.plans
+      # Both spatial methods apply.
+      assert [plan] = result.plans
+      assert plan.spatial_filter == {:around, 40.7128, -74.006, 500}
+      assert plan.spatial_filters == [{:predicate, :within, {:set_ref, "nyc"}}]
     end
 
     test "geometry variables don't become steps" do
