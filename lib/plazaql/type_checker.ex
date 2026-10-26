@@ -1194,12 +1194,20 @@ defmodule PlazaQL.TypeChecker do
   # transit options (`mode: "transit"`), checked by check_transit_kwargs/3.
   @transit_option_kwargs ~w(use_bus use_rail use_transfers max_walk_m max_transfers)
 
-  # bicycle options (`mode: "bicycle"`) and pedestrian options
-  # (`mode: "foot"`), checked by check_active_kwargs/3. `use_hills` is both.
+  # bicycle options (`mode: "bicycle"`), pedestrian options (`mode: "foot"`),
+  # motorcycle options (`mode: "motorcycle"`) and motor scooter options
+  # (`mode: "motor_scooter"`), checked by check_active_kwargs/3. `use_hills`
+  # belongs to bicycle, foot and motor_scooter.
   @bicycle_option_kwargs ~w(bicycle_type cycling_speed use_roads use_hills avoid_bad_surfaces)
   @pedestrian_option_kwargs ~w(walking_speed use_hills use_lit walkway_factor sidewalk_factor
                                step_penalty max_hiking_difficulty wheelchair)
-  @active_option_kwargs Enum.uniq(@bicycle_option_kwargs ++ @pedestrian_option_kwargs)
+  @motorcycle_option_kwargs ~w(style use_trails use_curves)
+  @motor_scooter_option_kwargs ~w(use_primary use_hills)
+  @active_option_kwargs Enum.uniq(
+                          @bicycle_option_kwargs ++
+                            @pedestrian_option_kwargs ++
+                            @motorcycle_option_kwargs ++ @motor_scooter_option_kwargs
+                        )
 
   # Road costing options (Plaza's REST costing options), checked by
   # check_costing_kwargs/2. Plaza checks which modes take which.
@@ -1324,7 +1332,8 @@ defmodule PlazaQL.TypeChecker do
     do: ~s|e.g. `location_types: ["break", "through", "break"]`, `headings: "90;;"`|
 
   defp costing_hint("recostings"),
-    do: ~s|each "name: key=value, ...", with an optional mode=auto, foot or bicycle|
+    do:
+      ~s|each "name: key=value, ...", with an optional mode=auto, foot, bicycle, motorcycle or motor_scooter|
 
   defp costing_hint(_key),
     do: ~s|e.g. `route(origin: ..., destination: ..., use_tolls: 0, top_speed: 100)`|
@@ -2067,16 +2076,24 @@ defmodule PlazaQL.TypeChecker do
       )
 
   # route(), isochrone() and matrix() with `mode: "bicycle"` take the
-  # rider options of Plaza's POST /route `bicycle` object as keywords, and
-  # with `mode: "foot"` the walker options of its `pedestrian` object.
-  # `use_hills` belongs to whichever mode is set. Plaza checks the same
-  # ranges again.
+  # rider options of Plaza's POST /route `bicycle` object as keywords, with
+  # `mode: "foot"` the walker options of its `pedestrian` object, with
+  # `mode: "motorcycle"` its `motorcycle` object and with
+  # `mode: "motor_scooter"` its `motor_scooter` object. `use_hills` belongs
+  # to whichever mode is set. Plaza checks the same ranges again.
 
   @active_computations [:route, :isochrone, :matrix]
-  @bicycle_modes ~w(bicycle bike)
-  @foot_modes ~w(foot walk)
   @bicycle_types ~w(road hybrid cross mountain)
-  @active_hint ~s|e.g. `route(origin: ..., destination: ..., mode: "bicycle", bicycle_type: "road", use_hills: 0.2)` or `route(..., mode: "foot", walking_speed: 4, wheelchair: true)`|
+  @motorcycle_styles ~w(touring adventure)
+  @active_hint ~s|e.g. `route(origin: ..., destination: ..., mode: "bicycle", bicycle_type: "road", use_hills: 0.2)`, `route(..., mode: "foot", walking_speed: 4, wheelchair: true)` or `route(..., mode: "motorcycle", style: "adventure")`|
+
+  # {canonical mode, mode literals, option keywords}, in message order.
+  @active_families [
+    {"bicycle", ~w(bicycle bike), @bicycle_option_kwargs},
+    {"foot", ~w(foot walk), @pedestrian_option_kwargs},
+    {"motorcycle", ~w(motorcycle motorbike), @motorcycle_option_kwargs},
+    {"motor_scooter", ~w(motor_scooter scooter moped), @motor_scooter_option_kwargs}
+  ]
 
   # {min, max} for the numeric options.
   @active_ranges %{
@@ -2088,7 +2105,10 @@ defmodule PlazaQL.TypeChecker do
     "use_lit" => {0, 1, nil},
     "walkway_factor" => {0.1, 10, nil},
     "sidewalk_factor" => {0.1, 10, nil},
-    "step_penalty" => {0, 3600, "seconds"}
+    "step_penalty" => {0, 3600, "seconds"},
+    "use_trails" => {0, 1, nil},
+    "use_curves" => {0, 1, nil},
+    "use_primary" => {0, 1, nil}
   }
 
   defp check_active_kwargs(comp_type, opts, pos) do
@@ -2108,13 +2128,10 @@ defmodule PlazaQL.TypeChecker do
     keys = Enum.map(active_opts, fn {:kwarg, key, _} -> key end)
 
     case Enum.find(opts, &match?({:kwarg, "mode", _}, &1)) do
-      {:kwarg, "mode", {:string, mode, _}} when mode in @bicycle_modes ->
-        stray_active_error(keys -- @bicycle_option_kwargs, "foot", pos)
+      {:kwarg, "mode", {:string, mode, _}} ->
+        active_mode_error(keys -- mode_option_kwargs(mode), pos)
 
-      {:kwarg, "mode", {:string, mode, _}} when mode in @foot_modes ->
-        stray_active_error(keys -- @pedestrian_option_kwargs, "bicycle", pos)
-
-      {:kwarg, "mode", {literal, _, _}} when literal in [:string, :atom] ->
+      {:kwarg, "mode", {:atom, _, _}} ->
         active_mode_error(keys, pos)
 
       {:kwarg, "mode", _} ->
@@ -2127,39 +2144,65 @@ defmodule PlazaQL.TypeChecker do
 
   defp check_active_usage(comp_type, _opts, _active_opts, pos) do
     route_option_error(
-      ~s|`#{comp_type}()` has no bicycle or pedestrian options; they apply to `route()`, `isochrone()` and `matrix()` with `mode: "bicycle"` or `mode: "foot"`|,
+      ~s|`#{comp_type}()` has no bicycle, pedestrian or motorcycle options; they apply to `route()`, `isochrone()` and `matrix()` with `mode: "bicycle"`, `"foot"`, `"motorcycle"` or `"motor_scooter"`|,
       @active_hint,
       pos
     )
   end
 
-  defp stray_active_error([], _other_mode, _pos), do: []
-
-  defp stray_active_error(stray, other_mode, pos) do
-    route_option_error(
-      "#{Enum.map_join(stray, ", ", &"`#{&1}:`")} need `mode: \"#{other_mode}\"`",
-      @active_hint,
-      pos
-    )
+  # The option keywords of a mode literal ([] for a mode without any).
+  defp mode_option_kwargs(mode) do
+    case Enum.find(@active_families, fn {_, literals, _} -> mode in literals end) do
+      {_, _, accepted} -> accepted
+      nil -> []
+    end
   end
+
+  # The modes that take every one of `keys` (else those taking any of them).
+  defp active_mode_error([], _pos), do: []
 
   defp active_mode_error(keys, pos) do
-    bicycle? = Enum.all?(keys, &(&1 in @bicycle_option_kwargs))
-    foot? = Enum.all?(keys, &(&1 in @pedestrian_option_kwargs))
+    keys = Enum.uniq(keys)
 
-    mode =
-      case {bicycle?, foot?} do
-        {true, true} -> ~s|`mode: "bicycle"` or `mode: "foot"`|
-        {true, false} -> ~s|`mode: "bicycle"`|
-        _ -> ~s|`mode: "foot"`|
+    all =
+      for {mode, _, accepted} <- @active_families,
+          Enum.all?(keys, &(&1 in accepted)),
+          do: mode
+
+    modes =
+      case all do
+        [] ->
+          for {mode, _, accepted} <- @active_families, Enum.any?(keys, &(&1 in accepted)), do: mode
+
+        modes ->
+          modes
       end
 
     route_option_error(
-      "#{Enum.map_join(Enum.uniq(keys), ", ", &"`#{&1}:`")} need #{mode}",
+      "#{Enum.map_join(keys, ", ", &"`#{&1}:`")} need #{join_modes(modes)}",
       @active_hint,
       pos
     )
   end
+
+  defp join_modes([mode]), do: ~s|`mode: "#{mode}"`|
+
+  defp join_modes(modes) do
+    quoted = Enum.map(modes, &~s|`mode: "#{&1}"`|)
+    Enum.join(Enum.drop(quoted, -1), ", ") <> " or " <> List.last(quoted)
+  end
+
+  defp check_active_value({:kwarg, "style", {:string, style, _}}, _pos)
+       when style in @motorcycle_styles,
+       do: []
+
+  defp check_active_value({:kwarg, "style", _}, pos),
+    do:
+      route_option_error(
+        "`style:` must be one of #{Enum.map_join(@motorcycle_styles, ", ", &inspect/1)}",
+        ~s|"touring" (direct, paved) or "adventure" (curvy roads, tracks OK)|,
+        pos
+      )
 
   defp check_active_value({:kwarg, "bicycle_type", {:string, type, _}}, _pos)
        when type in @bicycle_types,

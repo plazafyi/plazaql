@@ -488,13 +488,42 @@ describe("PlazaQL Type Checker", () => {
         '`bicycle_type:` need `mode: "bicycle"`'
       );
       expect(messages(`$$ = route(${route}, mode: "auto", use_hills: 0.2);`)).toContain(
-        '`use_hills:` need `mode: "bicycle"` or `mode: "foot"`'
+        '`use_hills:` need `mode: "bicycle"`, `mode: "foot"` or `mode: "motor_scooter"`'
       );
       expect(messages(`$$ = route(${route}, mode: "bicycle", wheelchair: true);`)).toContain(
         '`wheelchair:` need `mode: "foot"`'
       );
       expect(messages(`$$ = route(${route}, mode: "foot", use_roads: 0.5);`)).toContain(
         '`use_roads:` need `mode: "bicycle"`'
+      );
+    });
+
+    it("accepts motorcycle and motor scooter options", () => {
+      for (const src of [
+        `$$ = route(${route}, mode: "motorcycle", style: "adventure", use_trails: 0.7, use_curves: 0.9, use_tolls: 0, top_speed: 110);`,
+        '$$ = isochrone(center: point(40.71, -74.00), time: 600, mode: "motorbike", use_trails: 1);',
+        `$$ = route(${route}, mode: "motor_scooter", use_primary: 0.1, use_hills: 0, top_speed: 60);`,
+        '$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "moped", use_hills: 0.3);',
+      ]) {
+        expect(check(src).errors).toHaveLength(0);
+      }
+    });
+
+    it("checks motorcycle and motor scooter options", () => {
+      expect(messages(`$$ = route(${route}, style: "adventure");`)).toContain(
+        '`style:` need `mode: "motorcycle"`'
+      );
+      expect(messages(`$$ = route(${route}, mode: "motorcycle", use_primary: 0.5);`)).toContain(
+        '`use_primary:` need `mode: "motor_scooter"`'
+      );
+      expect(messages(`$$ = route(${route}, mode: "scooter", use_curves: 0.5);`)).toContain(
+        '`use_curves:` need `mode: "motorcycle"`'
+      );
+      expect(messages(`$$ = route(${route}, mode: "motorcycle", style: "sport");`)).toContain(
+        '`style:` must be one of "touring", "adventure"'
+      );
+      expect(messages(`$$ = route(${route}, mode: "motorcycle", use_trails: 2);`)).toContain(
+        "`use_trails:` must be a number from 0 to 1"
       );
     });
 
@@ -507,7 +536,7 @@ describe("PlazaQL Type Checker", () => {
         '$$ = centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], mode: "foot", walking_speed: 4);'
       );
       expect(
-        result.errors.some((e) => e.message.includes("`centroid()` has no bicycle or pedestrian options"))
+        result.errors.some((e) => e.message.includes("`centroid()` has no bicycle, pedestrian or motorcycle options"))
       ).toBe(true);
     });
 

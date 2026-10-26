@@ -1120,12 +1120,48 @@ defmodule PlazaQL.TypeCheckerTest do
       )
     end
 
+    test "route, isochrone and matrix take motorcycle and motor scooter options" do
+      check!(
+        @route <>
+          ~s|, mode: "motorcycle", style: "touring", use_trails: 0, use_curves: 1, use_tolls: 0, top_speed: 110);|
+      )
+
+      check!(
+        ~s|isochrone(center: point(40.71, -74.00), time: 600, mode: "motorbike", use_trails: 1);|
+      )
+
+      check!(@route <> ~s|, mode: "motor_scooter", use_primary: 0.1, use_hills: 0, top_speed: 60);|)
+
+      check!(
+        ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "moped", use_hills: 0.3);|
+      )
+    end
+
+    test "motorcycle and motor scooter options need their mode and range" do
+      [error] = check_errors(@route <> ~s|, style: "adventure");|)
+      assert error.message == ~s|`style:` need `mode: "motorcycle"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "motorcycle", use_primary: 0.5);|)
+      assert error.message == ~s|`use_primary:` need `mode: "motor_scooter"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "scooter", use_curves: 0.5);|)
+      assert error.message == ~s|`use_curves:` need `mode: "motorcycle"`|
+
+      [error] = check_errors(@route <> ~s|, mode: "motorcycle", style: "sport");|)
+      assert error.message =~ ~s|`style:` must be one of "touring", "adventure"|
+
+      [error] = check_errors(@route <> ~s|, mode: "motorcycle", use_trails: 2);|)
+      assert error.message =~ "use_trails"
+    end
+
     test "options need their mode" do
       [error] = check_errors(@route <> ~s|, bicycle_type: "road");|)
       assert error.message == ~s|`bicycle_type:` need `mode: "bicycle"`|
 
       [error] = check_errors(@route <> ~s|, mode: "auto", use_hills: 0.2);|)
-      assert error.message == ~s|`use_hills:` need `mode: "bicycle"` or `mode: "foot"`|
+
+      assert error.message ==
+               ~s|`use_hills:` need `mode: "bicycle"`, `mode: "foot"` or `mode: "motor_scooter"`|
 
       [error] = check_errors(@route <> ~s|, mode: "bicycle", wheelchair: true);|)
       assert error.message == ~s|`wheelchair:` need `mode: "foot"`|
@@ -1137,13 +1173,13 @@ defmodule PlazaQL.TypeCheckerTest do
       check!(~s|$m = "bicycle"; | <> @route <> ~s|, mode: $m, use_roads: 0.5);|)
     end
 
-    test "other computations have no bicycle or pedestrian options" do
+    test "other computations have no bicycle, pedestrian or motorcycle options" do
       [error] =
         check_errors(
           ~s|centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], mode: "foot", walking_speed: 4);|
         )
 
-      assert error.message =~ "`centroid()` has no bicycle or pedestrian options"
+      assert error.message =~ "`centroid()` has no bicycle, pedestrian or motorcycle options"
     end
 
     test "values must be in range" do
