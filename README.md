@@ -370,7 +370,7 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 | `annotations`   | boolean         | Per-edge duration and distance arrays (optional)                            |
 | `depart_at`     | string          | ISO 8601 departure time or `"now"`, for time-of-day traffic (optional)      |
 | `traffic_model` | string          | `"best_guess"` (default), `"optimistic"`, `"pessimistic"`; needs `depart_at` (optional) |
-| `exclude`       | string[]/string | Road types to avoid: `"toll"`, `"ferry"`, `"unpaved"`, `"motorway"`, `"trunk"`, `"primary"`, `"secondary"`, `"tertiary"`; a list or a comma-separated string (optional) |
+| `exclude`       | string[]/string | Road types to avoid: `"toll"`, `"cash_only_tolls"` (roads through a toll booth that takes only cash), `"ferry"`, `"unpaved"`, `"motorway"`, `"trunk"`, `"primary"`, `"secondary"`, `"tertiary"`; a list or a comma-separated string (optional). `isochrone()` and `matrix()` take it too |
 | `steps`         | boolean         | Include turn-by-turn steps in `properties.steps` (optional, default `false`) |
 | `lang`          | string          | BCP 47 language tag for step instructions (optional, default `"en"`); see below |
 | `units`         | string          | `"km"` or `"mi"` for distances inside instructions (optional); defaults to `"mi"` when the `lang` region is US, GB, LR or MM, otherwise `"km"` |
@@ -576,6 +576,7 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 | `top_speed`, `fixed_speed` | integer | The [speed overrides](#costing-options), as in `route()` (optional) |
 | `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` is a list (optional) |
 | `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` is a list (optional) |
+| `exclude` | string[]/string | Road types to leave out, as in `route()` (optional; not with `mode: "transit"`) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 
 ### `geocode(address)` / `geocode(address:, locality:, ...)`
@@ -734,6 +735,7 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 | `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"motorcycle"`, `"motor_scooter"` (optional) |
 | `annotations`  | string or string[] | `"duration"` (always) and `"distance"` (optional) |
 | `fallback_speed` | number | km/h used to estimate pairs with no route, which are otherwise null (optional) |
+| `exclude`      | string[]/string | Road types to leave out, as in `route()` (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 | the [costing options](#costing-options) | | As in `route()`; durations stay travel time (optional) |
 

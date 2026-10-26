@@ -17,6 +17,8 @@ First Hex release of the PlazaQL Elixir package.
   `matrix()`, with the keywords `style`, `use_trails` and `use_curves`
   (motorcycle) and `use_primary` and `use_hills` (motor scooter). The type
   checker and the LSP reject them without their mode or out of range.
+- `exclude: "cash_only_tolls"` (roads through toll booths that take only
+  cash), and `isochrone()` and `matrix()` take `exclude` like `route()`.
 - `optimize()`, `centroid()`, `expansion()` and `map_match()` take every
   vehicle mode too: the truck keywords with `mode: "truck"` and the bicycle,
   pedestrian, motorcycle and scooter keywords with their modes, as
