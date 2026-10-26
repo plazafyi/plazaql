@@ -246,3 +246,10 @@ optimize(
   mode: "truck",
   height: 4.2
 );
+
+// Route over your own private roads as well as OSM's (a campus dataset)
+route(
+  origin: point(37.4275, -122.1697),
+  destination: point(37.4300, -122.1730),
+  datasets: ["campus-roads"]
+);

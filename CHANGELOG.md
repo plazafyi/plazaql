@@ -19,6 +19,10 @@ First Hex release of the PlazaQL Elixir package.
   checker and the LSP reject them without their mode or out of range.
 - `exclude: "cash_only_tolls"` (roads through toll booths that take only
   cash), and `isochrone()` and `matrix()` take `exclude` like `route()`.
+- `datasets:` on `route()`, `ev_route()`, `isochrone()`, `matrix()` and
+  `map_match()`: datasets whose roads Plaza routes over as well as OSM's
+  (REST `datasets` on the routing endpoints). `avoid_datasets:` stays the
+  areas to keep out of. LSP signatures list it.
 - `optimize()`, `centroid()`, `expansion()` and `map_match()` take every
   vehicle mode too: the truck keywords with `mode: "truck"` and the bicycle,
   pedestrian, motorcycle and scooter keywords with their modes, as

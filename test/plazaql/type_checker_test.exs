@@ -1540,14 +1540,33 @@ defmodule PlazaQL.TypeCheckerTest do
       )
     end
 
+    test "datasets: names the roads routing computations also route over" do
+      check!(
+        ~s|route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: ["campus-roads"]);|
+      )
+
+      check!(
+        ~s|ev_route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: "campus-roads");|
+      )
+
+      check!(~s|isochrone(center: point(38.8, -77.1), time: 600, datasets: ["campus-roads"]);|)
+
+      check!(
+        ~s|matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], datasets: ["a"]);|
+      )
+
+      check!(
+        ~s|map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["campus-roads"]);|
+      )
+    end
+
     test "dataset keywords are rejected on computations that don't take them" do
       [error] =
         check_errors(
-          ~s|route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: ["x"]);|
+          ~s|optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["x"]);|
         )
 
-      assert error.message == "`route()` does not accept `datasets:`"
-      assert error.hint =~ "`avoid_datasets:`"
+      assert error.message == "`optimize()` does not accept `datasets:`"
 
       [error] = check_errors(~s|geocode("Main St", avoid_datasets: ["x"]);|)
       assert error.message == "`geocode()` does not accept `avoid_datasets:`"

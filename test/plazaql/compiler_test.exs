@@ -851,6 +851,20 @@ defmodule PlazaQL.CompilerTest do
         )
 
       assert {:matrix, %{avoid_datasets: ["a", "b"]}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: ["campus-roads"]);|
+        )
+
+      assert {:route, %{datasets: ["campus-roads"]}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], datasets: "campus-roads");|
+        )
+
+      assert {:map_match, %{datasets: "campus-roads"}} = plan.computation
     end
 
     test "place_lookup collects positional GIDs and ids: into ids" do
