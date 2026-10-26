@@ -178,13 +178,19 @@ defmodule PlazaQL.SQL.WhereTest do
   end
 
   describe "tag filter: bracket_eq" do
-    test "generates placeholder bracket reference" do
+    test "must be resolved to values before SQL generation" do
       p = plan(%{tag_filters: [{:bracket_eq, "ref", "routes", "ref"}]})
-      {sql, params, _} = Where.build_where(p, @default_schema)
 
-      assert sql =~ "tags ? $1"
-      assert sql =~ "tags->>$2 = $3"
-      assert params == ["ref", "ref", "__bracket_ref__"]
+      assert_raise PlazaQL.NotCompilable, ~r/\$routes\[ref\]/, fn ->
+        Where.build_where(p, @default_schema)
+      end
+    end
+  end
+
+  describe "tag filter: wildcard" do
+    test "key: * is an existence check" do
+      p = plan(%{tag_filters: [{:eq, "amenity", "*"}]})
+      assert {"WHERE tags ? $1", ["amenity"], 2} = Where.build_where(p, @default_schema)
     end
   end
 
@@ -282,9 +288,13 @@ defmodule PlazaQL.SQL.WhereTest do
       p = plan(%{spatial_filter: {:around_set_resolved, ewkts, 500.0}})
       {sql, params, _} = Where.build_where(p, @default_schema)
 
-      assert sql =~ "ST_DWithin"
-      assert sql =~ "ST_GeomFromEWKT($1)"
-      assert [collection_wkt, 500.0] = params
+      # Index-friendly bounding-box prefilter, then the exact distance test
+      assert sql =~ "geom && ST_Expand(ST_GeomFromEWKT($1), $2 / GREATEST(cos(radians("
+      assert sql =~ "ST_DWithin(geom::geography, ST_GeomFromEWKT($1)::geography, $3)"
+      # One parameter for the collection, used everywhere
+      assert [collection_wkt, radius_deg, 500.0] = params
+
+      assert radius_deg == 500.0 / 110_000.0
       assert collection_wkt =~ "GEOMETRYCOLLECTION"
       assert collection_wkt =~ "POINT(2.0 48.0)"
     end
@@ -296,7 +306,8 @@ defmodule PlazaQL.SQL.WhereTest do
       p = plan(%{spatial_filter: {:predicate, :within, geom}})
       {sql, params, _} = Where.build_where(p, @default_schema)
 
-      assert sql =~ "ST_Within(geom, ST_GeomFromEWKT($1))"
+      # `within` includes the boundary (ST_CoveredBy, not ST_Within)
+      assert sql =~ "ST_CoveredBy(geom, ST_GeomFromEWKT($1))"
       refute sql =~ "NOT"
       assert [ewkt] = params
       assert ewkt =~ "SRID=4326;POINT(2.3522 48.8566)"
@@ -352,6 +363,73 @@ defmodule PlazaQL.SQL.WhereTest do
       {_sql, [ewkt], _} = Where.build_where(p, @default_schema)
 
       assert ewkt =~ "POLYGON"
+    end
+
+    test "polygon geometry keeps its holes" do
+      outer = [{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 0.0}]
+      hole = [{1.0, 1.0}, {2.0, 1.0}, {2.0, 2.0}, {1.0, 1.0}]
+      p = plan(%{spatial_filter: {:predicate, :intersects, {:polygon, [outer, hole]}}})
+      {_sql, [ewkt], _} = Where.build_where(p, @default_schema)
+
+      assert ewkt ==
+               "SRID=4326;POLYGON((0.0 0.0, 4.0 0.0, 4.0 4.0, 0.0 0.0), (1.0 1.0, 2.0 1.0, 2.0 2.0, 1.0 1.0))"
+    end
+
+    test "caller-resolved geometry passes its EWKT as a parameter" do
+      ewkt = "SRID=4326;MULTIPOLYGON(((0 0,1 0,1 1,0 0)))"
+      p = plan(%{spatial_filter: {:predicate, :intersects, {:ewkt, ewkt}}})
+
+      assert {"WHERE ST_Intersects(geom, ST_GeomFromEWKT($1))", [^ewkt], 2} =
+               Where.build_where(p, @default_schema)
+    end
+
+    test "a radius buffers the reference geometry" do
+      p = plan(%{spatial_filter: {:predicate, :within, {:point, 2.0, 48.0}, 250.0}})
+      {sql, params, next} = Where.build_where(p, @default_schema)
+
+      assert sql ==
+               "WHERE ST_CoveredBy(geom, ST_Buffer(ST_GeomFromEWKT($1)::geography, $2)::geometry)"
+
+      assert params == ["SRID=4326;POINT(2.0 48.0)", 250.0]
+      assert next == 3
+    end
+
+    test "negated predicate with a radius" do
+      p = plan(%{spatial_filter: {:predicate, :not_intersects, {:point, 2.0, 48.0}, 10}})
+      {sql, _params, _} = Where.build_where(p, @default_schema)
+
+      assert sql =~ "NOT ST_Intersects(geom, ST_Buffer("
+    end
+
+    test "around a geometry is a distance test" do
+      p = plan(%{spatial_filter: {:predicate, :around, {:point, 2.0, 48.0}, 300}})
+      {sql, params, _} = Where.build_where(p, @default_schema)
+
+      assert sql == "WHERE ST_DWithin(geom::geography, ST_GeomFromEWKT($1)::geography, $2)"
+      assert params == ["SRID=4326;POINT(2.0 48.0)", 300]
+    end
+
+    test "around a geometry without a radius is an intersection" do
+      p = plan(%{spatial_filter: {:predicate, :around, {:point, 2.0, 48.0}, nil}})
+      {sql, _params, _} = Where.build_where(p, @default_schema)
+
+      assert sql == "WHERE ST_Intersects(geom, ST_GeomFromEWKT($1))"
+    end
+
+    test "an unresolved set reference is not compilable" do
+      p = plan(%{spatial_filter: {:predicate, :within, {:set_ref, "area"}}})
+
+      assert_raise PlazaQL.NotCompilable, ~r/resolved by the executor/, fn ->
+        Where.build_where(p, @default_schema)
+      end
+    end
+
+    test "an unresolved set filter is not compilable" do
+      p = plan(%{spatial_filter: {:boundary_set, "area"}})
+
+      assert_raise PlazaQL.NotCompilable, ~r/resolved by the executor/, fn ->
+        Where.build_where(p, @default_schema)
+      end
     end
   end
 
@@ -422,12 +500,17 @@ defmodule PlazaQL.SQL.WhereTest do
   # ── Boundary filter ─────────────────────────────────────────────
 
   describe "boundary filter" do
-    test "adds boundary tag check when :boundary in element_types" do
-      p = plan(%{element_types: [:relation, :boundary]})
+    test "adds boundary tag check to the boundary branch" do
+      p = plan(%{element_types: [:boundary]})
       {sql, params, _} = Where.build_where(p, @default_schema)
 
       assert sql =~ "tags ? 'boundary'"
       assert params == []
+    end
+
+    test "other branches of the plan don't get the boundary check" do
+      p = plan(%{element_types: [:relation, :boundary]})
+      assert {"", [], 1} = Where.build_where(p, @default_schema)
     end
 
     test "no boundary check without :boundary type" do

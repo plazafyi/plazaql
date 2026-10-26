@@ -68,7 +68,7 @@ defmodule PlazaQL.SQL.Expression do
   # ── Tag access ────────────────────────────────────────────────────
 
   def to_sql({:tag_access, key, _pos}, schema, idx) do
-    col = schema.columns.tags
+    col = Schema.filter_tags_column(schema)
     {"#{col} ->> $#{idx}", [key], idx + 1}
   end
 
@@ -88,8 +88,10 @@ defmodule PlazaQL.SQL.Expression do
     {"ST_X(#{geom})", [], idx}
   end
 
+  # type() is bound to the branch's type before SQL generation
+  # (PlazaQL.SQL.Branch.bind_type/2).
   def to_sql({:prop_access, :type, _pos}, _schema, _idx) do
-    raise ArgumentError, "type property cannot be converted to SQL"
+    raise ArgumentError, "type property cannot be converted to SQL outside a branch"
   end
 
   # ── Geometry functions ────────────────────────────────────────────
@@ -116,7 +118,17 @@ defmodule PlazaQL.SQL.Expression do
         "distance() references set #{inspect(name)}, which must be resolved by the executor before SQL generation"
   end
 
-  def to_sql({:geom_func, :distance, {lat, lng}, _pos}, schema, idx) do
+  # distance($var) after the caller resolved the variable to a geometry.
+  # Must precede the {lat, lng} clause, which a 2-tuple also matches.
+  def to_sql({:geom_func, :distance, {:ewkt, ewkt}, _pos}, schema, idx) when is_binary(ewkt) do
+    geom = schema.columns.geometry
+
+    {"ST_Distance(ST_Centroid(#{geom})::geography, ST_GeomFromEWKT($#{idx})::geography)", [ewkt],
+     idx + 1}
+  end
+
+  def to_sql({:geom_func, :distance, {lat, lng}, _pos}, schema, idx)
+      when is_number(lat) and is_number(lng) do
     geom = schema.columns.geometry
     srid = schema.srid
 
@@ -126,9 +138,16 @@ defmodule PlazaQL.SQL.Expression do
     {sql, [lng, lat], idx + 2}
   end
 
-  def to_sql({:geom_func, :overlap_fraction, {:polygon, rings}, _pos}, schema, idx) do
-    geom = schema.columns.geometry
+  def to_sql({:geom_func, :overlap_fraction, {:polygon, rings}, pos}, schema, idx) do
     ewkt = GeometryRef.polygon_ewkt(rings, schema.srid)
+    to_sql({:geom_func, :overlap_fraction, {:ewkt, ewkt}, pos}, schema, idx)
+  end
+
+  # Fraction of each row's area inside the reference geometry (0..1); NULL
+  # for rows without area (points, lines).
+  def to_sql({:geom_func, :overlap_fraction, {:ewkt, ewkt}, _pos}, schema, idx)
+      when is_binary(ewkt) do
+    geom = schema.columns.geometry
 
     sql =
       "(ST_Area(ST_Intersection(#{geom}, ST_MakeValid(ST_GeomFromEWKT($#{idx})))::geography) / NULLIF(ST_Area(#{geom}::geography), 0))"
@@ -151,8 +170,16 @@ defmodule PlazaQL.SQL.Expression do
       raise ArgumentError, "elevation_table must be set in schema for elevation expressions"
     end
 
+    # With several rasters over a point, prefer one with a value, then the
+    # finest resolution.
+    order =
+      case schema.elevation_resolution_column do
+        nil -> ""
+        res -> " ORDER BY ST_Value(r.rast, ST_Centroid(#{geom}), true) IS NULL, r.#{res}"
+      end
+
     sql =
-      "(SELECT ST_Value(r.rast, ST_Centroid(#{geom}), true) FROM #{elev} r WHERE ST_Intersects(r.rast, ST_Centroid(#{geom})) LIMIT 1)"
+      "(SELECT ST_Value(r.rast, ST_Centroid(#{geom}), true) FROM #{elev} r WHERE ST_Intersects(r.rast, ST_Centroid(#{geom}))#{order} LIMIT 1)"
 
     {sql, [], idx}
   end

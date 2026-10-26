@@ -8,13 +8,22 @@ defmodule PlazaQL do
         → Parser.parse/1      (AST)
         → TypeChecker.check/1 (validated AST)
         → Compiler.compile/2  (Plan IR)
-        → SQL.to_sql/2        (parameterized SQL)
+        → SQL.to_sql/2        (one parameterized SQL statement)
+          or SQL.branches/2   (one statement per element type or source)
 
   Each stage can be called independently or via the convenience functions here.
 
   For the common case of source → SQL, use `query/2`:
 
-      {:ok, %PlazaQL.Query{sql: sql, params: params}} = PlazaQL.query("node[amenity=cafe].bbox(40,-74,41,-73)")
+      {:ok, %PlazaQL.Query{sql: sql, params: params}} =
+        PlazaQL.query(~s|search(node, amenity: "cafe").bbox(40.0, -74.0, 41.0, -73.0);|)
+
+      {:ok, result} = Postgrex.query(conn, sql, params)
+
+  Computations (`route(...)`, `isochrone(...)`, ...) compile to plans but not
+  to SQL: `to_sql/2` returns `{:error, %PlazaQL.NotCompilable{}}` for them,
+  and the caller runs them. See the "Using the Elixir library" section of the
+  README and `docs/compiler.md`.
   """
 
   alias PlazaQL.Compiler
@@ -67,6 +76,15 @@ defmodule PlazaQL do
   def to_sql(plan, schema \\ Schema.new()) do
     PlazaQL.SQL.to_sql(plan, schema)
   end
+
+  @doc """
+  Compile a Plan to one query per branch (element type or custom source),
+  for callers that run branches separately and merge their rows. See
+  `PlazaQL.SQL.branches/2`.
+  """
+  @spec branches(Plan.t(), Schema.t()) ::
+          {:ok, [{Plan.element_type() | String.t(), Query.t()}]} | {:error, NotCompilable.t()}
+  def branches(plan, schema \\ Schema.new()), do: PlazaQL.SQL.branches(plan, schema)
 
   @doc """
   Parse, compile, and generate SQL from PlazaQL source.

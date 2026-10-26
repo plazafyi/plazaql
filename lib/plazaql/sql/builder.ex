@@ -1,35 +1,41 @@
 defmodule PlazaQL.SQL.Builder do
   @moduledoc false
-  # Internal: assembles a complete SELECT query for a single element type.
+  # Internal: assembles a complete SELECT query for one branch (an element
+  # type's table or a custom source).
 
   alias PlazaQL.Plan
   alias PlazaQL.Plan.OutputOptions
   alias PlazaQL.Schema
+  alias PlazaQL.SQL.Branch
   alias PlazaQL.SQL.Expression
+  alias PlazaQL.SQL.Sort
   alias PlazaQL.SQL.Where
 
-  @type acc :: {String.t(), [term()], pos_integer()}
+  @row_modes [:full, :ids, :keys, :skel, :tags]
+  @aggregate_modes [:sum, :min, :max, :avg]
 
-  @doc "Build a complete SELECT query for one element type."
-  @spec build_select(Plan.t(), Plan.element_type(), Schema.t(), pos_integer()) ::
+  @doc """
+  Build a complete SELECT query for one branch: an element type (ranked at
+  its index in `plan.element_types`), a source name, or a resolved branch.
+  """
+  @spec build_select(Plan.t(), Branch.name() | Branch.t(), Schema.t(), pos_integer()) ::
           {String.t(), [term()], pos_integer()}
-  def build_select(%Plan{} = plan, element_type, %Schema{} = schema, idx \\ 1) do
-    table = table_for_type(element_type, schema)
+  def build_select(%Plan{} = plan, branch, %Schema{} = schema, idx \\ 1) do
+    branch = resolve_branch(branch, plan, schema)
+    plan = Branch.bind_type(plan, branch)
+    sort = if plan.output_mode in @row_modes, do: Sort.spec(plan, branch)
 
-    {select_sql, select_params, idx2} =
-      build_select_columns(plan, element_type, schema, idx)
-
-    {where_sql, where_params, idx3} = Where.build_where(plan, schema, idx2)
-
-    {group_sql, group_params, idx4} = build_group_by(plan, schema, idx3)
-    {order_sql, order_params, idx5} = build_order_by(plan, schema, idx4)
+    {select_sql, select_params, idx2} = build_select_columns(plan, branch, sort, idx)
+    {where_sql, where_params, idx3} = Where.build_where(plan, branch, idx2)
+    {group_sql, group_params, idx4} = build_group_by(plan, idx3)
+    {order_sql, order_params, idx5} = build_order_by(plan, branch, sort, idx4)
     {limit_sql, limit_params, idx6} = build_limit(plan, idx5)
     {offset_sql, offset_params, idx7} = build_offset(plan, idx6)
 
     distinct = if plan.distinct, do: "DISTINCT ", else: ""
 
     parts =
-      ["SELECT #{distinct}#{select_sql}", "FROM #{table}"]
+      ["SELECT #{distinct}#{select_sql}", "FROM #{branch.table}"]
       |> maybe_append(where_sql)
       |> maybe_append(group_sql)
       |> maybe_append(order_sql)
@@ -44,80 +50,62 @@ defmodule PlazaQL.SQL.Builder do
     {sql, params, idx7}
   end
 
-  # ── Table lookup ──────────────────────────────────────────────────
-
-  defp table_for_type(:node, schema), do: schema.tables.node
-  defp table_for_type(:way, schema), do: schema.tables.way
-  defp table_for_type(:relation, schema), do: schema.tables.relation
-  defp table_for_type(:boundary, schema), do: schema.tables.relation
-
-  defp type_label(:node), do: "node"
-  defp type_label(:way), do: "way"
-  defp type_label(:relation), do: "relation"
-  defp type_label(:boundary), do: "boundary"
+  defp resolve_branch(%Branch{} = branch, _plan, _schema), do: branch
+  defp resolve_branch(name, plan, schema), do: Branch.resolve(name, schema, Branch.rank(plan, name))
 
   # ── SELECT columns ────────────────────────────────────────────────
 
-  defp build_select_columns(plan, element_type, schema, idx) do
-    type_lit = "'#{type_label(element_type)}' AS __type__"
+  defp build_select_columns(plan, branch, sort, idx) do
+    schema = branch.schema
+    type_lit = "'#{branch.label}' AS __type__"
 
     case plan.output_mode do
-      :full ->
-        {geom_sql, geom_params, idx2} =
-          geometry_select(schema, plan.output_options, idx)
+      mode when mode in @row_modes ->
+        {geom_sql, geom_params, idx2} = row_geometry(mode, schema, plan.output_options, idx)
 
         {computed_sql, computed_params, idx3} =
-          build_computed_columns(plan.computed_columns, schema, idx2)
+          build_computed_columns(computed_columns(plan), schema, idx2)
+
+        {sort_sql, sort_params, idx4} = Sort.key_column(sort, idx3)
 
         cols =
-          [schema.columns.id, schema.columns.tags]
+          row_columns(mode, branch)
           |> maybe_append_geom(geom_sql)
+          |> Enum.concat(if mode == :full, do: branch.full_columns, else: [])
           |> Enum.concat(computed_sql)
+          |> Enum.concat(sort_sql)
           |> Enum.concat([type_lit])
 
-        {Enum.join(cols, ", "), geom_params ++ computed_params, idx3}
-
-      :ids ->
-        {computed_sql, computed_params, idx2} =
-          build_computed_columns(plan.computed_columns, schema, idx)
-
-        cols = [schema.columns.id] ++ computed_sql ++ [type_lit]
-        {Enum.join(cols, ", "), computed_params, idx2}
-
-      :skel ->
-        {geom_sql, geom_params, idx2} =
-          geometry_select(schema, plan.output_options, idx)
-
-        {computed_sql, computed_params, idx3} =
-          build_computed_columns(plan.computed_columns, schema, idx2)
-
-        cols =
-          [schema.columns.id]
-          |> maybe_append_geom(geom_sql)
-          |> Enum.concat(computed_sql)
-          |> Enum.concat([type_lit])
-
-        {Enum.join(cols, ", "), geom_params ++ computed_params, idx3}
-
-      :tags ->
-        {computed_sql, computed_params, idx2} =
-          build_computed_columns(plan.computed_columns, schema, idx)
-
-        cols = [schema.columns.id, schema.columns.tags] ++ computed_sql ++ [type_lit]
-        {Enum.join(cols, ", "), computed_params, idx2}
+        {Enum.join(cols, ", "), geom_params ++ computed_params ++ sort_params, idx4}
 
       :count ->
         build_count_select(plan, schema, type_lit, idx)
 
-      agg when agg in [:sum, :min, :max, :avg] ->
+      agg when agg in @aggregate_modes ->
         build_aggregate_select(plan, agg, schema, type_lit, idx)
     end
   end
+
+  # The columns a row of each mode carries, before geometry and extras.
+  defp row_columns(:full, branch), do: branch.keys ++ [branch.schema.columns.tags]
+  defp row_columns(:tags, branch), do: branch.keys ++ [branch.schema.columns.tags]
+  defp row_columns(mode, branch) when mode in [:ids, :skel], do: branch.keys
+
+  # An element's identity, plus its partition key where the table has one.
+  defp row_columns(:keys, %Branch{partitioned?: true} = branch),
+    do: branch.keys ++ [branch.schema.columns.partition_tile_id]
+
+  defp row_columns(:keys, branch), do: branch.keys
 
   defp maybe_append_geom(cols, nil), do: cols
   defp maybe_append_geom(cols, geom_sql), do: cols ++ [geom_sql]
 
   # ── Geometry transforms ──────────────────────────────────────────
+
+  defp row_geometry(mode, schema, opts, idx) when mode in [:full, :skel],
+    do: geometry_select(schema, opts, idx)
+
+  defp row_geometry(_mode, _schema, _opts, idx), do: {nil, [], idx}
 
   defp geometry_select(schema, nil, idx) do
     {schema.columns.geometry, [], idx}
@@ -129,9 +117,15 @@ defmodule PlazaQL.SQL.Builder do
 
   defp geometry_select(schema, %OutputOptions{} = opts, idx) do
     geom = schema.columns.geometry
-    apply_geom_transforms(geom, opts, idx)
+
+    case apply_geom_transforms(geom, opts, idx) do
+      {^geom, [], idx} -> {geom, [], idx}
+      # The transformed geometry keeps the column's name.
+      {sql, params, idx} -> {"#{sql} AS #{geom}", params, idx}
+    end
   end
 
+  # Order: simplify, then buffer, then centroid.
   defp apply_geom_transforms(geom, %OutputOptions{} = opts, idx) do
     {geom, params, idx} = maybe_simplify(geom, opts.simplify, idx)
     {geom, params2, idx} = maybe_buffer(geom, opts.buffer, idx)
@@ -152,12 +146,29 @@ defmodule PlazaQL.SQL.Builder do
     {"ST_Buffer(#{geom}::geography, $#{idx})::geometry", [buffer / 1.0], idx + 1}
   end
 
-  defp maybe_centroid(geom, false), do: geom
   defp maybe_centroid(geom, true), do: "ST_Centroid(#{geom})"
+  defp maybe_centroid(geom, _no), do: geom
 
+  # Approximate meters to degrees for the simplification tolerance
   defp meters_to_degrees(meters), do: meters / 111_320.0
 
   # ── Computed columns ─────────────────────────────────────────────
+
+  # `.include("distance")` measures from the around point, unless the plan
+  # already computes a distance.
+  defp computed_columns(
+         %Plan{computed_columns: cols, output_options: %OutputOptions{} = opts} = plan
+       ) do
+    with true <- MapSet.member?(opts.include, :distance),
+         false <- Keyword.has_key?(cols, :distance_m),
+         {lat, lng} <- Sort.reference_point(plan) do
+      cols ++ [distance_m: {:geom_func, :distance, {lat, lng}, nil}]
+    else
+      _ -> cols
+    end
+  end
+
+  defp computed_columns(%Plan{computed_columns: cols}), do: cols
 
   defp build_computed_columns([], _schema, idx), do: {[], [], idx}
 
@@ -196,72 +207,49 @@ defmodule PlazaQL.SQL.Builder do
 
   # ── Aggregate select ─────────────────────────────────────────────
 
+  # SUM/MIN/MAX keep the expression's type (numeric for number(...), double
+  # precision for geometry measures); AVG is a float, with the row count so
+  # averages of several branches can be weighted.
   defp build_aggregate_select(plan, agg, schema, type_lit, idx) do
-    agg_name = String.upcase(Atom.to_string(agg))
-    {expr_sql, expr_params, idx2} = Expression.to_sql(plan.aggregate_expr, schema, idx)
+    {group_sql, group_params, idx2} =
+      case plan.group_by do
+        nil -> {nil, [], idx}
+        group_expr -> Expression.to_sql(group_expr, schema, idx)
+      end
 
-    case {agg, plan.group_by} do
-      {:avg, nil} ->
-        {"#{agg_name}(#{expr_sql})::float AS avg_val, COUNT(*) AS cnt, #{type_lit}", expr_params,
-         idx2}
+    {expr_sql, expr_params, idx3} = Expression.to_sql(plan.aggregate_expr, schema, idx2)
 
-      {:avg, group_expr} ->
-        {group_sql, group_params, idx3} = Expression.to_sql(group_expr, schema, idx2)
+    value_sql =
+      case agg do
+        :avg -> "AVG(#{expr_sql})::float AS avg_val, COUNT(*) AS cnt"
+        _ -> "#{aggregate_function(agg)}(#{expr_sql}) AS value"
+      end
 
-        {"#{group_sql} AS group_key, #{agg_name}(#{expr_sql})::float AS avg_val, COUNT(*) AS cnt, #{type_lit}",
-         expr_params ++ group_params, idx3}
-
-      {_, nil} ->
-        {"#{agg_name}(#{expr_sql})::float AS value, #{type_lit}", expr_params, idx2}
-
-      {_, group_expr} ->
-        {group_sql, group_params, idx3} = Expression.to_sql(group_expr, schema, idx2)
-
-        {"#{group_sql} AS group_key, #{agg_name}(#{expr_sql})::float AS value, #{type_lit}",
-         expr_params ++ group_params, idx3}
-    end
+    group_col = if group_sql, do: "#{group_sql} AS group_key, ", else: ""
+    {"#{group_col}#{value_sql}, #{type_lit}", group_params ++ expr_params, idx3}
   end
+
+  defp aggregate_function(:sum), do: "SUM"
+  defp aggregate_function(:min), do: "MIN"
+  defp aggregate_function(:max), do: "MAX"
 
   # ── GROUP BY ─────────────────────────────────────────────────────
 
-  defp build_group_by(%Plan{group_by: nil}, _schema, idx), do: {"", [], idx}
+  # The group key is the first select column.
+  defp build_group_by(%Plan{group_by: nil}, idx), do: {"", [], idx}
 
-  defp build_group_by(%Plan{output_mode: mode}, _schema, idx)
-       when mode not in [:count, :sum, :min, :max, :avg],
-       do: {"", [], idx}
+  defp build_group_by(%Plan{output_mode: mode}, idx) when mode in [:count | @aggregate_modes],
+    do: {"GROUP BY 1", [], idx}
 
-  defp build_group_by(%Plan{group_by: group_expr}, schema, idx) do
-    {group_sql, group_params, next_idx} = Expression.to_sql(group_expr, schema, idx)
-    {"GROUP BY #{group_sql}", group_params, next_idx}
-  end
+  defp build_group_by(_plan, idx), do: {"", [], idx}
 
   # ── ORDER BY ─────────────────────────────────────────────────────
 
-  defp build_order_by(%Plan{sort_expr: {expr, dir}, output_options: _}, schema, idx) do
-    {expr_sql, expr_params, next_idx} = Expression.to_sql(expr, schema, idx)
-    direction = if dir == :desc, do: "DESC", else: "ASC"
-    {"ORDER BY #{expr_sql} #{direction}", expr_params, next_idx}
-  end
+  # Rows have one total order: the sort, then the branch's keys.
+  defp build_order_by(%Plan{output_mode: mode}, branch, sort, idx) when mode in @row_modes,
+    do: Sort.order_by(sort, branch, idx)
 
-  defp build_order_by(%Plan{output_options: %OutputOptions{sort: sort}}, schema, idx)
-       when sort != nil do
-    {sort_col, params, next_idx} = sort_column(sort, schema, idx)
-    {"ORDER BY #{sort_col} ASC", params, next_idx}
-  end
-
-  defp build_order_by(_plan, _schema, idx), do: {"", [], idx}
-
-  defp sort_column(:distance, _schema, idx), do: {"distance_m", [], idx}
-  defp sort_column(:name, schema, idx), do: {"#{schema.columns.tags}->>'name'", [], idx}
-  defp sort_column(:osm_id, schema, idx), do: {schema.columns.id, [], idx}
-
-  defp sort_column(:qt, schema, idx) do
-    tile_col =
-      schema.columns.tile_id ||
-        raise ArgumentError, "tile_id column required for qt sort"
-
-    {tile_col, [], idx}
-  end
+  defp build_order_by(_plan, _branch, _sort, idx), do: {"", [], idx}
 
   # ── LIMIT / OFFSET ──────────────────────────────────────────────
 

@@ -196,4 +196,71 @@ defmodule PlazaQL.SchemaTest do
       end
     end
   end
+
+  describe "sources" do
+    test "builds sources from keyword options" do
+      schema = Schema.new(sources: [places: [table: "my_places", keys: ["id", "set_id"]]])
+
+      assert %Schema.Source{
+               name: "places",
+               table: "my_places",
+               type: "places",
+               keys: ["id", "set_id"]
+             } =
+               schema.sources["places"]
+    end
+
+    test "validates source identifiers" do
+      assert_raise ArgumentError, ~r/invalid identifier/, fn ->
+        Schema.new(sources: [places: [table: "my places"]])
+      end
+
+      assert_raise ArgumentError, ~r/invalid identifier/, fn ->
+        Schema.new(sources: [places: [table: "p", type: "x'; DROP TABLE y; --"]])
+      end
+    end
+
+    test "requires a table and known options" do
+      assert_raise ArgumentError, ~r/needs a :table/, fn -> Schema.new(sources: [p: []]) end
+
+      assert_raise ArgumentError, ~r/unknown source option/, fn ->
+        Schema.new(sources: [p: [table: "p", nope: 1]])
+      end
+    end
+  end
+
+  describe "partitioned?/2" do
+    test "no partition column: nothing is partitioned" do
+      refute Schema.partitioned?(Schema.new(), :node)
+    end
+
+    test "every table by default, or the listed ones" do
+      all = Schema.new(columns: [partition_tile_id: "p"])
+      assert Schema.partitioned?(all, :relation)
+
+      some = Schema.new(columns: [partition_tile_id: "p"], partitioned: [:node])
+      assert Schema.partitioned?(some, :node)
+      refute Schema.partitioned?(some, :way)
+    end
+  end
+
+  describe "full_columns" do
+    test "validates the extra column names" do
+      assert_raise ArgumentError, ~r/invalid identifier/, fn ->
+        Schema.new(full_columns: [node: ["version; --"]])
+      end
+    end
+  end
+
+  describe "srid" do
+    test "must be a positive integer (it is written into SQL)" do
+      assert Schema.new(srid: 3857).srid == 3857
+
+      for bad <- ["4326); DROP TABLE x; --", 4326.0, 0, nil] do
+        assert_raise ArgumentError, ~r/srid must be a positive integer/, fn ->
+          Schema.new(srid: bad)
+        end
+      end
+    end
+  end
 end

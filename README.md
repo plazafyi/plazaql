@@ -78,6 +78,7 @@ $$.restaurants = search(node, amenity: "restaurant").limit(10);
 - [Argument Style](#argument-style)
 - [Error Messages](#error-messages)
 - [Grammar](#grammar)
+- [Using the Elixir library](#using-the-elixir-library)
 
 ---
 
@@ -1797,6 +1798,128 @@ BLOCK_COMMENT  = "/*" ( BLOCK_COMMENT | ~[*/] )* "*/" ;
 - Computation results (routes, isochrones) include both geometry and metadata properties
 
 ---
+
+## Using the Elixir library
+
+The `plazaql` Hex package compiles PlazaQL to parameterized PostGIS SQL. It
+has no runtime dependencies besides the [tree-sitter CLI](https://tree-sitter.github.io/tree-sitter/creating-parsers/1-getting-started.html),
+which parses the source. It never connects to a database: you run the SQL
+with whatever driver you use.
+
+```elixir
+def deps do
+  [{:plazaql, "~> 0.1"}]
+end
+```
+
+### One query
+
+`PlazaQL.query/2` takes a source string and returns one SQL statement and
+its parameters:
+
+```elixir
+{:ok, %PlazaQL.Query{sql: sql, params: params}} =
+  PlazaQL.query(~s|search(node, amenity: "cafe").bbox(38.8, -77.1, 39.0, -76.9);|)
+
+{:ok, %Postgrex.Result{rows: rows}} = Postgrex.query(conn, sql, params)
+```
+
+The default schema matches the usual OpenStreetMap layout: `osm_nodes`,
+`osm_ways` and `osm_relations` tables with `osm_id`, `tags` (jsonb) and `geom`
+(SRID 4326) columns. Every value is a `$N` parameter. Table and column names
+come from the schema, which only accepts plain lowercase identifiers.
+
+A search over several element types (`nwr`) is a `UNION ALL` of one `SELECT`
+per table, merged in sort order before the limit. Counts and aggregates over
+several types are wrapped in an outer query that adds them up, with
+averages weighted by row count. Set operations (`+`, `-`, `&`) become CTEs.
+
+### Your own schema
+
+```elixir
+schema =
+  PlazaQL.Schema.new(
+    tables: [node: "points", way: "lines", relation: "areas"],
+    columns: [id: "id", geometry: "geometry", tags: "tags"],
+    srid: 4326
+  )
+
+{:ok, query} = PlazaQL.query(source, schema: schema)
+```
+
+Tags must be a `jsonb` column: filters use `?`, `->>` and `@>`.
+
+### Extra conditions
+
+`plan.custom_clauses` adds your own WHERE conditions, each with its own
+`$1..$n` parameters (renumbered when spliced in). A three-element clause
+applies to one element type or source only:
+
+```elixir
+{:ok, %{plans: [plan]}} = PlazaQL.compile(~s|search(node, amenity: "cafe");|)
+
+plan = %{plan | custom_clauses: [{"updated_at > $1", [~U[2026-01-01 00:00:00Z]]}]}
+{:ok, %PlazaQL.Query{sql: sql}} = PlazaQL.to_sql(plan)
+```
+
+Optional parts of the schema:
+
+- `columns: [tile_id: "...", partition_tile_id: "..."]` with
+  `extensions: [h3: true, partition_pruning: true]` enable H3 cell filters
+  (`.h3(...)`, `sort: :qt`) and let you pass precomputed H3 cells and
+  partition keys in `plan.caller_context` for index and partition pruning.
+- `full_columns: [node: ["version", "changeset"]]` adds columns to full
+  output.
+- `admin_boundaries_table:` and `elevation_table:` back `is_in` filters and
+  `elevation()`.
+- `sources:` declares other tables of features (a geometry plus a jsonb
+  column of properties) that plans can read next to the OSM element types.
+  See `PlazaQL.Schema.Source`.
+
+### Step by step
+
+Each stage is a function, so you can stop anywhere:
+
+```elixir
+{:ok, ast} = PlazaQL.parse(source)
+{:ok, checked} = PlazaQL.TypeChecker.check(ast)
+{:ok, %{plans: plans, steps: steps}} = PlazaQL.Compiler.compile(checked)
+
+{:ok, query} = PlazaQL.to_sql(hd(plans), schema)
+```
+
+`PlazaQL.compile/2` runs the first three stages at once.
+
+A plan can need work only your application can do:
+
+- **Computations** (`route`, `isochrone`, `geocode`, ...) compile to plans
+  with `kind: :computation`. `to_sql/2` returns
+  `{:error, %PlazaQL.NotCompilable{reason: :route}}` for them.
+- **Variables.** In `$area = boundary(name: "Paris"); search(node).within($area);`
+  the second statement references the first. Run the step it depends on,
+  then replace the reference with the geometry you got back, for example
+  `{:predicate, :within, {:ewkt, "SRID=4326;MULTIPOLYGON(...)"}}`.
+  An unresolved reference returns `NotCompilable`.
+- **Pagination.** Sorted rows come back with a `sort_key` column. Set
+  `plan.seek` to `{sort_key, branch_rank, id}` of the last row you returned,
+  and the next query starts after it.
+
+### One query per branch
+
+`PlazaQL.SQL.branches/2` returns one self-contained statement per element
+type or source instead of a single `UNION ALL`. Use it when branches select
+different columns, or when you run them separately and merge the rows
+yourself. Every branch orders its rows by the sort and then by its key
+columns, so rows from several branches merge on
+`(sort_key, branch rank, keys)`.
+
+```elixir
+{:ok, %{plans: [plan]}} = PlazaQL.compile(~s|search(nwr, amenity: "cafe").limit(5);|)
+{:ok, [node: node_query, way: way_query, relation: relation_query]} = PlazaQL.SQL.branches(plan)
+```
+
+[`docs/compiler.md`](./docs/compiler.md) describes the pipeline and the SQL
+patterns in more detail.
 
 ## License
 

@@ -74,7 +74,7 @@ defmodule PlazaQL.SQLTest do
   # ── Multi-type with LIMIT ─────────────────────────────────────
 
   describe "multi-type with LIMIT" do
-    test "per-branch limit is doubled, outer limit is original" do
+    test "per-branch limit covers the outer limit, outer limit is original" do
       p = plan(%{element_types: [:node, :way], limit: 10})
       {:ok, %Query{sql: sql, params: params}} = SQL.to_sql(p, default_schema())
 
@@ -83,8 +83,30 @@ defmodule PlazaQL.SQLTest do
       assert String.ends_with?(String.trim(sql), "LIMIT $#{length(params)}")
       # The last param should be the original limit
       assert List.last(params) == 10
-      # Per-branch limits should be 20 (limit * 2)
-      assert 20 in params
+      # Each branch fetches the first 10 rows; the outer limit is 10 too
+      assert Enum.count(params, &(&1 == 10)) == 3
+    end
+
+    test "rows merge in (sort, branch, key) order before the limit and offset" do
+      p =
+        plan(%{
+          element_types: [:node, :way],
+          sort_expr: {{:tag_access, "name", nil}, :desc},
+          limit: 10,
+          offset: 5
+        })
+
+      {:ok, %Query{sql: sql, params: params}} = SQL.to_sql(p, default_schema())
+
+      assert sql =~ ~r/^SELECT \* FROM \(\n\(SELECT /
+      assert sql =~ "tags ->> $1 AS sort_key"
+
+      assert sql =~
+               "ORDER BY sort_key DESC, CASE __type__ WHEN 'node' THEN 0 WHEN 'way' THEN 1 END, osm_id ASC\nLIMIT $7\nOFFSET $8"
+
+      # Each branch fetches its first offset + limit rows
+      assert Enum.count(params, &(&1 == 15)) == 2
+      assert Enum.take(params, -2) == [10, 5]
     end
 
     test "single type with limit does not double" do
@@ -276,6 +298,49 @@ defmodule PlazaQL.SQLTest do
       assert sql =~ "__type__"
       # Should NOT have NOT EXISTS (that's difference)
       refute sql =~ "NOT EXISTS"
+    end
+  end
+
+  describe "chained set ops" do
+    defp tagged(value), do: plan(%{element_types: [:node], tag_filters: [{:eq, "amenity", value}]})
+
+    test "each operation applies to the running result: (a + b) - c" do
+      p = %{
+        tagged("cafe")
+        | set_ops: [{:union, tagged("bar")}, {:difference, [nil, tagged("pub")]}]
+      }
+
+      {:ok, %Query{sql: sql, params: params}} = SQL.to_sql(p, default_schema())
+
+      assert sql =~ "union_0 AS ("
+      assert sql =~ "combined_0 AS (\nSELECT * FROM base\nUNION\nSELECT * FROM union_0\n)"
+      assert sql =~ "difference_1 AS ("
+
+      assert sql =~
+               ~r/\)\nSELECT b\.\* FROM combined_0 b\nWHERE NOT EXISTS \(SELECT 1 FROM difference_1 x WHERE x\.osm_id = b\.osm_id AND x\.__type__ = b\.__type__\)$/
+
+      assert Enum.filter(params, &(&1 in ["cafe", "bar", "pub"])) == ["cafe", "bar", "pub"]
+    end
+
+    test "three unions reference every operand" do
+      p = %{tagged("a") | set_ops: [{:union, tagged("b")}, {:union, tagged("c")}]}
+      {:ok, %Query{sql: sql}} = SQL.to_sql(p, default_schema())
+
+      assert sql =~ "SELECT * FROM base\nUNION\nSELECT * FROM union_0"
+      assert sql =~ "SELECT * FROM combined_0\nUNION\nSELECT * FROM union_1"
+    end
+
+    test "an operand that is itself a combination: a + (b - c)" do
+      inner = %{tagged("b") | set_ops: [{:difference, [nil, tagged("c")]}]}
+      p = %{tagged("a") | set_ops: [{:union, inner}]}
+      {:ok, %Query{sql: sql, params: params}} = SQL.to_sql(p, default_schema())
+
+      assert sql =~ ~r/union_0 AS \(\nWITH base AS \(/
+      assert sql =~ "SELECT b.* FROM base b\nWHERE NOT EXISTS (SELECT 1 FROM difference_0 x"
+      # Parameters numbered once across the whole statement
+      assert length(params) == 9
+      assert sql =~ "$9"
+      refute sql =~ "$10"
     end
   end
 
