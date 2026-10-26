@@ -196,4 +196,59 @@ defmodule PlazaQL.SchemaTest do
       end
     end
   end
+
+  describe "sources" do
+    test "builds sources from keyword options" do
+      schema = Schema.new(sources: [places: [table: "my_places", keys: ["id", "set_id"]]])
+
+      assert %Schema.Source{
+               name: "places",
+               table: "my_places",
+               type: "places",
+               keys: ["id", "set_id"]
+             } =
+               schema.sources["places"]
+    end
+
+    test "validates source identifiers" do
+      assert_raise ArgumentError, ~r/invalid identifier/, fn ->
+        Schema.new(sources: [places: [table: "my places"]])
+      end
+
+      assert_raise ArgumentError, ~r/invalid identifier/, fn ->
+        Schema.new(sources: [places: [table: "p", type: "x'; DROP TABLE y; --"]])
+      end
+    end
+
+    test "requires a table and known options" do
+      assert_raise ArgumentError, ~r/needs a :table/, fn -> Schema.new(sources: [p: []]) end
+
+      assert_raise ArgumentError, ~r/unknown source option/, fn ->
+        Schema.new(sources: [p: [table: "p", nope: 1]])
+      end
+    end
+  end
+
+  describe "partitioned?/2" do
+    test "no partition column: nothing is partitioned" do
+      refute Schema.partitioned?(Schema.new(), :node)
+    end
+
+    test "every table by default, or the listed ones" do
+      all = Schema.new(columns: [partition_tile_id: "p"])
+      assert Schema.partitioned?(all, :relation)
+
+      some = Schema.new(columns: [partition_tile_id: "p"], partitioned: [:node])
+      assert Schema.partitioned?(some, :node)
+      refute Schema.partitioned?(some, :way)
+    end
+  end
+
+  describe "full_columns" do
+    test "validates the extra column names" do
+      assert_raise ArgumentError, ~r/invalid identifier/, fn ->
+        Schema.new(full_columns: [node: ["version; --"]])
+      end
+    end
+  end
 end

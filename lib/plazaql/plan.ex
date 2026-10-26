@@ -43,10 +43,16 @@ defmodule PlazaQL.Plan do
           | {:boundary_set, String.t()}
           | {:around_set, String.t(), number()}
           | {:around_set_resolved, [String.t()], number()}
-          | {:predicate, predicate(), geometry()}
+          | {:predicate, predicate() | :around, geometry()}
+          | {:predicate, predicate() | :around, geometry(), radius :: number() | nil}
 
+  @typedoc """
+  What each row (or the result) holds. `:keys` is an element's identity only:
+  its key columns plus, on partitioned tables, the partition key (so a
+  caller can fetch the same elements again with partition pruning).
+  """
   @type output_mode ::
-          :full | :ids | :skel | :count | :tags | :sum | :min | :max | :avg | :tile
+          :full | :ids | :keys | :skel | :count | :tags | :sum | :min | :max | :avg | :tile
 
   @type kind :: :query | :computation
 
@@ -87,13 +93,34 @@ defmodule PlazaQL.Plan do
   Geometry argument of a spatial predicate. Coordinates are `{lng, lat}`.
 
   `{:set_ref, name}` references a named set resolved by the executor at run
-  time: `"name"` for `$name`, `"$$.name"` for `$$.name`.
+  time: `"name"` for `$name`, `"$$.name"` for `$$.name`. A caller that
+  resolves such a reference (or holds any other geometry) passes it as
+  `{:ewkt, "SRID=4326;MULTIPOLYGON(...)"}`, sent as a query parameter.
   """
   @type geometry ::
           {:point, float(), float()}
           | {:polygon, [[{float(), float()}]]}
           | {:linestring, [{float(), float()}]}
+          | {:ewkt, String.t()}
           | {:set_ref, String.t()}
+
+  @typedoc """
+  Keyset position for pagination: `{sort_value, rank, keys}` of the last row
+  of the previous page. `rank` is that row's branch (its index among the
+  plan's element types followed by its sources; it may be negative or past
+  the end when the caller splits a plan); `keys` is the row's key value, or a
+  tuple of values for a multi-column key. Rows come back in
+  `(sort value, rank, keys)` order and `seek` returns the rows after it.
+  """
+  @type seek :: {term(), integer(), term()}
+
+  @typedoc """
+  An extra WHERE condition with its own `$1..$n` parameters (renumbered when
+  spliced in). The three-element form applies to one branch only: an element
+  type or a source name.
+  """
+  @type custom_clause ::
+          {String.t(), [term()]} | {element_type() | String.t(), String.t(), [term()]}
 
   @typedoc """
   Reference geometry for `overlap_fraction`: a closed `{lng, lat}` polygon ring
@@ -130,6 +157,21 @@ defmodule PlazaQL.Plan do
           layers: [String.t()] | nil
         }
 
+  @typedoc """
+  Runtime context a caller resolves before SQL generation:
+
+    * `h3_tiles: [cell]` — H3 cells covering the query area; adds an
+      index-friendly containment prefilter (skipped above
+      `schema.limits.max_h3_tiles` cells).
+    * `partitions: [id] | %{element_type => [id]}` — partition keys the rows
+      can live in, for the tables `PlazaQL.Schema.partitioned?/2` names; a map
+      gives each element type its own list.
+  """
+  @type caller_context :: %{
+          optional(:h3_tiles) => [String.t()],
+          optional(:partitions) => [integer()] | %{optional(element_type()) => [integer()]}
+        }
+
   @type t :: %__MODULE__{
           element_types: [element_type()],
           tag_filters: [tag_filter()],
@@ -146,6 +188,7 @@ defmodule PlazaQL.Plan do
           limit: non_neg_integer() | nil,
           offset: non_neg_integer() | nil,
           cursor: String.t() | nil,
+          seek: seek() | nil,
           sort_expr: {term(), :asc | :desc} | nil,
           aggregate_expr: term() | nil,
           group_by: term() | nil,
@@ -153,8 +196,8 @@ defmodule PlazaQL.Plan do
           sources: [String.t()] | nil,
           kind: kind(),
           computation: computation() | nil,
-          caller_context: map(),
-          custom_clauses: [{String.t(), [term()]}],
+          caller_context: caller_context() | map(),
+          custom_clauses: [custom_clause()],
           recurse: recurse_direction() | nil,
           narrow: narrow() | nil,
           member_filter: member_filter() | nil,
@@ -181,6 +224,8 @@ defmodule PlazaQL.Plan do
             # (`next_cursor` of the previous page). SQL generation ignores it;
             # the server decodes it and resumes after that row.
             cursor: nil,
+            # The decoded position a page resumes after (see `t:seek/0`).
+            seek: nil,
             sort_expr: nil,
             aggregate_expr: nil,
             group_by: nil,

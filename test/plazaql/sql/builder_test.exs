@@ -25,7 +25,9 @@ defmodule PlazaQL.SQL.BuilderTest do
       {sql, params, _idx} = Builder.build_select(plan(), :node, default_schema())
 
       assert normalize(sql) ==
-               normalize("SELECT osm_id, tags, geom, 'node' AS __type__ FROM osm_nodes")
+               normalize(
+                 "SELECT osm_id, tags, geom, 'node' AS __type__ FROM osm_nodes ORDER BY osm_id ASC"
+               )
 
       assert params == []
     end
@@ -49,7 +51,7 @@ defmodule PlazaQL.SQL.BuilderTest do
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
       assert normalize(sql) ==
-               normalize("SELECT osm_id, 'node' AS __type__ FROM osm_nodes")
+               normalize("SELECT osm_id, 'node' AS __type__ FROM osm_nodes ORDER BY osm_id ASC")
 
       assert params == []
     end
@@ -61,7 +63,9 @@ defmodule PlazaQL.SQL.BuilderTest do
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
       assert normalize(sql) ==
-               normalize("SELECT osm_id, geom, 'node' AS __type__ FROM osm_nodes")
+               normalize(
+                 "SELECT osm_id, geom, 'node' AS __type__ FROM osm_nodes ORDER BY osm_id ASC"
+               )
 
       assert params == []
     end
@@ -73,7 +77,9 @@ defmodule PlazaQL.SQL.BuilderTest do
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
       assert normalize(sql) ==
-               normalize("SELECT osm_id, tags, 'node' AS __type__ FROM osm_nodes")
+               normalize(
+                 "SELECT osm_id, tags, 'node' AS __type__ FROM osm_nodes ORDER BY osm_id ASC"
+               )
 
       assert params == []
     end
@@ -97,8 +103,10 @@ defmodule PlazaQL.SQL.BuilderTest do
 
       assert sql =~ "tags ->> $1 AS group_key"
       assert sql =~ "COUNT(*) AS cnt"
-      assert sql =~ "GROUP BY tags ->> $2"
-      assert params == ["amenity", "amenity"]
+      # By position: the same expression with another parameter would not
+      # match the select list.
+      assert sql =~ "GROUP BY 1"
+      assert params == ["amenity"]
     end
   end
 
@@ -148,7 +156,16 @@ defmodule PlazaQL.SQL.BuilderTest do
       {sql, _params, _idx} = Builder.build_select(p, :node, default_schema())
 
       assert normalize(sql) ==
-               normalize("SELECT osm_id, tags, 'node' AS __type__ FROM osm_nodes")
+               normalize(
+                 "SELECT osm_id, tags, 'node' AS __type__ FROM osm_nodes ORDER BY osm_id ASC"
+               )
+    end
+
+    test "a transformed geometry keeps the column name" do
+      p = plan(%{output_options: %OutputOptions{centroid: true}})
+      {sql, _params, _idx} = Builder.build_select(p, :node, default_schema())
+
+      assert sql =~ "SELECT osm_id, tags, ST_Centroid(geom) AS geom,"
     end
   end
 
@@ -201,8 +218,10 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{sort_expr: sort})
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "ORDER BY tags ->> $1 ASC"
-      assert params == ["name"]
+      # The sort value comes back as sort_key; ties go to the key
+      assert sql =~ "tags ->> $1 AS sort_key"
+      assert sql =~ "ORDER BY tags ->> $2 ASC, osm_id ASC"
+      assert params == ["name", "name"]
     end
 
     test "sort_expr with descending" do
@@ -210,24 +229,52 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{sort_expr: sort})
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "ORDER BY $1 DESC"
-      assert params == [1]
+      assert sql =~ "ORDER BY $2 DESC, osm_id ASC"
+      assert params == [1, 1]
     end
 
-    test "output_options sort :distance" do
+    test "output_options sort :distance measures from the around point" do
       opts = %OutputOptions{sort: :distance}
-      p = plan(%{output_options: opts})
-      {sql, _params, _idx} = Builder.build_select(p, :node, default_schema())
+      p = plan(%{output_options: opts, spatial_filter: {:around, 48.0, 2.0, 500}})
+      {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "ORDER BY distance_m ASC"
+      assert sql =~
+               "ST_Distance(geom::geography, ST_Point($1, $2, 4326)::geography) AS sort_key"
+
+      assert sql =~
+               "ORDER BY ST_Distance(geom::geography, ST_Point($6, $7, 4326)::geography) ASC, osm_id ASC"
+
+      assert params == [2.0, 48.0, 2.0, 48.0, 500, 2.0, 48.0]
     end
 
-    test "output_options sort :name" do
+    test "output_options sort :distance from an around predicate on a point" do
+      opts = %OutputOptions{sort: :distance}
+
+      p =
+        plan(%{
+          output_options: opts,
+          spatial_filter: {:predicate, :around, {:point, 2.0, 48.0}, 100}
+        })
+
+      {_sql, [lng, lat | _], _idx} = Builder.build_select(p, :node, default_schema())
+      assert {lng, lat} == {2.0, 48.0}
+    end
+
+    test "output_options sort :distance needs an around point" do
+      p = plan(%{output_options: %OutputOptions{sort: :distance}})
+
+      assert_raise ArgumentError, ~r/around/, fn ->
+        Builder.build_select(p, :node, default_schema())
+      end
+    end
+
+    test "output_options sort :name compares bytewise, nulls last" do
       opts = %OutputOptions{sort: :name}
       p = plan(%{output_options: opts})
       {sql, _params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "ORDER BY tags->>'name' ASC"
+      assert sql =~ ~s|(tags->>'name') COLLATE "C" AS sort_key|
+      assert sql =~ ~s|ORDER BY (tags->>'name') COLLATE "C" ASC NULLS LAST, osm_id ASC|
     end
 
     test "output_options sort :osm_id" do
@@ -235,7 +282,9 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{output_options: opts})
       {sql, _params, _idx} = Builder.build_select(p, :node, default_schema())
 
+      assert sql =~ "osm_id AS sort_key"
       assert sql =~ "ORDER BY osm_id ASC"
+      refute sql =~ "osm_id ASC, osm_id"
     end
 
     test "output_options sort :qt requires tile_id" do
@@ -249,7 +298,8 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{output_options: opts})
       {sql, _params, _idx} = Builder.build_select(p, :node, schema)
 
-      assert sql =~ "ORDER BY tile_id ASC"
+      assert sql =~ "tile_id::text AS sort_key"
+      assert sql =~ "ORDER BY tile_id ASC, osm_id ASC"
     end
 
     test "sort_expr takes precedence over output_options sort" do
@@ -258,9 +308,9 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{sort_expr: sort, output_options: opts})
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "ORDER BY tags ->> $1 ASC"
-      assert params == ["name"]
-      refute sql =~ "distance_m"
+      assert sql =~ "ORDER BY tags ->> $2 ASC, osm_id ASC"
+      assert params == ["name", "name"]
+      refute sql =~ "ST_Distance"
     end
   end
 
@@ -319,8 +369,8 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{output_mode: :sum, aggregate_expr: agg_expr})
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "SUM("
-      assert sql =~ "::float AS value"
+      # The expression's own type: numeric stays exact
+      assert sql =~ "SUM((tags ->> $1)::numeric) AS value"
       assert sql =~ "'node' AS __type__"
       assert params == ["population"]
     end
@@ -330,8 +380,7 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{output_mode: :min, aggregate_expr: agg_expr})
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "MIN("
-      assert sql =~ "::float AS value"
+      assert sql =~ "MIN((tags ->> $1)::numeric) AS value"
       assert params == ["height"]
     end
 
@@ -340,8 +389,7 @@ defmodule PlazaQL.SQL.BuilderTest do
       p = plan(%{output_mode: :max, aggregate_expr: agg_expr})
       {sql, params, _idx} = Builder.build_select(p, :node, default_schema())
 
-      assert sql =~ "MAX("
-      assert sql =~ "::float AS value"
+      assert sql =~ "MAX((tags ->> $1)::numeric) AS value"
       assert params == ["height"]
     end
 

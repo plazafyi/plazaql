@@ -87,6 +87,28 @@ defmodule PlazaQL.SQLTest do
       assert 20 in params
     end
 
+    test "rows merge in (sort, branch, key) order before the limit and offset" do
+      p =
+        plan(%{
+          element_types: [:node, :way],
+          sort_expr: {{:tag_access, "name", nil}, :desc},
+          limit: 10,
+          offset: 5
+        })
+
+      {:ok, %Query{sql: sql, params: params}} = SQL.to_sql(p, default_schema())
+
+      assert sql =~ ~r/^SELECT \* FROM \(\n\(SELECT /
+      assert sql =~ "tags ->> $1 AS sort_key"
+
+      assert sql =~
+               "ORDER BY sort_key DESC, CASE __type__ WHEN 'node' THEN 0 WHEN 'way' THEN 1 END, osm_id ASC\nLIMIT $7\nOFFSET $8"
+
+      # Each branch fetches (offset + limit) * 2 rows
+      assert Enum.count(params, &(&1 == 30)) == 2
+      assert Enum.take(params, -2) == [10, 5]
+    end
+
     test "single type with limit does not double" do
       p = plan(%{element_types: [:node], limit: 10})
       {:ok, %Query{sql: sql, params: params}} = SQL.to_sql(p, default_schema())

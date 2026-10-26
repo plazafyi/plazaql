@@ -347,4 +347,43 @@ defmodule PlazaQL.SQL.ExpressionTest do
       end
     end
   end
+
+  describe "caller-resolved references" do
+    test "distance to a resolved geometry" do
+      ewkt = "SRID=4326;LINESTRING(0 0, 1 1)"
+      expr = {:geom_func, :distance, {:ewkt, ewkt}, nil}
+
+      assert {"ST_Distance(ST_Centroid(geom)::geography, ST_GeomFromEWKT($1)::geography)", [^ewkt],
+              2} = Expression.to_sql(expr, Schema.new())
+    end
+
+    test "overlap fraction with a resolved geometry" do
+      ewkt = "SRID=4326;MULTIPOLYGON(((0 0,1 0,1 1,0 0)))"
+
+      {sql, params, 2} =
+        Expression.to_sql({:geom_func, :overlap_fraction, {:ewkt, ewkt}, nil}, Schema.new())
+
+      assert sql =~ "ST_Intersection(geom, ST_MakeValid(ST_GeomFromEWKT($1)))"
+      assert params == [ewkt]
+    end
+  end
+
+  describe "elevation with several rasters" do
+    test "reads the finest raster that has a value" do
+      schema = Schema.new(elevation_table: "dem", elevation_resolution_column: "resolution")
+      {sql, [], 1} = Expression.to_sql({:geom_func, :elevation, nil}, schema)
+
+      assert sql =~
+               "WHERE ST_Intersects(r.rast, ST_Centroid(geom)) ORDER BY ST_Value(r.rast, ST_Centroid(geom), true) IS NULL, r.resolution LIMIT 1)"
+    end
+  end
+
+  describe "filter column" do
+    test "t[...] reads the schema's filter column" do
+      schema = Schema.new(columns: [filter_tags: "properties"])
+
+      assert {"properties ->> $1", ["name"], 2} =
+               Expression.to_sql({:tag_access, "name", nil}, schema)
+    end
+  end
 end
