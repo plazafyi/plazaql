@@ -21,6 +21,12 @@ First Hex release of the PlazaQL Elixir package.
   point on the driving side (Plaza's `preferred_sides: "same"`),
   `"unrestricted"` is the default. The type checker and the LSP reject
   other values.
+- `p["key"]` reads a property exactly as `t["key"]` reads a tag, anywhere an
+  expression goes: `.filter()`, `.sort()`, `.group_by()`, the aggregates and
+  `#filter()`, on OSM and dataset searches alike. Both compile to the same
+  SQL. Syntax highlighting, LSP completions and hover cover it.
+- The LSP accepts `.count()` after `.group_by()`, as the Elixir type checker
+  already did.
 
 ### SQL generation
 

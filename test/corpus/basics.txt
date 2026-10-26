@@ -2052,6 +2052,44 @@ search(node).filter(number(p["capacity"]) > 50);
             (number)))))))
 
 ================
+Property access alias p[] in group_by, aggregates and sort
+================
+
+search(node).group_by(p["cuisine"]).sum(number(p["seats"]));
+search(node).sort(p["name"]);
+
+---
+
+(program
+  (bare_statement
+    (method_call
+      receiver: (method_call
+        receiver: (search_expression
+          type: (element_type))
+        method: (method
+          name: (identifier)
+          (filter_expression
+            (tag_access
+              (string)))))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (coerce_function
+            name: (identifier)
+            (filter_expression
+              (tag_access
+                (string))))))))
+  (bare_statement
+    (method_call
+      receiver: (search_expression
+        type: (element_type))
+      method: (method
+        name: (identifier)
+        (filter_expression
+          (tag_access
+            (string)))))))
+
+================
 Number list as a method keyword value
 ================
 

@@ -106,21 +106,7 @@ export function getHover(
     }
   }
 
-  // Element type hover
-  const elementDescriptions: Record<string, string> = {
-    node: "OSM Node — a single point (lat/lng). Examples: shops, restaurants, bus stops.",
-    way: "OSM Way — an ordered list of nodes forming a line or polygon. Examples: roads, buildings, rivers.",
-    relation:
-      "OSM Relation — a group of nodes/ways with roles. Examples: bus routes, admin boundaries.",
-    nwr: "Any element type (node, way, or relation).",
-  }
-
-  const elemDesc = elementDescriptions[token]
-  if (elemDesc) {
-    return { contents: elemDesc }
-  }
-
-  return null
+  return getKeywordHover(token, source, line, col)
 }
 
 function getVarHover(
@@ -252,6 +238,57 @@ function getTokenAtPosition(
 }
 
 // Is the identifier under the cursor directly preceded by "." (a method call)?
+// Hover for bare words: the t[] / p[] accessors and element types
+function getKeywordHover(
+  token: string,
+  source: string,
+  line: number,
+  col: number,
+): HoverResult | null {
+  // Tag accessor hover: t["key"] and its alias p["key"]
+  const accessorHover = TAG_ACCESSOR_HOVER[token]
+  if (accessorHover && isBeforeBracket(source, line, col)) {
+    return { contents: accessorHover }
+  }
+
+  // Element type hover
+  const elementDescriptions: Record<string, string> = {
+    node: "OSM Node — a single point (lat/lng). Examples: shops, restaurants, bus stops.",
+    way: "OSM Way — an ordered list of nodes forming a line or polygon. Examples: roads, buildings, rivers.",
+    relation:
+      "OSM Relation — a group of nodes/ways with roles. Examples: bus routes, admin boundaries.",
+    nwr: "Any element type (node, way, or relation).",
+  }
+
+  const elemDesc = elementDescriptions[token]
+  if (elemDesc) {
+    return { contents: elemDesc }
+  }
+
+  return null
+}
+
+const TAG_ACCESSOR_HOVER: Record<string, string> = {
+  t: [
+    't["key"] → string | null',
+    "  Value of the tag `key` on each feature (null when absent)",
+  ].join("\n"),
+  p: [
+    'p["key"] → string | null',
+    '  Value of the property `key` on each feature. Same accessor as t["key"], spelled for dataset feature properties',
+  ].join("\n"),
+}
+
+// True when the identifier under the cursor is directly followed by `[`
+function isBeforeBracket(source: string, line: number, col: number): boolean {
+  const currentLine = source.split("\n")[line - 1] ?? ""
+  let start = col - 1
+  while (start > 0 && isIdentChar(currentLine[start - 1] as string)) {
+    start--
+  }
+  return currentLine[findIdentEnd(currentLine, start)] === "["
+}
+
 function isAfterDot(source: string, line: number, col: number): boolean {
   const currentLine = source.split("\n")[line - 1] ?? ""
   let start = col - 1

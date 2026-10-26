@@ -491,7 +491,8 @@ const METHOD_OUTPUT_OVERRIDES: Record<string, PqlType> = {
   group_by: "GroupedSet",
 }
 
-const AGGREGATION_METHODS = ["sum", "min", "max", "avg"]
+// Methods valid after .group_by(), as in the Elixir checker (Types.method_output_type/2)
+const AGGREGATION_METHODS = ["count", "sum", "min", "max", "avg"]
 
 export function methodOutputType(
   method: string,

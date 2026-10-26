@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { getHover } from "../src/hover.js"
 import { parse } from "../src/parser.js"
 import { typeCheck } from "../src/type-checker.js"
 
@@ -84,6 +85,35 @@ describe("output shape and accessors", () => {
       check('search(node).filter(number(p["pop"]) > 3).sort(p["name"]);')
         .errors,
     ).toHaveLength(0)
+  })
+
+  it('accepts p["key"] in group_by, aggregates and dataset searches', () => {
+    for (const src of [
+      'search(node).group_by(p["cuisine"]).count();',
+      'search(way).group_by(p["kind"]).sum(number(p["seats"]));',
+      'search(way).avg(number(p["height"]));',
+      'search(dataset("census-tracts")).filter(number(p["population"]) > 5000).sort(p["name"]);',
+    ]) {
+      expect(check(src).errors).toHaveLength(0)
+    }
+  })
+
+  it("allows only aggregations after group_by", () => {
+    expect(check('search(node).group_by(t["cuisine"]).count();').errors).toHaveLength(0)
+    expect(check('search(node).group_by(t["cuisine"]).limit(3);').errors).toHaveLength(1)
+  })
+
+  it('hovers t["key"] and p["key"] as tag accessors', () => {
+    const src = 'search(node).sort(p["name"]).filter(t["a"] == "x");'
+    expect(getHover(src, 1, 19)?.contents).toContain('p["key"]')
+    expect(getHover(src, 1, 19)?.contents).toContain('Same accessor as t["key"]')
+    expect(getHover(src, 1, 37)?.contents).toContain('t["key"]')
+  })
+
+  it("does not treat a variable named p as the accessor", () => {
+    expect(getHover("$p = point(1, 2); search(node).around(10, $p);", 1, 2)?.contents).not.toContain(
+      'p["key"]',
+    )
   })
 
   it("accepts geometry and number variables", () => {

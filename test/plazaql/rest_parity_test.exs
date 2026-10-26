@@ -410,11 +410,73 @@ defmodule PlazaQL.RestParityTest do
       assert strip.(p_plan) == strip.(t_plan)
     end
 
+    @source_schema PlazaQL.Schema.new(
+                     sources: [
+                       features: [
+                         table: "dataset_features",
+                         type: "feature",
+                         columns: [id: "id", filter_tags: "properties"],
+                         keys: ["id", "dataset_id"],
+                         typed_values: true
+                       ]
+                     ]
+                   )
+
+    # Every place t["key"] is accepted: each query compiles to the same SQL and
+    # params whichever accessor it spells.
+    for {label, template} <- [
+          {"filter", ~s|search(node).filter(number(@["pop"]) > 3 && @["name"] == "x");|},
+          {"sort", ~s|search(node).sort(@["name"], order: :desc).limit(5);|},
+          {"sort by:", ~s|search(node).sort(by: number(@["pop"])).limit(5);|},
+          {"group_by", ~s|search(node, cuisine: *).group_by(@["cuisine"]).count();|},
+          {"sum", ~s|search(node).sum(number(@["pop"]));|},
+          {"avg", ~s|search(way).avg(number(@["height"]));|},
+          {"min", ~s|search(way).min(number(@["height"]));|},
+          {"max", ~s|search(way).max(number(@["height"]));|},
+          {"group_by + sum", ~s|search(node).group_by(@["kind"]).sum(number(@["pop"]));|},
+          {"directive", ~s|#filter(number(@["pop"]) > 3); search(node).limit(1);|},
+          {"dataset filter",
+           ~s|search(dataset("features")).filter(number(@["population"]) > 5000);|},
+          {"dataset sort", ~s|search(dataset("features")).sort(@["name"]).limit(3);|},
+          {"dataset sum", ~s|search(dataset("features")).sum(number(@["population"]));|},
+          {"dataset group_by", ~s|search(dataset("features")).group_by(@["state"]).count();|}
+        ] do
+      test "#{label}: p[...] generates the same SQL as t[...]" do
+        template = unquote(template)
+        assert_same_sql(String.replace(template, "@", "p"), String.replace(template, "@", "t"))
+      end
+    end
+
     test "formats as t[\"key\"]" do
       {:ok, ast} = PlazaQL.parse(~s|search(node).filter(p["a"] == "x");|)
       assert PlazaQL.Formatter.format(ast) =~ ~s|t["a"]|
     end
   end
+
+  defp assert_same_sql(p_source, t_source) do
+    p_sql = sql_for!(p_source)
+    assert p_sql == sql_for!(t_source)
+    assert p_sql != []
+  end
+
+  defp sql_for!(source) do
+    source
+    |> plan_list()
+    |> Enum.map(fn plan ->
+      # dataset("features") names a source by slug; callers resolve slugs to
+      # schema sources, here by identity.
+      {:ok, branches} = PlazaQL.SQL.branches(resolve_slugs(plan), @source_schema)
+
+      Enum.map(branches, fn {name, %PlazaQL.Query{sql: sql, params: params}} ->
+        {name, sql, params}
+      end)
+    end)
+  end
+
+  defp resolve_slugs(%{sources: nil} = plan), do: plan
+
+  defp resolve_slugs(plan),
+    do: %{plan | sources: Enum.map(plan.sources, fn {:slug, slug} -> slug end)}
 
   defp strip_pos(term) when is_map(term) and not is_struct(term),
     do:
