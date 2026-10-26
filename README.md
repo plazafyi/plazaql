@@ -457,7 +457,7 @@ The options need their mode and are only accepted by these three functions.
 | `use_primary`        | number | 0 to 1, default 0.2. Lower values avoid primary and trunk roads and roads with limits of 80 km/h or more |
 | `use_hills`          | number | 0 to 1, default 0.5. Lower values avoid steep grades (needs elevation data) |
 
-The [costing options](#costing-options) `use_highways`, `use_tolls`, `top_speed`, `fixed_speed`, `maneuver_penalty` and `service_penalty` apply to both modes. A scooter's `top_speed` replaces its 45 km/h default.
+The [costing options](#costing-options) `use_highways`, `use_tolls`, `top_speed`, `fixed_speed`, `maneuver_penalty`, `service_penalty`, `gate_cost`, `toll_booth_cost` and `country_crossing_cost` apply to both modes. A scooter's `top_speed` replaces its 45 km/h default.
 
 ```plazaql
 route(origin: point(46.55, 8.56), destination: point(46.63, 8.6), mode: "motorcycle", style: "adventure", use_curves: 1)
@@ -493,7 +493,7 @@ The options need `mode: "transit"` and are only accepted by these two functions.
 |----------------------|---------|-------------|
 | `use_highways`       | number  | 0 to 1. Motorways and trunk roads: 0.5 (or leaving it out) is neutral, 0 avoids them (cost x10), 1 favours them (x0.9). `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `use_tolls`          | number  | The same for toll roads. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
-| `use_ferries`        | number  | The same for ferries. Every mode |
+| `use_ferries`        | number  | The same for ferries (`route=ferry` ways, timed from their `duration` tag, else 20 km/h). Every mode |
 | `use_living_streets` | number  | The same for living streets (x5 at 0). Every mode |
 | `use_tracks`         | number  | The same for tracks (x15 at 0). `"foot"`, `"bicycle"` |
 | `shortest`           | boolean | Minimise distance instead of time; not with the `use_*` or penalty options |
@@ -501,6 +501,9 @@ The options need `mode: "transit"` and are only accepted by these two functions.
 | `fixed_speed`        | integer | Drive every road at this speed, km/h (1-252), ignoring class, limits, surface, grade and traffic. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `maneuver_penalty`   | number  | Seconds (0-3600) added at each intersection the route arrives at. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `service_penalty`    | number  | Seconds (0-3600) added for each service road used. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
+| `gate_cost`          | number  | Seconds (0-3600) added for each gate passed (`barrier=gate`, `lift_gate`, `swing_gate`, `sliding_gate`, `hampshire_gate` without `access=yes`, `permissive` or `designated`). Every mode |
+| `toll_booth_cost`    | number  | Seconds (0-3600) added for each toll booth (`barrier=toll_booth`) passed. A booth already costs 15 s of travel time; this only steers the route. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
+| `country_crossing_cost` | number | Seconds (0-3600) added for each country border crossed (a `barrier=border_control` node, or roads of two countries meeting). Every mode |
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), use_tolls: 0, use_highways: 0.3, top_speed: 100)

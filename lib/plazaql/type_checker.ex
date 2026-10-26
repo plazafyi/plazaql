@@ -1213,7 +1213,8 @@ defmodule PlazaQL.TypeChecker do
   # check_costing_kwargs/2. Plaza checks which modes take which.
   @costing_preference_kwargs ~w(use_highways use_tolls use_ferries use_living_streets use_tracks)
   @costing_speed_kwargs ~w(top_speed fixed_speed)
-  @costing_penalty_kwargs ~w(maneuver_penalty service_penalty)
+  @costing_penalty_kwargs ~w(maneuver_penalty service_penalty gate_cost toll_booth_cost
+                              country_crossing_cost)
   @costing_kwargs @costing_preference_kwargs ++
                     ["shortest"] ++ @costing_speed_kwargs ++ @costing_penalty_kwargs
 

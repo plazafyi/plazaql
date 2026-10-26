@@ -1265,7 +1265,7 @@ defmodule PlazaQL.TypeCheckerTest do
     test "route, matrix and ev_route take the costing options; isochrone the speed overrides" do
       check!(
         @route <>
-          ~s|, use_highways: 0.2, use_tolls: 0, use_ferries: 1, use_living_streets: 0.5, top_speed: 100, fixed_speed: 60, maneuver_penalty: 5, service_penalty: 15);|
+          ~s|, use_highways: 0.2, use_tolls: 0, use_ferries: 1, use_living_streets: 0.5, top_speed: 100, fixed_speed: 60, maneuver_penalty: 5, service_penalty: 15, gate_cost: 60, toll_booth_cost: 120, country_crossing_cost: 600);|
       )
 
       check!(@route <> ~s|, mode: "foot", use_tracks: 1, shortest: true);|)
@@ -1305,6 +1305,10 @@ defmodule PlazaQL.TypeCheckerTest do
             {"top_speed: 5", "`top_speed:` must be a speed cap in whole km/h from 10 to 252"},
             {"fixed_speed: 50.5", "`fixed_speed:` must be the speed on every road in whole km/h"},
             {"maneuver_penalty: -1", "`maneuver_penalty:` must be seconds from 0 to 3600"},
+            {"gate_cost: 3601", "`gate_cost:` must be seconds from 0 to 3600"},
+            {~s|toll_booth_cost: "1"|, "`toll_booth_cost:` must be seconds from 0 to 3600"},
+            {"country_crossing_cost: -5",
+             "`country_crossing_cost:` must be seconds from 0 to 3600"},
             {~s|location_types: ["stop", "break"]|,
              "`location_types:` must be one entry per point"},
             {~s|preferred_sides: ["left", ""]|, "`preferred_sides:` must be one entry per point"},

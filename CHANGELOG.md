@@ -27,6 +27,10 @@ First Hex release of the PlazaQL Elixir package.
   SQL. Syntax highlighting, LSP completions and hover cover it.
 - The LSP accepts `.count()` after `.group_by()`, as the Elixir type checker
   already did.
+- `gate_cost`, `toll_booth_cost` and `country_crossing_cost` for `route()`,
+  `ev_route()` and `matrix()`: seconds (0-3600) added per gate, toll booth
+  or border crossing passed. Like the other penalties they steer the route
+  and leave `duration_s` alone.
 
 ### SQL generation
 

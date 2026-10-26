@@ -1298,7 +1298,8 @@ defmodule PlazaQL.Compiler do
                                 use_living_streets use_tracks shortest top_speed fixed_speed
                                 maneuver_penalty service_penalty location_types headings
                                 heading_tolerances preferred_sides approaches recostings style use_trails
-                                use_curves use_primary)a,
+                                use_curves use_primary gate_cost toll_booth_cost
+                                country_crossing_cost)a,
                              &{Atom.to_string(&1), &1}
                            )
 
