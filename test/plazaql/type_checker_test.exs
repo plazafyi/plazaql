@@ -1594,15 +1594,25 @@ defmodule PlazaQL.TypeCheckerTest do
       check!(
         ~s|map_match(points: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["campus-roads"]);|
       )
+
+      check!(
+        ~s|optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["campus-roads"]);|
+      )
+
+      check!(
+        ~s|centroid(locations: [point(38.8, -77.1), point(38.8, -77.0)], datasets: "campus-roads");|
+      )
+
+      check!(
+        ~s|expansion(action: "isochrone", center: point(38.8, -77.1), time: 300, datasets: ["campus-roads"]);|
+      )
+
+      check!(~s|nearest(point(38.8, -77.1), datasets: ["campus-roads"]);|)
     end
 
     test "dataset keywords are rejected on computations that don't take them" do
-      [error] =
-        check_errors(
-          ~s|optimize(waypoints: [point(38.8, -77.1), point(38.8, -77.0)], datasets: ["x"]);|
-        )
-
-      assert error.message == "`optimize()` does not accept `datasets:`"
+      [error] = check_errors(~s|text_search("pizza", datasets: ["x"]);|)
+      assert error.message == "`text_search()` does not accept `datasets:`"
 
       [error] = check_errors(~s|geocode("Main St", avoid_datasets: ["x"]);|)
       assert error.message == "`geocode()` does not accept `avoid_datasets:`"

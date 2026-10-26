@@ -1246,7 +1246,7 @@ defmodule PlazaQL.TypeChecker do
     autocomplete: ["query" | @geocode_filter_kwargs],
     text_search: ~w(query limit bbox focus),
     reverse_geocode: ~w(point radius limit include layer lang datasets),
-    nearest: ~w(point radius),
+    nearest: ~w(point radius datasets),
     matrix:
       ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
@@ -1254,16 +1254,16 @@ defmodule PlazaQL.TypeChecker do
       ~w(points mode radiuses exclude datasets avoid_datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     optimize:
-      ~w(waypoints mode roundtrip exclude avoid_datasets) ++
+      ~w(waypoints mode roundtrip exclude avoid_datasets datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     elevation: ~w(point points),
     elevation_profile: ~w(points),
     centroid:
-      ~w(locations mode metric exclude avoid_datasets) ++
+      ~w(locations mode metric exclude avoid_datasets datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     expansion:
       ~w(action origin destination center time origins destinations mode exclude avoid_datasets
-           expansion_properties) ++
+           expansion_properties datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     place_lookup: ~w(ids)
   }
