@@ -432,6 +432,40 @@ defmodule PlazaQL.CompilerTest do
       assert params.exclude == ["toll", "ferry"]
     end
 
+    test "route, isochrone and matrix pass the truck vehicle keywords through" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "truck", height: 4.1, width: 2.5, length: 16.5, weight: 30, axle_load: 9.5, axle_count: 5, hazmat: true);|
+        )
+
+      assert {:route, params} = plan.computation
+
+      assert %{
+               mode: "truck",
+               height: 4.1,
+               width: 2.5,
+               length: 16.5,
+               weight: 30,
+               axle_load: 9.5,
+               axle_count: 5,
+               hazmat: true
+             } = params
+
+      plan =
+        first_plan(
+          ~s|$$ = isochrone(center: point(40.71, -74.00), time: 600, mode: "truck", height: 3.8);|
+        )
+
+      assert {:isochrone, %{mode: "truck", height: 3.8}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "truck", hazmat: false);|
+        )
+
+      assert {:matrix, %{mode: "truck", hazmat: false}} = plan.computation
+    end
+
     test "exclude also takes a comma-separated string, and ev_route takes the same options" do
       plan =
         first_plan(

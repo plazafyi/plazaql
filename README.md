@@ -351,13 +351,13 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98))
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "foot")
 ```
 
-**Modes:** `"auto"`, `"foot"`, `"bicycle"`
+**Modes:** `"auto"`, `"foot"`, `"bicycle"`, `"truck"`
 
 | Parameter       | Type            | Description                                                                 |
 |-----------------|-----------------|-----------------------------------------------------------------------------|
 | `origin`        | Point           | Start point                                                                 |
 | `destination`   | Point           | End point                                                                   |
-| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"` (optional)                                  |
+| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (optional)                       |
 | `waypoints`     | Point[]         | Points to visit in order (optional)                                         |
 | `depart_at`     | string          | ISO 8601 departure time or `"now"`, for time-of-day traffic (optional)      |
 | `traffic_model` | string          | `"best_guess"` (default), `"optimistic"`, `"pessimistic"`; needs `depart_at` (optional) |
@@ -366,6 +366,26 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), depart_at: "2026-03-16T08:00:00Z", traffic_model: "pessimistic", exclude: ["toll", "ferry"])
 ```
+
+#### Truck options
+
+With `mode: "truck"`, `route()`, `isochrone()` and `matrix()` take the vehicle as keywords (Plaza's REST `truck` object). The router skips roads whose OSM `maxheight`, `maxwidth`, `maxlength`, `maxweight` or `maxaxleload` is below the vehicle's, keeps to roads trucks may use, follows one-way streets and times the trip at truck speeds. Any option left out takes its default, a standard US semi-trailer. Plaza rejects values out of range.
+
+| Parameter    | Type    | Description                                                                   |
+|--------------|---------|-------------------------------------------------------------------------------|
+| `height`     | number  | Metres, default 4.11, at most 10                                              |
+| `width`      | number  | Metres, default 2.6, at most 10                                               |
+| `length`     | number  | Metres, default 21.64, at most 60                                             |
+| `weight`     | number  | Gross weight in tonnes, default 21.77, at most 200                            |
+| `axle_load`  | number  | Heaviest axle in tonnes, at most 50 (optional)                                |
+| `axle_count` | integer | 2 to 20; without `axle_load`, `weight / axle_count` is checked (optional)     |
+| `hazmat`     | boolean | Hazardous load: avoids `hazmat=no` roads, ADR tunnel categories B to E and tunnels (default `false`) |
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "truck", height: 4.0, weight: 30, hazmat: true)
+```
+
+The options need `mode: "truck"` and are only accepted by these three functions. A truck route's properties include `mode`, the `truck` it was planned for and `warnings` about restrictions it exceeds on roads next to the route.
 
 ### `isochrone(center:, time:, mode:)`
 
@@ -379,7 +399,7 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 |-----------|---------|--------------------------------|
 | `center`  | Point   | Origin point                   |
 | `time`    | integer | Travel time in seconds         |
-| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"` |
+| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)) |
 
 ### `geocode(address)` / `geocode(address:, locality:, ...)`
 
@@ -512,7 +532,7 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 |----------------|----------|--------------------------------|
 | `origins`      | Point[]  | Origin points                  |
 | `destinations` | Point[]  | Destination points             |
-| `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"` (optional) |
+| `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options); optional) |
 
 ### `map_match(points:, mode:)`
 

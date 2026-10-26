@@ -806,12 +806,13 @@ defmodule PlazaQL.Compiler do
   # atom *values*). Kept separate so adding a computation option never makes a
   # new atom value legal.
   @computation_kwarg_names Map.new(
-                             ~w(action address alternatives battery battery_capacity_wh
-                                boundary_gid connector_types country country_code county
-                                depart_at destinations exclude expansion_properties focus ids
-                                include initial_charge_pct layers locality locations metric
+                             ~w(action address alternatives axle_count axle_load battery
+                                battery_capacity_wh boundary_gid connector_types country
+                                country_code county depart_at destinations exclude
+                                expansion_properties focus hazmat height ids include
+                                initial_charge_pct layers length locality locations metric
                                 min_charge_pct min_power_kw neighbourhood origins points
-                                postalcode region traffic_model waypoints)a,
+                                postalcode region traffic_model waypoints weight width)a,
                              &{Atom.to_string(&1), &1}
                            )
 

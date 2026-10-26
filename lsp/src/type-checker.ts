@@ -25,6 +25,9 @@ import {
   REVERSE_GEOCODE_INCLUDES,
   STRUCTURED_GEOCODE_COMPONENTS,
   searchBaseType,
+  TRUCK_COMPUTATIONS,
+  TRUCK_DIMENSIONS,
+  TRUCK_OPTIONS,
   unionType,
   validSpatialArgTypes,
 } from "./types.js"
@@ -225,7 +228,10 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
     case "computation": {
       const type = computationType(expr.name)
       const argErrors = checkVarRefsInArgs(expr.args, scope, outputScope)
-      const kwargErrors = checkComputationKwargs(expr.name, expr.args, expr.pos)
+      const kwargErrors = [
+        ...checkComputationKwargs(expr.name, expr.args, expr.pos),
+        ...checkTruckKwargs(expr.name, expr.args, expr.pos),
+      ]
       return { type, errors: [...argErrors, ...kwargErrors] }
     }
 
@@ -863,6 +869,104 @@ function checkComputationKwargs(
     }
     return [includeError("`include:` must be a string or a list of strings")]
   })
+}
+
+// ── Truck vehicle options (route/isochrone/matrix with mode: "truck") ─
+
+const TRUCK_HINT =
+  'e.g. `route(origin: ..., destination: ..., mode: "truck", height: 4.0, weight: 30, hazmat: true)`'
+
+function checkTruckKwargs(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const truckArgs = args.filter(
+    (arg) => arg.type === "kwarg" && TRUCK_OPTIONS.includes(arg.name),
+  )
+  if (truckArgs.length === 0) {
+    return []
+  }
+  return [
+    ...checkTruckUsage(name, args, pos),
+    ...truckArgs.flatMap((arg) => checkTruckValue(arg, pos)),
+  ]
+}
+
+function checkTruckUsage(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  if (!TRUCK_COMPUTATIONS.includes(name)) {
+    return [
+      kwargError(
+        pos,
+        `\`${name}()\` has no truck options; they apply to \`route()\`, \`isochrone()\` and \`matrix()\` with \`mode: "truck"\``,
+        TRUCK_HINT,
+      ),
+    ]
+  }
+  const truckMode = args.some(
+    (arg) =>
+      arg.type === "kwarg" &&
+      arg.name === "mode" &&
+      arg.value.kind === "string" &&
+      arg.value.value === "truck",
+  )
+  if (truckMode) {
+    return []
+  }
+  const names = TRUCK_OPTIONS.map((option) => `\`${option}:\``).join(", ")
+  return [
+    kwargError(
+      pos,
+      `truck options (${names}) need \`mode: "truck"\``,
+      TRUCK_HINT,
+    ),
+  ]
+}
+
+function checkTruckValue(arg: Arg, pos: Pos): TypeCheckError[] {
+  if (arg.type !== "kwarg") {
+    return []
+  }
+  const { name, value } = arg
+  if (TRUCK_DIMENSIONS.includes(name)) {
+    if (value.kind === "number" && value.value > 0) {
+      return []
+    }
+    const unit = ["height", "width", "length"].includes(name)
+      ? "metres"
+      : "tonnes"
+    return [
+      kwargError(
+        pos,
+        `\`${name}:\` must be a positive number (${unit})`,
+        TRUCK_HINT,
+      ),
+    ]
+  }
+  if (name === "axle_count") {
+    if (
+      value.kind === "number" &&
+      Number.isInteger(value.value) &&
+      value.value > 0
+    ) {
+      return []
+    }
+    return [
+      kwargError(
+        pos,
+        "`axle_count:` must be a whole number of axles",
+        TRUCK_HINT,
+      ),
+    ]
+  }
+  if (value.kind === "bool") {
+    return []
+  }
+  return [kwargError(pos, "`hazmat:` must be `true` or `false`", TRUCK_HINT)]
 }
 
 const quoted = (values: string[]): string =>

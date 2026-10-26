@@ -306,6 +306,48 @@ describe("PlazaQL Type Checker", () => {
 
   // ── centroid() and expansion() ─────────────────────────────────
 
+  describe("truck options", () => {
+    const route = "origin: point(40.71, -74.00), destination: point(40.75, -73.98)";
+
+    it("accepts the vehicle on route, isochrone and matrix with mode truck", () => {
+      for (const src of [
+        `$$ = route(${route}, mode: "truck", height: 4.1, width: 2.5, length: 16.5, weight: 30, axle_load: 9.5, axle_count: 5, hazmat: true);`,
+        '$$ = isochrone(center: point(40.71, -74.00), time: 600, mode: "truck", height: 3.8);',
+        '$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "truck", weight: 40);',
+      ]) {
+        expect(check(src).errors).toHaveLength(0);
+      }
+    });
+
+    it("needs mode truck", () => {
+      const result = check(`$$ = route(${route}, height: 4.1);`);
+      expect(result.errors.some((e) => e.message.includes('need `mode: "truck"`'))).toBe(true);
+    });
+
+    it("rejects truck options on other computations", () => {
+      const result = check(
+        '$$ = centroid(locations: [point(48.858, 2.294), point(48.87, 2.35)], height: 4.0);'
+      );
+      expect(result.errors.some((e) => e.message.includes("`centroid()` has no truck options"))).toBe(true);
+    });
+
+    it("checks value types like the Elixir type checker", () => {
+      const messages = (src: string) => check(src).errors.map((e) => e.message);
+      expect(messages(`$$ = route(${route}, mode: "truck", height: "tall");`)).toContain(
+        "`height:` must be a positive number (metres)"
+      );
+      expect(messages(`$$ = route(${route}, mode: "truck", weight: 0);`)).toContain(
+        "`weight:` must be a positive number (tonnes)"
+      );
+      expect(messages(`$$ = route(${route}, mode: "truck", axle_count: 2.5);`)).toContain(
+        "`axle_count:` must be a whole number of axles"
+      );
+      expect(messages(`$$ = route(${route}, mode: "truck", hazmat: "yes");`)).toContain(
+        "`hazmat:` must be `true` or `false`"
+      );
+    });
+  });
+
   describe("centroid()", () => {
     const locations = "locations: [point(48.858, 2.294), point(48.87, 2.35)]";
 
