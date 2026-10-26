@@ -1849,6 +1849,19 @@ schema =
 
 Tags must be a `jsonb` column: filters use `?`, `->>` and `@>`.
 
+### Extra conditions
+
+`plan.custom_clauses` adds your own WHERE conditions, each with its own
+`$1..$n` parameters (renumbered when spliced in). A three-element clause
+applies to one element type or source only:
+
+```elixir
+{:ok, %{plans: [plan]}} = PlazaQL.compile(~s|search(node, amenity: "cafe");|)
+
+plan = %{plan | custom_clauses: [{"updated_at > $1", [~U[2026-01-01 00:00:00Z]]}]}
+{:ok, %PlazaQL.Query{sql: sql}} = PlazaQL.to_sql(plan)
+```
+
 Optional parts of the schema:
 
 - `columns: [tile_id: "...", partition_tile_id: "..."]` with

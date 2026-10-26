@@ -29,6 +29,15 @@ defmodule PlazaQL.LibraryUsageTest do
     assert sql =~ "SELECT id, tags, geometry, 'node' AS __type__ FROM points WHERE geometry && "
   end
 
+  test "extra conditions" do
+    {:ok, %{plans: [plan]}} = PlazaQL.compile(~s|search(node, amenity: "cafe");|)
+
+    plan = %{plan | custom_clauses: [{"updated_at > $1", [~U[2026-01-01 00:00:00Z]]}]}
+    assert {:ok, %Query{sql: sql, params: params}} = PlazaQL.to_sql(plan)
+    assert sql =~ "AND updated_at > $4"
+    assert List.last(params) == ~U[2026-01-01 00:00:00Z]
+  end
+
   test "step by step" do
     {:ok, ast} = PlazaQL.parse(@cafes)
     {:ok, checked} = PlazaQL.TypeChecker.check(ast)
