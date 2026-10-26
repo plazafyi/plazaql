@@ -123,6 +123,27 @@ $W/bin/clang --target=wasm32-wasip1 --sysroot=$W/share/wasi-sysroot -fPIC -share
 cp tree-sitter-plazaql.wasm lsp/src/tree-sitter-plazaql.wasm
 ```
 
+The tree-sitter 0.27.1 CLI builds the same file byte for byte without the
+manual clang step. The repo's `node_modules/.bin/tree-sitter` is 0.26.13 (the
+one that fails). The 0.27.1 CLI is the global npm install under asdf nodejs
+23.4.0, which this repo's `.tool-versions` (nodejs 24.14.1) hides, so select
+it explicitly:
+
+```bash
+export ASDF_NODEJS_VERSION=23.4.0   # tree-sitter --version -> 0.27.1
+tree-sitter generate
+tree-sitter build --wasm -o tree-sitter-plazaql.wasm
+cp tree-sitter-plazaql.wasm lsp/src/tree-sitter-plazaql.wasm
+```
+
+Without `ASDF_NODEJS_VERSION`, the `tree-sitter` shim reports "No version is
+set" and `make test` (which runs `tree-sitter test`) fails, and so does the
+Elixir parser, which shells out to the same CLI.
+
+`tree-sitter generate` writes `src/grammar.json` and `src/node-types.json`
+without a trailing newline; the `end-of-file-fixer` hook adds it back. Commit
+the fixed files, or the next precommit run rewrites them.
+
 The Elixir parser uses the library cached at `~/.cache/tree-sitter/lib/plazaql.dylib`
 when it exists, which every checkout on the machine shares. To test a grammar
 branch without replacing it, build the library elsewhere and point
