@@ -19,6 +19,7 @@ defmodule PlazaQL.SQL.Where do
     {clauses, params, next_idx} =
       acc
       |> maybe_add_spatial(plan.spatial_filter, schema)
+      |> add_spatial_filters(plan.spatial_filters, schema)
       |> maybe_add_spatial(plan.scope_geometry, schema)
       |> maybe_add_osm_ids(plan.osm_ids, schema)
       |> add_tag_filters(plan.tag_filters, schema)
@@ -36,6 +37,9 @@ defmodule PlazaQL.SQL.Where do
   end
 
   # ── Spatial filters ──────────────────────────────────────────────
+
+  defp add_spatial_filters(acc, filters, schema),
+    do: Enum.reduce(filters, acc, &maybe_add_spatial(&2, &1, schema))
 
   defp maybe_add_spatial(acc, nil, _schema), do: acc
 
