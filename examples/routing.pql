@@ -121,6 +121,24 @@ route(
   use_hills: 0.1
 );
 
+// Adventure motorcycle ride over Alpine passes: curvy roads, tracks welcome
+route(
+  origin: point(46.5547, 8.5612),
+  destination: point(46.6327, 8.6004),
+  mode: "motorcycle",
+  style: "adventure",
+  use_curves: 1
+);
+
+// Scooter across Rome that keeps off fast main roads
+route(
+  origin: point(41.8902, 12.4922),
+  destination: point(41.9109, 12.4818),
+  mode: "motor_scooter",
+  use_primary: 0,
+  use_hills: 0.2
+);
+
 // Wheelchair route that prefers lit streets
 route(
   origin: point(40.7128, -74.0060),

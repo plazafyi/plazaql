@@ -534,6 +534,37 @@ defmodule PlazaQL.CompilerTest do
       assert {:matrix, %{mode: "truck", hazmat: false}} = plan.computation
     end
 
+    test "route, isochrone and matrix pass the motorcycle and motor scooter keywords through" do
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "motorcycle", style: "adventure", use_trails: 0.7, use_curves: 0.9, use_highways: 0.2);|
+        )
+
+      assert {:route,
+              %{
+                mode: "motorcycle",
+                style: "adventure",
+                use_trails: 0.7,
+                use_curves: 0.9,
+                use_highways: 0.2
+              }} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = isochrone(center: point(40.71, -74.00), time: 600, mode: "scooter", top_speed: 50);|
+        )
+
+      assert {:isochrone, %{mode: "scooter", top_speed: 50}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], mode: "motor_scooter", use_primary: 0, use_hills: 0.1);|
+        )
+
+      assert {:matrix, %{mode: "motor_scooter", use_primary: 0, use_hills: 0.1}} =
+               plan.computation
+    end
+
     test "route, isochrone and matrix pass the bicycle and pedestrian keywords through" do
       plan =
         first_plan(

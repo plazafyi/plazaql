@@ -362,7 +362,7 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 |-----------------|-----------------|-----------------------------------------------------------------------------|
 | `origin`        | Point           | Start point                                                                 |
 | `destination`   | Point           | End point                                                                   |
-| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"transit"` (with the [transit options](#transit-options)) (optional) |
+| `mode`          | string          | `"auto"`, `"foot"`, `"bicycle"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` (see [motorcycle and motor scooter options](#motorcycle-and-motor-scooter-options)), `"transit"` (with the [transit options](#transit-options)) (optional) |
 | `waypoints`     | Point[]         | Points to visit in order (optional)                                         |
 | `alternatives`  | number          | Number of alternative routes to return (optional)                           |
 | `overview`      | string/false    | Route geometry detail: `"full"` (default), `"simplified"`, or `false` for none (optional) |
@@ -442,6 +442,30 @@ route(origin: point(40.71, -74.00), destination: point(40.72, -73.99), mode: "fo
 
 The options need their mode and are only accepted by these three functions.
 
+#### Motorcycle and motor scooter options
+
+`mode: "motorcycle"` (alias `"motorbike"`) and `mode: "motor_scooter"` (aliases `"scooter"`, `"moped"`) route on roads open to them: OSM `motorcycle=*` decides for motorcycles and `moped=*` for scooters, before `motor_vehicle`, `vehicle` and `access`. Both follow one-way streets like cars. Scooters never use motorways, or roads tagged `motorroad=yes` unless `moped` allows them, and ride at most 45 km/h unless `top_speed` says otherwise. `route()`, `isochrone()` and `matrix()` take the rider's options as keywords (Plaza's REST `motorcycle` and `motor_scooter` objects). Except `use_trails`, which decides whether tracks are ridden at all, they only change which way a route goes, not its `duration_s`. Plaza rejects values out of range.
+
+| Motorcycle option | Type   | Description |
+|-------------------|--------|-------------|
+| `style`           | string | `"touring"` (default): direct, paved roads. `"adventure"`: curvy roads, unpaved surfaces and tracks are fine |
+| `use_trails`      | number | 0 to 1. 0 keeps to roads; higher values ride tracks more willingly. Default 0 touring, 0.5 adventure |
+| `use_curves`      | number | 0 (avoid) to 1 (seek) curvy roads, measured from each road's geometry; 0.5 is neutral. Default 0.5 touring, 0.8 adventure |
+
+| Motor scooter option | Type   | Description |
+|----------------------|--------|-------------|
+| `use_primary`        | number | 0 to 1, default 0.2. Lower values avoid primary and trunk roads and roads with limits of 80 km/h or more |
+| `use_hills`          | number | 0 to 1, default 0.5. Lower values avoid steep grades (needs elevation data) |
+
+The [costing options](#costing-options) `use_highways`, `use_tolls`, `top_speed`, `fixed_speed`, `maneuver_penalty` and `service_penalty` apply to both modes. A scooter's `top_speed` replaces its 45 km/h default.
+
+```plazaql
+route(origin: point(46.55, 8.56), destination: point(46.63, 8.6), mode: "motorcycle", style: "adventure", use_curves: 1)
+route(origin: point(41.89, 12.48), destination: point(41.91, 12.5), mode: "motor_scooter", use_primary: 0, top_speed: 50)
+```
+
+The options need their mode and are only accepted by these three functions. A motorcycle or scooter route's properties include `mode`, the options it was planned with, `curviness_avg` and `surface_breakdown`.
+
 #### Transit options
 
 With `mode: "transit"`, `route()` and `isochrone()` plan walking plus public transit over the GTFS feeds Plaza has loaded (REST: `mode: "transit"` on `POST /route` and `POST /isochrone`). `depart_at` with an offset (`"...Z"`, `"...-04:00"`) is an instant; without one it is local time at the feed; `"now"` is the default.
@@ -459,7 +483,7 @@ route(origin: point(42.3601, -71.0589), destination: point(42.3736, -71.1190), m
 isochrone(center: point(42.3601, -71.0589), time: [900, 1800], mode: "transit", depart_at: "2026-03-16T08:00:00")
 ```
 
-The options need `mode: "transit"` and are only accepted by these two functions. Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck, bicycle and pedestrian options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
+The options need `mode: "transit"` and are only accepted by these two functions. Route options of the other modes (`waypoints`, `alternatives`, `exclude`, `steps`, the truck, bicycle, pedestrian, motorcycle and scooter options, ...) are refused with `mode: "transit"`. A transit route's properties list its `legs` (walks and vehicles with stops, route names and times), `depart_at`, `arrive_at` and `transfers`.
 
 #### Costing options
 
@@ -467,16 +491,16 @@ The options need `mode: "transit"` and are only accepted by these two functions.
 
 | Parameter            | Type    | Description |
 |----------------------|---------|-------------|
-| `use_highways`       | number  | 0 to 1. Motorways and trunk roads: 0.5 (or leaving it out) is neutral, 0 avoids them (cost x10), 1 favours them (x0.9). `"auto"`, `"truck"` |
-| `use_tolls`          | number  | The same for toll roads. `"auto"`, `"truck"` |
+| `use_highways`       | number  | 0 to 1. Motorways and trunk roads: 0.5 (or leaving it out) is neutral, 0 avoids them (cost x10), 1 favours them (x0.9). `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
+| `use_tolls`          | number  | The same for toll roads. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `use_ferries`        | number  | The same for ferries. Every mode |
 | `use_living_streets` | number  | The same for living streets (x5 at 0). Every mode |
 | `use_tracks`         | number  | The same for tracks (x15 at 0). `"foot"`, `"bicycle"` |
 | `shortest`           | boolean | Minimise distance instead of time; not with the `use_*` or penalty options |
-| `top_speed`          | integer | Highest speed driven, km/h (10-252). `"auto"`, `"truck"` |
-| `fixed_speed`        | integer | Drive every road at this speed, km/h (1-252), ignoring class, limits, surface, grade and traffic. `"auto"`, `"truck"` |
-| `maneuver_penalty`   | number  | Seconds (0-3600) added at each intersection the route arrives at. `"auto"`, `"truck"` |
-| `service_penalty`    | number  | Seconds (0-3600) added for each service road used. `"auto"`, `"truck"` |
+| `top_speed`          | integer | Highest speed driven, km/h (10-252). `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
+| `fixed_speed`        | integer | Drive every road at this speed, km/h (1-252), ignoring class, limits, surface, grade and traffic. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
+| `maneuver_penalty`   | number  | Seconds (0-3600) added at each intersection the route arrives at. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
+| `service_penalty`    | number  | Seconds (0-3600) added for each service road used. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), use_tolls: 0, use_highways: 0.3, top_speed: 100)
@@ -493,7 +517,7 @@ matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], sh
 | `headings`           | number[]/string   | Direction of travel at the point, degrees from north. The point snaps to the nearest road it can be travelled along that way |
 | `heading_tolerances` | number[]/string   | Largest difference from the heading accepted, degrees (default 60) |
 | `preferred_sides`    | string[]/string   | `"same"` (the point on the driving side), `"opposite"` or `"either"` (default) |
-| `recostings`         | string[]          | Price the route found under other costing models: `"name: key=value, ..."` with any costing option and an optional `mode=auto`, `foot` or `bicycle` (at most 5) |
+| `recostings`         | string[]          | Price the route found under other costing models: `"name: key=value, ..."` with any costing option and an optional `mode=auto`, `foot`, `bicycle`, `motorcycle` or `motor_scooter` (at most 5) |
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), waypoints: [point(40.73, -73.99)], location_types: ["break", "through", "break"], headings: "90;;", preferred_sides: ";;same", recostings: ["no_tolls: use_tolls=0", "walk: mode=foot"]);
@@ -540,7 +564,7 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 |-----------|---------|--------------------------------|
 | `center`  | Point   | Origin point                   |
 | `time`    | integer or integer[] | Travel time in seconds; a list returns one polygon per time |
-| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"transit"` (with the [transit options](#transit-options)) |
+| `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"motorcycle"`, `"motor_scooter"`, `"transit"` (with the [transit options](#transit-options)) |
 | `depart_at` | string | Departure time for `mode: "transit"`, as in `route()` (optional) |
 | `top_speed`, `fixed_speed` | integer | The [speed overrides](#costing-options), as in `route()` (optional) |
 | `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` is a list (optional) |
@@ -700,7 +724,7 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 |----------------|----------|--------------------------------|
 | `origins`      | Point[]  | Origin points                  |
 | `destinations` | Point[]  | Destination points             |
-| `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options); optional) |
+| `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"motorcycle"`, `"motor_scooter"` (optional) |
 | `annotations`  | string or string[] | `"duration"` (always) and `"distance"` (optional) |
 | `fallback_speed` | number | km/h used to estimate pairs with no route, which are otherwise null (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |

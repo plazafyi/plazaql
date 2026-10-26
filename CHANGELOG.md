@@ -12,6 +12,11 @@ First Hex release of the PlazaQL Elixir package.
   expression filters, computed columns, sort, `.cursor()`, aggregation and
   `group_by`, set operations, variables and output assignments, global
   directives, and computations (`route`, `isochrone`, `geocode`, ...).
+- `mode: "motorcycle"` (alias `"motorbike"`) and `mode: "motor_scooter"`
+  (aliases `"scooter"`, `"moped"`) for `route()`, `isochrone()` and
+  `matrix()`, with the keywords `style`, `use_trails` and `use_curves`
+  (motorcycle) and `use_primary` and `use_hills` (motor scooter). The type
+  checker and the LSP reject them without their mode or out of range.
 
 ### SQL generation
 

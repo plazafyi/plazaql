@@ -31,6 +31,11 @@ import {
   GEOCODE_LAYERS,
   isOutputMode,
   LOCATION_OPTIONS,
+  MOTOR_SCOOTER_MODES,
+  MOTOR_SCOOTER_OPTIONS,
+  MOTORCYCLE_MODES,
+  MOTORCYCLE_OPTIONS,
+  MOTORCYCLE_STYLES,
   methodCategory,
   methodGroup,
   methodOutputType,
@@ -1012,7 +1017,7 @@ const COSTING_EXAMPLE =
 const LOCATION_EXAMPLE =
   'e.g. `location_types: ["break", "through", "break"]`, `headings: "90;;"`'
 const RECOSTING_EXAMPLE =
-  'each "name: key=value, ...", with an optional mode=auto, foot or bicycle'
+  'each "name: key=value, ...", with an optional mode=auto, foot, bicycle, motorcycle or motor_scooter'
 
 function checkCostingKwargs(args: Arg[], pos: Pos): TypeCheckError[] {
   return args.flatMap((arg) => {
@@ -1299,10 +1304,18 @@ function checkTransitValue(arg: Arg, pos: Pos): TypeCheckError[] {
       ]
 }
 
-// ── Bicycle and pedestrian options (mode: "bicycle" / "foot") ───────
+// ── Mode options (bicycle, foot, motorcycle, motor_scooter) ─────────
 
 const ACTIVE_HINT =
-  'e.g. `route(origin: ..., destination: ..., mode: "bicycle", bicycle_type: "road", use_hills: 0.2)` or `route(..., mode: "foot", walking_speed: 4, wheelchair: true)`'
+  'e.g. `route(origin: ..., destination: ..., mode: "bicycle", bicycle_type: "road", use_hills: 0.2)`, `route(..., mode: "foot", walking_speed: 4, wheelchair: true)` or `route(..., mode: "motorcycle", style: "adventure")`'
+
+/** Canonical mode, its literals and its option keywords, in message order. */
+const ACTIVE_FAMILIES: [string, string[], string[]][] = [
+  ["bicycle", BICYCLE_MODES, BICYCLE_OPTIONS],
+  ["foot", FOOT_MODES, PEDESTRIAN_OPTIONS],
+  ["motorcycle", MOTORCYCLE_MODES, MOTORCYCLE_OPTIONS],
+  ["motor_scooter", MOTOR_SCOOTER_MODES, MOTOR_SCOOTER_OPTIONS],
+]
 
 function checkActiveKwargs(
   name: string,
@@ -1334,73 +1347,55 @@ function checkActiveUsage(
     return [
       kwargError(
         pos,
-        `\`${name}()\` has no bicycle or pedestrian options; they apply to \`route()\`, \`isochrone()\` and \`matrix()\` with \`mode: "bicycle"\` or \`mode: "foot"\``,
+        `\`${name}()\` has no bicycle, pedestrian or motorcycle options; they apply to \`route()\`, \`isochrone()\` and \`matrix()\` with \`mode: "bicycle"\`, \`"foot"\`, \`"motorcycle"\` or \`"motor_scooter"\``,
         ACTIVE_HINT,
       ),
     ]
   }
-  switch (activeMode(args)) {
-    case "dynamic":
-      // As for truck options: a mode that is not a literal is checked by Plaza.
-      return []
-    case "bicycle":
-      return strayActiveError(
-        keys.filter((key) => !BICYCLE_OPTIONS.includes(key)),
-        "foot",
-        pos,
-      )
-    case "foot":
-      return strayActiveError(
-        keys.filter((key) => !PEDESTRIAN_OPTIONS.includes(key)),
-        "bicycle",
-        pos,
-      )
-    default:
-      return [activeModeError(keys, pos)]
+  const mode = activeMode(args)
+  if (mode === "dynamic") {
+    // As for truck options: a mode that is not a literal is checked by Plaza.
+    return []
   }
+  const family = ACTIVE_FAMILIES.find(([, literals]) => literals.includes(mode))
+  const stray = family ? keys.filter((key) => !family[2].includes(key)) : keys
+  return activeModeError(stray, pos)
 }
 
-/** The kind of `mode:` given: a bicycle or foot literal, another literal or none, or a variable. */
-function activeMode(args: Arg[]): "bicycle" | "foot" | "other" | "dynamic" {
+/** The `mode:` literal given ("" for none or an atom), or "dynamic" for a variable. */
+function activeMode(args: Arg[]): string {
   const mode = args.find((arg) => arg.type === "kwarg" && arg.name === "mode")
   if (mode?.type !== "kwarg") {
-    return "other"
+    return ""
   }
   const { value } = mode
   if (value.kind === "string") {
-    if (BICYCLE_MODES.includes(value.value)) {
-      return "bicycle"
-    }
-    return FOOT_MODES.includes(value.value) ? "foot" : "other"
+    return value.value
   }
-  return value.kind === "atom" ? "other" : "dynamic"
+  return value.kind === "atom" ? "" : "dynamic"
 }
 
-function activeModeError(keys: string[], pos: Pos): TypeCheckError {
-  const bicycle = keys.every((key) => BICYCLE_OPTIONS.includes(key))
-  const foot = keys.every((key) => PEDESTRIAN_OPTIONS.includes(key))
-  let needed = '`mode: "foot"`'
-  if (bicycle && foot) {
-    needed = '`mode: "bicycle"` or `mode: "foot"`'
-  } else if (bicycle) {
-    needed = '`mode: "bicycle"`'
-  }
-  const names = [...new Set(keys)].map((key) => `\`${key}:\``).join(", ")
-  return kwargError(pos, `${names} need ${needed}`, ACTIVE_HINT)
-}
-
-function strayActiveError(
-  stray: string[],
-  otherMode: string,
-  pos: Pos,
-): TypeCheckError[] {
-  if (stray.length === 0) {
+/** The modes taking every one of `keys` (else those taking any of them). */
+function activeModeError(keys: string[], pos: Pos): TypeCheckError[] {
+  const unique = [...new Set(keys)]
+  if (unique.length === 0) {
     return []
   }
-  const names = stray.map((key) => `\`${key}:\``).join(", ")
-  return [
-    kwargError(pos, `${names} need \`mode: "${otherMode}"\``, ACTIVE_HINT),
-  ]
+  let modes = ACTIVE_FAMILIES.filter(([, , options]) =>
+    unique.every((key) => options.includes(key)),
+  ).map(([mode]) => mode)
+  if (modes.length === 0) {
+    modes = ACTIVE_FAMILIES.filter(([, , options]) =>
+      unique.some((key) => options.includes(key)),
+    ).map(([mode]) => mode)
+  }
+  const quotedModes = modes.map((mode) => `\`mode: "${mode}"\``)
+  const needed =
+    quotedModes.length === 1
+      ? quotedModes[0]
+      : `${quotedModes.slice(0, -1).join(", ")} or ${quotedModes.at(-1)}`
+  const names = unique.map((key) => `\`${key}:\``).join(", ")
+  return [kwargError(pos, `${names} need ${needed}`, ACTIVE_HINT)]
 }
 
 function checkActiveValue(arg: Arg, pos: Pos): TypeCheckError[] {
@@ -1410,6 +1405,17 @@ function checkActiveValue(arg: Arg, pos: Pos): TypeCheckError[] {
   switch (arg.name) {
     case "bicycle_type":
       return checkBicycleType(arg.value, pos)
+    case "style":
+      return arg.value.kind === "string" &&
+        MOTORCYCLE_STYLES.includes(arg.value.value)
+        ? []
+        : [
+            kwargError(
+              pos,
+              `\`style:\` must be one of ${quoted(MOTORCYCLE_STYLES)}`,
+              '"touring" (direct, paved) or "adventure" (curvy roads, tracks OK)',
+            ),
+          ]
     case "wheelchair":
       return arg.value.kind === "bool"
         ? []

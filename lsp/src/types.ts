@@ -1101,6 +1101,8 @@ const TRUCK_MODE_VALUES = [
   { value: '"foot"' },
   { value: '"bicycle"' },
   { value: '"truck"' },
+  { value: '"motorcycle"' },
+  { value: '"motor_scooter"' },
 ]
 
 // Options of route() and isochrone() with mode: "transit" (Plaza's
@@ -1155,8 +1157,10 @@ const TRANSIT_PARAMS: ParamInfo[] = [
 const TRANSIT_MODE_VALUE = { value: '"transit"' }
 
 // Rider options of route(), isochrone() and matrix() with mode: "bicycle"
-// (Plaza's POST /route `bicycle` object) and walker options with
-// mode: "foot" (its `pedestrian` object). `use_hills` is both.
+// (Plaza's POST /route `bicycle` object), walker options with mode: "foot"
+// (its `pedestrian` object), motorcycle options with mode: "motorcycle"
+// (its `motorcycle` object) and scooter options with mode: "motor_scooter"
+// (its `motor_scooter` object). `use_hills` is bicycle, foot and scooter.
 export const BICYCLE_OPTIONS = [
   "bicycle_type",
   "cycling_speed",
@@ -1174,12 +1178,22 @@ export const PEDESTRIAN_OPTIONS = [
   "max_hiking_difficulty",
   "wheelchair",
 ]
+export const MOTORCYCLE_OPTIONS = ["style", "use_trails", "use_curves"]
+export const MOTOR_SCOOTER_OPTIONS = ["use_primary", "use_hills"]
 export const ACTIVE_OPTIONS = [
-  ...new Set([...BICYCLE_OPTIONS, ...PEDESTRIAN_OPTIONS]),
+  ...new Set([
+    ...BICYCLE_OPTIONS,
+    ...PEDESTRIAN_OPTIONS,
+    ...MOTORCYCLE_OPTIONS,
+    ...MOTOR_SCOOTER_OPTIONS,
+  ]),
 ]
 export const ACTIVE_COMPUTATIONS = ["route", "isochrone", "matrix"]
 export const BICYCLE_MODES = ["bicycle", "bike"]
 export const FOOT_MODES = ["foot", "walk"]
+export const MOTORCYCLE_MODES = ["motorcycle", "motorbike"]
+export const MOTOR_SCOOTER_MODES = ["motor_scooter", "scooter", "moped"]
+export const MOTORCYCLE_STYLES = ["touring", "adventure"]
 export const BICYCLE_TYPES = ["road", "hybrid", "cross", "mountain"]
 
 /** [min, max, unit] of the numeric bicycle and pedestrian options. */
@@ -1193,6 +1207,9 @@ export const ACTIVE_RANGES = new Map<string, [number, number, string | null]>([
   ["walkway_factor", [0.1, 10, null]],
   ["sidewalk_factor", [0.1, 10, null]],
   ["step_penalty", [0, 3600, "seconds"]],
+  ["use_trails", [0, 1, null]],
+  ["use_curves", [0, 1, null]],
+  ["use_primary", [0, 1, null]],
 ])
 
 const ACTIVE_PARAMS: ParamInfo[] = [
@@ -1222,7 +1239,7 @@ const ACTIVE_PARAMS: ParamInfo[] = [
     type: "number",
     optional: true,
     description:
-      'Willingness to climb, 0 to 1 (mode: "bicycle" or "foot"; default 0.5). Needs elevation data.',
+      'Willingness to climb, 0 to 1 (mode: "bicycle", "foot" or "motor_scooter"; default 0.5). Needs elevation data.',
   },
   {
     name: "avoid_bad_surfaces",
@@ -1278,6 +1295,35 @@ const ACTIVE_PARAMS: ParamInfo[] = [
     description:
       'Wheelchair routing: no steps, grades of 8% at most, smooth surfaces (mode: "foot")',
   },
+  {
+    name: "style",
+    type: "string",
+    optional: true,
+    description:
+      'Riding style (mode: "motorcycle"; default "touring"): "touring" keeps to direct, paved roads, "adventure" seeks curvy roads and accepts tracks',
+    enumValues: MOTORCYCLE_STYLES.map((style) => ({ value: `"${style}"` })),
+  },
+  {
+    name: "use_trails",
+    type: "number",
+    optional: true,
+    description:
+      'Willingness to ride tracks, 0 to 1 (mode: "motorcycle"; default 0 touring, 0.5 adventure; 0 keeps to roads)',
+  },
+  {
+    name: "use_curves",
+    type: "number",
+    optional: true,
+    description:
+      'Preference for curvy roads, 0 (avoid) to 1 (seek); 0.5 is neutral (mode: "motorcycle"; default 0.5 touring, 0.8 adventure). Steers the route, not its duration.',
+  },
+  {
+    name: "use_primary",
+    type: "number",
+    optional: true,
+    description:
+      'Willingness to ride primary and trunk roads and roads with limits of 80 km/h or more, 0 to 1 (mode: "motor_scooter"; default 0.2). Steers the route, not its duration.',
+  },
 ]
 
 // Road costing options of route(), ev_route() and matrix() (isochrone()
@@ -1320,14 +1366,14 @@ const SPEED_PARAMS: ParamInfo[] = [
     type: "number",
     optional: true,
     description:
-      'Highest speed the vehicle drives, whole km/h from 10 to 252 (mode "auto" or "truck")',
+      'Highest speed the vehicle drives, whole km/h from 10 to 252 (mode "auto", "truck", "motorcycle" or "motor_scooter"; a scooter defaults to 45)',
   },
   {
     name: "fixed_speed",
     type: "number",
     optional: true,
     description:
-      'Drive every road at this speed, whole km/h from 1 to 252, ignoring class, limits, surface, grade and traffic (mode "auto" or "truck")',
+      'Drive every road at this speed, whole km/h from 1 to 252, ignoring class, limits, surface, grade and traffic (mode "auto", "truck", "motorcycle" or "motor_scooter")',
   },
 ]
 
@@ -1335,9 +1381,13 @@ const COSTING_PARAMS: ParamInfo[] = [
   preferenceParam(
     "use_highways",
     "motorways and trunk roads",
-    'Mode "auto" or "truck"',
+    'Mode "auto", "truck", "motorcycle" or "motor_scooter"',
   ),
-  preferenceParam("use_tolls", "toll roads", 'Mode "auto" or "truck"'),
+  preferenceParam(
+    "use_tolls",
+    "toll roads",
+    'Mode "auto", "truck", "motorcycle" or "motor_scooter"',
+  ),
   preferenceParam("use_ferries", "ferries", "Every mode"),
   preferenceParam("use_living_streets", "living streets", "Every mode"),
   preferenceParam("use_tracks", "tracks", 'Mode "foot" or "bicycle"'),
@@ -1354,14 +1404,14 @@ const COSTING_PARAMS: ParamInfo[] = [
     type: "number",
     optional: true,
     description:
-      'Seconds added at each intersection the route arrives at, 0 to 3600 (mode "auto" or "truck"); steers, not part of the duration',
+      'Seconds added at each intersection the route arrives at, 0 to 3600 (mode "auto", "truck", "motorcycle" or "motor_scooter"); steers, not part of the duration',
   },
   {
     name: "service_penalty",
     type: "number",
     optional: true,
     description:
-      'Seconds added for each service road used, 0 to 3600 (mode "auto" or "truck"); steers, not part of the duration',
+      'Seconds added for each service road used, 0 to 3600 (mode "auto", "truck", "motorcycle" or "motor_scooter"); steers, not part of the duration',
   },
 ]
 
@@ -1489,7 +1539,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       },
       {
         name: "mode",
-        type: '"auto" | "car" | "bicycle" | "foot" | "truck" | "transit"',
+        type: '"auto" | "car" | "bicycle" | "foot" | "truck" | "motorcycle" | "motor_scooter" | "transit"',
         optional: true,
         description: "Travel mode",
         enumValues: [
@@ -1497,6 +1547,8 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           { value: '"foot"' },
           { value: '"bicycle"' },
           { value: '"truck"' },
+          { value: '"motorcycle"' },
+          { value: '"motor_scooter"' },
           TRANSIT_MODE_VALUE,
           { value: '"car"' },
         ],
