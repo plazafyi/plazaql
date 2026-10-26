@@ -816,6 +816,30 @@ defmodule PlazaQL.TypeChecker do
   defp check_contextual(:has_member, args, _ctx, pos),
     do: check_join_method_args(:has_member, args, pos)
 
+  defp check_contextual(:tile, args, _ctx, pos) do
+    positional = for {:posarg, arg} <- args, do: arg
+    kwargs = for {:kwarg, key, value} <- args, do: {key, value}
+
+    coord_errors =
+      case positional do
+        [{:number, z, _}, {:number, x, _}, {:number, y, _}]
+        when is_integer(z) and is_integer(x) and is_integer(y) ->
+          check_tile_coords(z, x, y, pos)
+
+        _ ->
+          [
+            %Error{
+              line: pos.line,
+              col: pos.col,
+              message: "`.tile()` requires three integer arguments: zoom, x and y",
+              hint: "e.g., `.tile(14, 4823, 6160)`"
+            }
+          ]
+      end
+
+    coord_errors ++ Enum.flat_map(kwargs, &check_tile_kwarg(&1, pos))
+  end
+
   defp check_contextual(:index, args, _ctx, pos) do
     case args do
       [{:posarg, {:number, n, _}}] when is_integer(n) and n > 0 ->
@@ -1727,5 +1751,65 @@ defmodule PlazaQL.TypeChecker do
   defp pos_map(node) when is_tuple(node) do
     last = :erlang.element(tuple_size(node), node)
     if is_map(last), do: last, else: %{}
+  end
+
+  # z/x/y of a slippy-map tile: 0 <= x, y < 2^z
+  @max_tile_zoom 22
+
+  defp check_tile_coords(z, x, y, pos) do
+    cond do
+      z < 0 or z > @max_tile_zoom ->
+        [
+          %Error{
+            line: pos.line,
+            col: pos.col,
+            message: "`.tile()` zoom must be between 0 and #{@max_tile_zoom}, got #{z}",
+            hint: "the server serves zoom levels its tile endpoint documents"
+          }
+        ]
+
+      x < 0 or y < 0 or x >= Bitwise.bsl(1, z) or y >= Bitwise.bsl(1, z) ->
+        [
+          %Error{
+            line: pos.line,
+            col: pos.col,
+            message:
+              "`.tile(#{z}, #{x}, #{y})` is outside the grid: x and y must be between 0 and #{Bitwise.bsl(1, z) - 1} at zoom #{z}",
+            hint: "x and y are slippy-map tile coordinates"
+          }
+        ]
+
+      true ->
+        []
+    end
+  end
+
+  defp check_tile_kwarg({"layers", {:list, items, _}}, pos) do
+    if items != [] and Enum.all?(items, &match?({:string, _, _}, &1)),
+      do: [],
+      else: [tile_layers_error(pos)]
+  end
+
+  defp check_tile_kwarg({"layers", {:string, _, _}}, _pos), do: []
+  defp check_tile_kwarg({"layers", _}, pos), do: [tile_layers_error(pos)]
+
+  defp check_tile_kwarg({key, _}, pos) do
+    [
+      %Error{
+        line: pos.line,
+        col: pos.col,
+        message: "unknown `.tile()` argument `#{key}:`",
+        hint: "`.tile(z, x, y)` takes one keyword argument, `layers: [\"pois\", ...]`"
+      }
+    ]
+  end
+
+  defp tile_layers_error(pos) do
+    %Error{
+      line: pos.line,
+      col: pos.col,
+      message: "`.tile()` `layers:` must be a non-empty list of layer names",
+      hint: "e.g., `layers: [\"pois\", \"buildings\"]`"
+    }
   end
 end

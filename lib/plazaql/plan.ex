@@ -45,7 +45,8 @@ defmodule PlazaQL.Plan do
           | {:around_set_resolved, [String.t()], number()}
           | {:predicate, predicate(), geometry()}
 
-  @type output_mode :: :full | :ids | :skel | :count | :tags | :sum | :min | :max | :avg
+  @type output_mode ::
+          :full | :ids | :skel | :count | :tags | :sum | :min | :max | :avg | :tile
 
   @type kind :: :query | :computation
 
@@ -117,6 +118,18 @@ defmodule PlazaQL.Plan do
 
   @type narrow :: :first | :last | {:index, number()}
 
+  @typedoc """
+  `.tile(z, x, y, layers: [...])`: render the search's elements as one
+  Mapbox Vector Tile at slippy-map coordinates z/x/y. `layers` is `nil` when
+  not given (the server picks its default layers).
+  """
+  @type tile :: %{
+          z: non_neg_integer(),
+          x: non_neg_integer(),
+          y: non_neg_integer(),
+          layers: [String.t()] | nil
+        }
+
   @type t :: %__MODULE__{
           element_types: [element_type()],
           tag_filters: [tag_filter()],
@@ -142,7 +155,8 @@ defmodule PlazaQL.Plan do
           custom_clauses: [{String.t(), [term()]}],
           recurse: recurse_direction() | nil,
           narrow: narrow() | nil,
-          member_filter: member_filter() | nil
+          member_filter: member_filter() | nil,
+          tile: tile() | nil
         }
 
   defstruct element_types: [:node, :way, :relation],
@@ -169,5 +183,6 @@ defmodule PlazaQL.Plan do
             custom_clauses: [],
             recurse: nil,
             narrow: nil,
-            member_filter: nil
+            member_filter: nil,
+            tile: nil
 end

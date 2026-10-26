@@ -4,9 +4,11 @@ import type {
   Arg,
   ChainNode,
   Expr,
+  KwArg,
   MethodGroup,
   MethodNode,
   Pos,
+  PosArg,
   PqlType,
   Statement,
   TagFilter,
@@ -1336,10 +1338,16 @@ function checkPlaceLookupArgs(args: Arg[], pos: Pos): TypeCheckError[] {
 
 function checkContextual(
   methodName: string,
-  _args: Arg[] | TagFilter[],
+  args: Arg[] | TagFilter[],
   ctx: ChainContext,
   pos: Pos,
 ): TypeCheckError[] {
+  if (methodName === "tile") {
+    return isArgArray(args)
+      ? checkTileArgs(args, pos)
+      : checkTileFilterArgs(args, pos)
+  }
+
   if (methodName === "offset" && !ctx.hasLimit) {
     return [
       {
@@ -1353,6 +1361,103 @@ function checkContextual(
   }
 
   return []
+}
+
+// .tile(z, x, y, layers?: [...]) — mirrors PlazaQL.TypeChecker
+const MAX_TILE_ZOOM = 22
+
+function tileError(pos: Pos, message: string, hint: string): TypeCheckError {
+  return { line: pos.line, col: pos.col, message, hint, severity: "error" }
+}
+
+// With a scalar keyword (`layers: "pois"`, `format: "pbf"`) the parser reads
+// the argument list as tag filters and drops the coordinates, so only the
+// keyword names can be checked here; PlazaQL.TypeChecker checks the rest.
+function checkTileFilterArgs(filters: TagFilter[], pos: Pos): TypeCheckError[] {
+  return filters
+    .filter((f) => f.key !== "layers")
+    .map((f) =>
+      tileError(
+        pos,
+        `unknown \`.tile()\` argument \`${f.key}:\``,
+        '`.tile(z, x, y)` takes one keyword argument, `layers: ["pois", ...]`',
+      ),
+    )
+}
+
+function checkTileArgs(args: Arg[], pos: Pos): TypeCheckError[] {
+  const coords = args
+    .filter((a): a is PosArg => a.type === "posarg")
+    .map((a) => a.value)
+  const kwargs = args.filter((a): a is KwArg => a.type === "kwarg")
+  return [
+    ...checkTileCoords(coords, pos),
+    ...kwargs.flatMap((arg) => checkTileKwarg(arg, pos)),
+  ]
+}
+
+function checkTileCoords(coords: Expr[], pos: Pos): TypeCheckError[] {
+  const ints = coords.map((c) =>
+    c.kind === "number" && Number.isInteger(c.value) ? c.value : null,
+  )
+  if (ints.length !== 3 || ints.some((n) => n === null)) {
+    return [
+      tileError(
+        pos,
+        "`.tile()` requires three integer arguments: zoom, x and y",
+        "e.g., `.tile(14, 4823, 6160)`",
+      ),
+    ]
+  }
+  const [z, x, y] = ints as [number, number, number]
+  if (z < 0 || z > MAX_TILE_ZOOM) {
+    return [
+      tileError(
+        pos,
+        `\`.tile()\` zoom must be between 0 and ${MAX_TILE_ZOOM}, got ${z}`,
+        "the server serves zoom levels its tile endpoint documents",
+      ),
+    ]
+  }
+  const size = 2 ** z
+  const inGrid = (n: number) => n >= 0 && n < size
+  if (!(inGrid(x) && inGrid(y))) {
+    return [
+      tileError(
+        pos,
+        `\`.tile(${z}, ${x}, ${y})\` is outside the grid: x and y must be between 0 and ${size - 1} at zoom ${z}`,
+        "x and y are slippy-map tile coordinates",
+      ),
+    ]
+  }
+  return []
+}
+
+function checkTileKwarg(arg: KwArg, pos: Pos): TypeCheckError[] {
+  if (arg.name !== "layers") {
+    return [
+      tileError(
+        pos,
+        `unknown \`.tile()\` argument \`${arg.name}:\``,
+        '`.tile(z, x, y)` takes one keyword argument, `layers: ["pois", ...]`',
+      ),
+    ]
+  }
+  const value = arg.value
+  const valid =
+    value.kind === "string" ||
+    (value.kind === "list" &&
+      value.items.length > 0 &&
+      value.items.every((i) => i.kind === "string"))
+  return valid
+    ? []
+    : [
+        tileError(
+          pos,
+          "`.tile()` `layers:` must be a non-empty list of layer names",
+          'e.g., `layers: ["pois", "buildings"]`',
+        ),
+      ]
 }
 
 // ── Type guard ───────────────────────────────────────────────────────
