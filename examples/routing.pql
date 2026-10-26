@@ -20,6 +20,13 @@ route(
   mode: "bike"
 );
 
+// Drive around the polygons of a dataset (flood zones, closures, ...)
+route(
+  origin: point(40.7128, -74.0060),
+  destination: point(40.7580, -73.9855),
+  avoid_datasets: ["flood-zones"]
+);
+
 // Turn-by-turn steps in German, distances in kilometres
 route(
   origin: point(52.5163, 13.3777),

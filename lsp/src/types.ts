@@ -989,6 +989,7 @@ export const GEOCODE_LAYERS = [
   "county",
   "region",
   "country",
+  "dataset",
 ]
 
 /** Structured components accepted by `geocode(...)`. */
@@ -1251,6 +1252,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           "Add spoken variants (verbal_alert, verbal_pre, verbal_post, verbal_succinct) to each step",
       },
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
     ],
     returnType: "Route",
     description: "Compute a route between waypoints.",
@@ -1279,6 +1287,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         enumValues: TRUCK_MODE_VALUES,
       },
       ...TRUCK_PARAMS,
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
     ],
     returnType: "Isochrone",
     description: "Compute a travel-time or travel-distance polygon.",
@@ -1360,7 +1375,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string | string[]",
         optional: true,
         description:
-          'Only return these layers: "address" (addresses, streets, postal codes), "poi", "admin", or single layers ("street", "postalcode", "neighbourhood", "locality", "county", "region", "country")',
+          'Only return these layers: "address" (addresses, streets, postal codes), "poi", "admin", "dataset" (features of the `datasets:` named), or single layers ("street", "postalcode", "neighbourhood", "locality", "county", "region", "country")',
         enumValues: GEOCODE_LAYER_VALUES,
       },
       {
@@ -1369,6 +1384,20 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           'Only return results inside this way or relation polygon, e.g. "osm:relation:62422"',
+      },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also match features of these datasets (slugs or ids, "plaza" for every Plaza dataset, "all" for those plus yours). Matches carry layer "dataset" and the dataset slug.',
+      },
+      {
+        name: "dataset_name_field",
+        type: "string",
+        optional: true,
+        description:
+          "Dataset property to match instead of the feature name (properties.name)",
       },
       {
         name: "limit",
@@ -1418,6 +1447,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
           },
         ],
       },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Datasets to look up at the point (slugs or ids, "plaza", "all"): each result gets a `datasets` list with the polygons containing the point and the nearest point or line feature within the radius.',
+      },
     ],
     returnType: "PointSet",
     description: "Reverse geocode coordinates to an address.",
@@ -1441,7 +1477,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string | string[]",
         optional: true,
         description:
-          'Only return these layers: "address" (addresses, streets, postal codes), "poi", "admin", or single layers ("street", "postalcode", "neighbourhood", "locality", "county", "region", "country")',
+          'Only return these layers: "address" (addresses, streets, postal codes), "poi", "admin", "dataset" (features of the `datasets:` named), or single layers ("street", "postalcode", "neighbourhood", "locality", "county", "region", "country")',
         enumValues: GEOCODE_LAYER_VALUES,
       },
       {
@@ -1450,6 +1486,20 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           'Only return results inside this way or relation polygon, e.g. "osm:relation:62422"',
+      },
+      {
+        name: "datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Also match features of these datasets (slugs or ids, "plaza" for every Plaza dataset, "all" for those plus yours). Matches carry layer "dataset" and the dataset slug.',
+      },
+      {
+        name: "dataset_name_field",
+        type: "string",
+        optional: true,
+        description:
+          "Dataset property to match instead of the feature name (properties.name)",
       },
     ],
     returnType: "PointSet",
@@ -1481,6 +1531,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         enumValues: TRUCK_MODE_VALUES,
       },
       ...TRUCK_PARAMS,
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
+      },
     ],
     returnType: "Matrix",
     description: "Compute a distance/duration matrix between point sets.",
@@ -1616,6 +1673,13 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         optional: true,
         description:
           "Add spoken variants (verbal_alert, verbal_pre, verbal_post, verbal_succinct) to each step",
+      },
+      {
+        name: "avoid_datasets",
+        type: "string | string[]",
+        optional: true,
+        description:
+          'Keep out of the polygons of these datasets (up to 10 slugs or ids; not "plaza" or "all"): road segments touching one are left out of the graph.',
       },
     ],
     returnType: "Route",
@@ -1805,6 +1869,7 @@ const ROUTE_KWARGS = [
   "lang",
   "units",
   "verbal",
+  "avoid_datasets",
 ]
 const GEOCODE_FILTER_KWARGS = [
   "focus",
@@ -1815,6 +1880,8 @@ const GEOCODE_FILTER_KWARGS = [
   "boundary_gid",
   "limit",
   "lang",
+  "datasets",
+  "dataset_name_field",
 ]
 
 /**
@@ -1848,6 +1915,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "denoise",
     "generalize",
+    "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
   ],
   geocode: [
@@ -1864,7 +1932,15 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
   ],
   autocomplete: ["query", ...GEOCODE_FILTER_KWARGS],
   text_search: ["query", "limit", "bbox", "focus"],
-  reverse_geocode: ["point", "radius", "limit", "include", "layer", "lang"],
+  reverse_geocode: [
+    "point",
+    "radius",
+    "limit",
+    "include",
+    "layer",
+    "lang",
+    "datasets",
+  ],
   nearest: ["point", "radius"],
   matrix: [
     "origins",
@@ -1872,6 +1948,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "mode",
     "annotations",
     "fallback_speed",
+    "avoid_datasets",
     ...TRUCK_OPTION_KWARGS,
   ],
   map_match: ["points", "mode", "radiuses"],

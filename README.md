@@ -374,9 +374,16 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 | `lang`          | string          | BCP 47 language tag for step instructions (optional, default `"en"`); see below |
 | `units`         | string          | `"km"` or `"mi"` for distances inside instructions (optional); defaults to `"mi"` when the `lang` region is US, GB, LR or MM, otherwise `"km"` |
 | `verbal`        | boolean         | Add spoken variants `verbal_alert`, `verbal_pre`, `verbal_post`, `verbal_succinct` to each step (optional) |
+| `avoid_datasets` | string[]/string | Datasets whose polygons the route stays out of (optional, below) |
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), depart_at: "2026-03-16T08:00:00Z", traffic_model: "pessimistic", exclude: ["toll", "ferry"])
+```
+
+`avoid_datasets` takes up to 10 dataset slugs or ids, yours or Plaza-curated; `"plaza"` and `"all"` are not accepted. Every road segment that touches a polygon of those datasets is left out of the graph; point and line features are ignored. Plaza caps the datasets at 1,000 polygons and 200,000 vertices in total. `isochrone()`, `matrix()` and `ev_route()` take it too (REST: `avoid_datasets`).
+
+```plazaql
+route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), avoid_datasets: ["flood-zones"])
 ```
 
 #### Truck options
@@ -429,6 +436,7 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 | `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)) |
 | `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` is a list (optional) |
 | `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` is a list (optional) |
+| `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 
 ### `geocode(address)` / `geocode(address:, locality:, ...)`
 
@@ -458,15 +466,23 @@ geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC", 
 | `bbox`          | Polygon               | Restrict results to `bbox(south, west, north, east)`                     |
 | `layers`        | string or string list | Only these layers (below)                                                |
 | `boundary_gid`  | string                | Only results inside this way or relation polygon (`"osm:relation:62422"`) |
+| `datasets`      | string or string list | Also match features of these datasets (below)                            |
+| `dataset_name_field` | string           | Dataset property to match instead of the feature name (below)            |
 | `limit`         | number                | Maximum results                                                          |
 
 A structured call needs at least one of `address`, `locality`, `region` or `postalcode`.
 
-`layers` takes `"address"` (addresses, streets and postal codes), `"poi"`, `"admin"` (neighbourhood up to country), or single layers: `"street"`, `"postalcode"`, `"neighbourhood"`, `"locality"`, `"county"`, `"region"`, `"country"`. `layer:` takes one of them, like the REST `layer` parameter. `autocomplete()` takes `layers`, `layer` and `boundary_gid` too.
+`layers` takes `"address"` (addresses, streets and postal codes), `"poi"`, `"admin"` (neighbourhood up to country), `"dataset"` (matches from `datasets`), or single layers: `"street"`, `"postalcode"`, `"neighbourhood"`, `"locality"`, `"county"`, `"region"`, `"country"`. `layer:` takes one of them, like the REST `layer` parameter. `autocomplete()` takes `layers`, `layer`, `boundary_gid`, `datasets` and `dataset_name_field` too.
 
 `lang: "de"` localizes result names, like REST `?lang=`; without it the request's `Accept-Language` applies. `geocode()`, `autocomplete()` and `reverse_geocode()` all take it.
 
 `geocode(addresses: ["...", "..."])` geocodes up to 1000 addresses at once and returns the `POST /api/v1/geocode/batch` body: `{"results": [FeatureCollection, ...], "count": n}`, in input order.
+
+`datasets` adds dataset features as candidates (REST: `datasets`). It takes dataset slugs or ids, `"plaza"` for every Plaza dataset, or `"all"` for those plus your own; another user's dataset is "dataset not found". The query text (for structured calls, the most specific component given) is matched against each feature's name, `properties.name`, or the property `dataset_name_field` names. Matches rank by text similarity alongside the OSM results, and carry `layer: "dataset"`, `dataset` (the slug), `dataset_id`, `feature_id` and the feature's properties as `dataset_properties`. `bbox`, `boundary_gid` and `country_code` filter them too.
+
+```plazaql
+geocode("Union Square", datasets: ["my-stores"], focus: point(37.788, -122.407))
+```
 
 Every result carries `gid` (`"osm:node:123"`), `layer`, `confidence` (0 to 1), `match_type` (`"exact"`, `"interpolated"`, `"fuzzy"`, `"fallback"`), `accuracy` (`"point"` or `"centroid"`) and categories (`category`, `subcategory`, `categories`). When nothing matches the address, the street, postal code, then the admin areas named in the query are tried in turn, and those results come back with `match_type: "fallback"` and confidence at most 0.5.
 
@@ -499,6 +515,7 @@ reverse_geocode(point(38.8977, -77.0365))
 | `include` | string or string list | Extra data to attach: `"census"` (optional)   |
 | `layer`   | string                | Only results of this layer (optional)         |
 | `lang`    | string                | Language for result names (optional)          |
+| `datasets` | string or string list | Datasets to look up at the point (optional, below) |
 
 `include: "census"` (or `include: ["census"]`) attaches the US Census geographies that contain the point:
 
@@ -533,6 +550,12 @@ The result gains a `census` object with GEOIDs and names for the state, county, 
 
 Any other `include:` value is a type error.
 
+`datasets: [...]` (slugs, ids, `"plaza"` or `"all"`) attaches a `datasets` list to the response and to every result: per dataset, each polygon that contains the point, smallest first (`"match": "contains"`) and the nearest point or line feature within `radius` (`"match": "nearest"`, with `distance_m`). Each entry has `dataset`, `dataset_id`, `id`, `name`, `feature_type`, `match`, `distance_m` and `properties`.
+
+```plazaql
+reverse_geocode(point(40.7484, -73.9856), datasets: ["census-tracts", "my-territories"])
+```
+
 ### `autocomplete(text)`
 
 Autocomplete partial place names.
@@ -540,6 +563,8 @@ Autocomplete partial place names.
 ```plazaql
 autocomplete("Eiffel Tow")
 ```
+
+It takes `layers`, `layer`, `boundary_gid`, `lang`, `datasets` and `dataset_name_field` like `geocode()`.
 
 ### `nearest(point:, radius:?)`
 
@@ -569,6 +594,7 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 | `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options); optional) |
 | `annotations`  | string or string[] | `"duration"` (always) and `"distance"` (optional) |
 | `fallback_speed` | number | km/h used to estimate pairs with no route, which are otherwise null (optional) |
+| `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 
 The two lists can be positional: `matrix([point(40.71, -74.00)], [point(40.75, -73.98)])`.
 
@@ -619,7 +645,7 @@ ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), batter
 | `battery`            | number  | Battery capacity in watt-hours (required) |
 | `initial_charge_pct` | number  | Initial charge percentage (optional)     |
 | `min_charge_pct`     | number  | Minimum charge percentage (optional)     |
-| `depart_at`, `traffic_model`, `exclude`, `steps`, `lang`, `units`, `verbal` | | Same as `route()` (optional) |
+| `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `steps`, `lang`, `units`, `verbal` | | Same as `route()` (optional) |
 
 ### `centroid(locations:, mode:?, metric:?, exclude:?)`
 

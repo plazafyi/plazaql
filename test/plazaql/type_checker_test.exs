@@ -1139,6 +1139,50 @@ defmodule PlazaQL.TypeCheckerTest do
       check!(~s|autocomplete("Caf", layers: ["poi"], boundary_gid: "osm:way:42");|)
     end
 
+    test "dataset keywords are accepted where they apply" do
+      check!(~s|geocode("Main St", datasets: ["census-places", "all"], layers: "dataset");|)
+      check!(~s|geocode(locality: "Springfield", datasets: "plaza", dataset_name_field: "title");|)
+      check!(~s|autocomplete("Gold", datasets: ["my-stores"]);|)
+      check!(~s|reverse_geocode(point(38.9, -77.0), datasets: ["census-tracts"]);|)
+
+      check!(
+        ~s|route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), avoid_datasets: ["flood-zones"]);|
+      )
+
+      check!(~s|isochrone(center: point(38.8, -77.1), time: 600, avoid_datasets: "flood-zones");|)
+
+      check!(
+        ~s|matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], avoid_datasets: ["a"]);|
+      )
+    end
+
+    test "dataset keywords are rejected on computations that don't take them" do
+      [error] =
+        check_errors(
+          ~s|route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), datasets: ["x"]);|
+        )
+
+      assert error.message == "`route()` does not accept `datasets:`"
+      assert error.hint =~ "`avoid_datasets:`"
+
+      [error] = check_errors(~s|geocode("Main St", avoid_datasets: ["x"]);|)
+      assert error.message == "`geocode()` does not accept `avoid_datasets:`"
+
+      [error] = check_errors(~s|reverse_geocode(point(38.9, -77.0), dataset_name_field: "title");|)
+      assert error.message == "`reverse_geocode()` does not accept `dataset_name_field:`"
+    end
+
+    test "dataset keyword values must be strings" do
+      [error] = check_errors(~s|geocode("Main St", datasets: 5);|)
+      assert error.message == "`datasets:` must be a string or a list of strings"
+
+      [error] = check_errors(~s|geocode("Main St", datasets: ["a", 5]);|)
+      assert error.message == "`datasets:` list items must be strings"
+
+      [error] = check_errors(~s|geocode("Main St", datasets: ["a"], dataset_name_field: 5);|)
+      assert error.message == "`dataset_name_field:` must be a string"
+    end
+
     test "geocode needs query text or a component" do
       [error] = check_errors(~s|geocode(country: "US");|)
       assert error.message =~ "needs an address string"

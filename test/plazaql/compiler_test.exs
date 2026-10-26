@@ -590,6 +590,48 @@ defmodule PlazaQL.CompilerTest do
       assert {:text_search, %{query: "pizza"}} = plan.computation
     end
 
+    test "datasets:, dataset_name_field: and avoid_datasets: compile to plain values" do
+      plan =
+        first_plan(
+          ~s|$$ = geocode("Golden Gate", datasets: ["census-places", "all"], dataset_name_field: "title");|
+        )
+
+      assert {:geocode,
+              %{
+                query: "Golden Gate",
+                datasets: ["census-places", "all"],
+                dataset_name_field: "title"
+              }} =
+               plan.computation
+
+      plan = first_plan(~s|$$ = reverse_geocode(point(38.9, -77.0), datasets: "plaza");|)
+      assert {:reverse_geocode, %{point: {38.9, -77.0}, datasets: "plaza"}} = plan.computation
+
+      plan = first_plan(~s|$$ = autocomplete("Gold", datasets: ["my-stores"]);|)
+      assert {:autocomplete, %{query: "Gold", datasets: ["my-stores"]}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = route(origin: point(38.8, -77.1), destination: point(38.8, -77.0), avoid_datasets: ["flood-zones"]);|
+        )
+
+      assert {:route, %{avoid_datasets: ["flood-zones"]}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = isochrone(center: point(38.8, -77.1), time: 600, avoid_datasets: "flood-zones");|
+        )
+
+      assert {:isochrone, %{avoid_datasets: "flood-zones"}} = plan.computation
+
+      plan =
+        first_plan(
+          ~s|$$ = matrix(origins: [point(38.8, -77.1)], destinations: [point(38.8, -77.0)], avoid_datasets: ["a", "b"]);|
+        )
+
+      assert {:matrix, %{avoid_datasets: ["a", "b"]}} = plan.computation
+    end
+
     test "place_lookup collects positional GIDs and ids: into ids" do
       plan = first_plan(~s|$$ = place_lookup("osm:node:123", "osm:way:456");|)
       assert {:place_lookup, %{ids: ["osm:node:123", "osm:way:456"]}} = plan.computation
