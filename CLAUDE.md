@@ -57,8 +57,15 @@ source string
   → Parser.parse/1           (AST tuples)
   → TypeChecker.check/1      (validated AST)
   → Compiler.compile/2       (Plan IR structs)
-  → SQL.to_sql/2             (parameterized SQL + params)
+  → SQL.to_sql/2             (one parameterized statement + params)
+    or SQL.branches/2        (one statement per element type / source)
 ```
+
+`docs/compiler.md` is the architecture reference (references the caller
+resolves, branches and ranks, ordering and keyset pagination, output modes,
+spatial filter SQL, sources). The README's "Using the Elixir library"
+section is the user guide; `test/plazaql/library_usage_test.exs` runs its
+examples.
 
 ### Key Modules
 
@@ -67,11 +74,14 @@ source string
 | `PlazaQL.Compiler` | AST → `Plan` IR. Walks top-level nodes (outputs, variables, directives) and compiles expressions into Plans. |
 | `PlazaQL.Plan` | The intermediate representation. A struct capturing element types, tag filters, spatial filters, set operations, output mode, computed columns, etc. |
 | `PlazaQL.Plan.OutputOptions` | Geometry transforms (simplify, buffer, centroid) and result formatting (fields, sort, precision). |
-| `PlazaQL.Schema` | Configurable target database schema — table names, column names, SRID, extensions. Defaults to standard OSM. |
-| `PlazaQL.SQL` | Top-level SQL generation. Routes plans to UNION ALL (multi-type), aggregation wrappers, or CTE-based set operations. |
-| `PlazaQL.SQL.Builder` | Internal. Assembles a complete SELECT for one element type — columns, WHERE, GROUP BY, ORDER BY, LIMIT/OFFSET. |
-| `PlazaQL.SQL.Where` | Internal. Builds WHERE clause from spatial filters, tag filters, metadata filters, H3 tiles, and expression filters. |
+| `PlazaQL.Schema` | Configurable target database schema — table names, column names, SRID, extensions, partitioned tables, extra full-output columns, custom sources. Defaults to standard OSM. Validates every identifier. |
+| `PlazaQL.Schema.Source` | A custom feature table queried like an element type (own keys, filter column, typed JSON values, sparse H3 tiles). |
+| `PlazaQL.SQL` | Top-level SQL generation. `to_sql/2`: UNION ALL (merged in sort order), aggregation wrappers, or CTE-based set operations. `branches/2`: one query per branch. |
+| `PlazaQL.SQL.Branch` | Internal. A branch (element type table or source) with its keys, columns and rank; binds `type()`. |
+| `PlazaQL.SQL.Builder` | Internal. Assembles a complete SELECT for one branch — columns, WHERE, GROUP BY 1, ORDER BY, LIMIT/OFFSET. |
+| `PlazaQL.SQL.Where` | Internal. Builds WHERE from spatial, tag, metadata, id and expression filters, H3 tiles, partitions, keyset seek and custom clauses. |
 | `PlazaQL.SQL.Expression` | Internal. Converts expression AST nodes (binary ops, tag access, geometry functions, literals) to SQL fragments. |
+| `PlazaQL.SQL.Sort` | Internal. The sort: ORDER BY (sort, then keys), the `sort_key` column, the keyset condition. |
 | `PlazaQL.Query` | Result struct — holds `sql`, `params`, and optional `plan` reference. |
 | `PlazaQL.NotCompilable` | Error for computation plans (route, isochrone, etc.) that can't become SQL and need a service backend. |
 
@@ -81,12 +91,15 @@ source string
 - **CTEs for set ops**: Union (`+`), difference (`-`), intersection (`&`) use `WITH` clauses — `base` CTE plus one CTE per operand.
 - **Aggregation wrappers**: Cross-type aggregations (count, sum, avg, etc.) wrap the UNION ALL in an outer SELECT that merges per-type results.
 - **Accumulator pattern**: All SQL modules thread `{sql, params, next_idx}` through every build step, ensuring correct `$N` parameter numbering without mutation.
+- **Total order**: Row queries order by the sort, then the branch's key columns, and select `sort_key` when sorted. Branches merge on `(sort_key, rank, keys)`; `Plan.seek` resumes after a row in that order.
+- **Caller resolution**: Variables (`{:set_ref, _}`, `{:around_set, ...}`, `$x[attr]`) and computations are not SQL; they return `NotCompilable` until the caller resolves them (e.g. to `{:ewkt, _}` geometries).
+- **Plaza parity**: The plaza server executes every database query through `branches/2`. Its behavioral test suite (REST vs `/query` parity, cursors, datasets, aggregates) is the integration test for SQL changes here: run it with `PLAZAQL_PATH` pointing at this checkout.
 
 ## How It's Consumed
 
 | Consumer | Mechanism | What it uses |
 |----------|-----------|-------------|
-| **plaza** (backend) | `{:plazaql, path: "../plazaql"}` mix dep | Elixir parser, type-checker, types, formatter, error |
+| **plaza** (backend) | `{:plazaql, git: ...}` mix dep (`PLAZAQL_PATH` for a local checkout) | Parser, type checker, formatter, compiler, and the SQL generator (`PlazaQL.SQL.branches/2`) for every query it runs |
 | **plaza** (frontend) | `@plazafyi/plazaql` npm dep | `tree-sitter-plazaql.wasm` + `highlights.scm` via `monaco-tree-sitter` |
 | **plaza-docs** | `@plazafyi/plazaql` npm dep | Shiki/ExpressiveCode (PlazaQL renders as plain text pending tree-sitter integration) |
 | **VS Code** | LSP server (`plazaql-lsp`) | Full LSP (tree-sitter WASM) |

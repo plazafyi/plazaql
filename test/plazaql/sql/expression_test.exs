@@ -357,6 +357,12 @@ defmodule PlazaQL.SQL.ExpressionTest do
               2} = Expression.to_sql(expr, Schema.new())
     end
 
+    test "distance to an unresolved set is not compilable" do
+      assert_raise PlazaQL.NotCompilable, ~r/resolved by the executor/, fn ->
+        Expression.to_sql({:geom_func, :distance, {:set_ref, "home"}, nil}, Schema.new())
+      end
+    end
+
     test "overlap fraction with a resolved geometry" do
       ewkt = "SRID=4326;MULTIPOLYGON(((0 0,1 0,1 1,0 0)))"
 

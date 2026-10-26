@@ -319,7 +319,7 @@ defmodule PlazaQL.SQL.Where do
 
   defp float_form(value) do
     case Float.parse(value) do
-      {float, ""} -> if :json.encode(float) |> IO.iodata_to_binary() == value, do: float
+      {float, ""} -> if Float.to_string(float) == value, do: float
       _ -> nil
     end
   end
