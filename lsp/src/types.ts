@@ -1695,14 +1695,19 @@ const ROUTE_KWARGS = [
   "depart_at",
   "traffic_model",
   "exclude",
+  "overview",
+  "geometries",
+  "annotations",
 ]
 const GEOCODE_FILTER_KWARGS = [
   "focus",
   "country_code",
   "bbox",
   "layers",
+  "layer",
   "boundary_gid",
   "limit",
+  "lang",
 ]
 
 /**
@@ -1720,9 +1725,10 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "connector_types",
     "min_power_kw",
   ],
-  isochrone: ["center", "time", "mode"],
+  isochrone: ["center", "time", "mode", "denoise", "generalize"],
   geocode: [
     "query",
+    "addresses",
     "address",
     "neighbourhood",
     "locality",
@@ -1734,10 +1740,10 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
   ],
   autocomplete: ["query", ...GEOCODE_FILTER_KWARGS],
   text_search: ["query", "limit", "bbox", "focus"],
-  reverse_geocode: ["point", "radius", "limit", "include"],
+  reverse_geocode: ["point", "radius", "limit", "include", "layer", "lang"],
   nearest: ["point", "radius"],
-  matrix: ["origins", "destinations", "mode"],
-  map_match: ["points", "mode"],
+  matrix: ["origins", "destinations", "mode", "annotations", "fallback_speed"],
+  map_match: ["points", "mode", "radiuses"],
   optimize: ["waypoints", "mode", "roundtrip"],
   elevation: ["point", "points"],
   elevation_profile: ["points"],

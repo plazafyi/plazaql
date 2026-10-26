@@ -57,7 +57,80 @@ defmodule PlazaQL.RestParityTest do
     end
   end
 
-  describe "positional computation arguments" do
+  describe "REST options as keywords" do
+    test "route takes overview, geometries, annotations and steps" do
+      assert {:route, params} =
+               plan!(
+                 ~s|route(#{@od}, overview: "simplified", geometries: "polyline6", annotations: true, steps: true);|
+               ).computation
+
+      assert %{overview: "simplified", geometries: "polyline6", annotations: true, steps: true} =
+               params
+
+      assert {:ev_route, %{overview: false}} =
+               plan!("ev_route(#{@od}, battery: 60000, overview: false);").computation
+    end
+
+    test "isochrone, matrix, map_match and optimize take their REST options" do
+      assert {:isochrone, %{denoise: 50, generalize: 100}} =
+               plan!("isochrone(center: point(1, 2), time: 300, denoise: 50, generalize: 100);").computation
+
+      assert {:matrix, %{annotations: "duration,distance", fallback_speed: 30}} =
+               plan!(
+                 ~s|matrix(origins: [point(1, 2)], destinations: [point(3, 4)], annotations: "duration,distance", fallback_speed: 30);|
+               ).computation
+
+      assert {:map_match, %{radiuses: {:list, [_, _], _}}} =
+               plan!("map_match(points: [point(1, 2), point(3, 4)], radiuses: [10, 20]);").computation
+
+      assert {:optimize, %{roundtrip: false}} =
+               plan!("optimize(point(1, 2), point(3, 4), roundtrip: false);").computation
+    end
+
+    test "geocoding takes lang and a single layer" do
+      assert {:geocode, %{lang: "de", layer: "poi"}} =
+               plan!(~s|geocode("Berlin", lang: "de", layer: "poi");|).computation
+
+      assert {:autocomplete, %{lang: "fr"}} =
+               plan!(~s|autocomplete("Par", lang: "fr");|).computation
+
+      assert {:reverse_geocode, %{lang: "ja", layer: "address"}} =
+               plan!(~s|reverse_geocode(point(1, 2), lang: "ja", layer: "address");|).computation
+    end
+
+    test "geocode(addresses: [...]) is the batch form" do
+      assert {:geocode, %{addresses: ["a", "b"]}} =
+               plan!(~s|geocode(addresses: ["a", "b"]);|).computation
+    end
+
+    test "invalid values name the keyword and say what is accepted" do
+      for {source, key} <- [
+            {~s|route(#{@od}, overview: "tiny");|, "overview"},
+            {~s|route(#{@od}, geometries: "wkt");|, "geometries"},
+            {~s|route(#{@od}, annotations: "yes");|, "annotations"},
+            {"isochrone(center: point(1, 2), time: 300, denoise: 500);", "denoise"},
+            {~s|matrix(origins: [point(1, 2)], destinations: [point(3, 4)], annotations: "speed");|,
+             "annotations"},
+            {"matrix(origins: [point(1, 2)], destinations: [point(3, 4)], fallback_speed: 0);",
+             "fallback_speed"},
+            {"map_match(points: [point(1, 2), point(3, 4)], radiuses: [-1]);", "radiuses"},
+            {~s|geocode("x", lang: "german");|, "lang"},
+            {~s|geocode("x", layer: "planet");|, "layer"},
+            {"geocode(addresses: []);", "addresses"}
+          ] do
+        assert error!(source).message =~ "invalid `#{key}:`", source
+      end
+    end
+  end
+
+  describe "matrix positional lists" do
+    test "matrix([origins], [destinations]) is the keyword form" do
+      positional = plan!("matrix([point(1, 2)], [point(3, 4)]);").computation
+      keyword = plan!("matrix(origins: [point(1, 2)], destinations: [point(3, 4)]);").computation
+
+      assert strip_pos(positional) == strip_pos(keyword)
+    end
+
     test "elevation(point) and elevation(p1, p2)" do
       assert {:elevation, %{point: {1, 2}}} = plan!("elevation(point(1, 2));").computation
 
@@ -81,7 +154,7 @@ defmodule PlazaQL.RestParityTest do
     end
 
     test "positionals a computation can't use are errors, not dropped" do
-      assert error!("matrix(point(1, 2));").message =~ "`matrix()` takes keyword arguments"
+      assert error!("matrix(point(1, 2));").message =~ "`matrix()` takes two point lists"
       assert error!("elevation(\"x\");").message =~ "`elevation()` takes point(lat, lng)"
 
       assert error!("route(point(1, 2), point(3, 4), point(5, 6));").message =~
@@ -152,6 +225,77 @@ defmodule PlazaQL.RestParityTest do
     end
   end
 
+  describe "geometry held in a variable" do
+    test "a polygon variable filters like the inline polygon" do
+      poly = "polygon(point(1, 2), point(1, 3), point(2, 3))"
+      var = plan!("$z = #{poly}; search(node).within($z);")
+      inline = plan!("search(node).within(#{poly});")
+
+      assert {:predicate, :within, {:polygon, [_ring]}} = var.spatial_filter
+      assert var.spatial_filter == inline.spatial_filter
+    end
+
+    test "a linestring variable crosses and intersects like the inline line" do
+      line = "linestring(point(1, 2), point(3, 4))"
+
+      for pred <- ~w(crosses intersects) do
+        var = plan!("$l = #{line}; search(way).#{pred}($l);")
+        assert {:predicate, _, {:linestring, [{2, 1}, {4, 3}]}} = var.spatial_filter
+        assert var.spatial_filter == plan!("search(way).#{pred}(#{line});").spatial_filter
+      end
+    end
+
+    test "a point variable works in around, contains and computations" do
+      assert {:around, 1, 2, 500} =
+               plan!("$p = point(1, 2); search(node).around(500, $p);").spatial_filter
+
+      assert {:predicate, :contains, {:point, 2, 1}} =
+               plan!("$p = point(1, 2); search(way).contains(geometry: $p);").spatial_filter
+
+      assert {:route, %{origin: {:point, 1, 2, _}, destination: {:point, 3, 4, _}}} =
+               plan!("$a = point(1, 2); route(origin: $a, destination: point(3, 4));").computation
+    end
+
+    test "a number variable is inlined too" do
+      assert {:around, 1, 2, 1000} =
+               plan!(
+                 "$r = 1000; $p = point(1, 2); search(node).around(distance: $r, geometry: $p);"
+               ).spatial_filter
+    end
+
+    test "geometry variables don't become steps" do
+      {:ok, result} = PlazaQL.compile("$p = point(1, 2); search(node).around(500, $p);")
+      assert result.steps == []
+    end
+  end
+
+  describe ".around() with a literal shape" do
+    test "measures from a line or polygon instead of dropping the filter" do
+      assert {:around_set_resolved, ["SRID=4326;LINESTRING(2 1,4 3)"], 200} =
+               plan!("search(node).around(200, linestring(point(1, 2), point(3, 4)));").spatial_filter
+
+      assert {:around_set_resolved, ["SRID=4326;POLYGON(" <> _], 50} =
+               plan!("search(node).around(distance: 50, geometry: bbox(1, 2, 3, 4));").spatial_filter
+    end
+  end
+
+  describe "#within directive with an inline boundary" do
+    test "every search filters by the boundary step" do
+      {:ok, result} =
+        PlazaQL.compile(~s"""
+        #within(boundary(name: "Berlin"));
+        $$.cafes = search(node, amenity: "cafe");
+        $$.bars = search(node, amenity: "bar");
+        """)
+
+      assert [{"boundary#1", %{element_types: [:boundary]}}] = result.steps
+
+      for plan <- result.plans do
+        assert plan.spatial_filter == {:predicate, :within, {:set_ref, "boundary#1"}}
+      end
+    end
+  end
+
   describe "output shape" do
     test ".include() takes the REST output.include values" do
       plan = plan!(~s|search(node).include("bbox", "center", "distance");|)
@@ -174,6 +318,16 @@ defmodule PlazaQL.RestParityTest do
     test ".sort(by: :osm_id) and .sort(by: :name)" do
       assert plan!("search(node).sort(by: :osm_id);").output_options.sort == :osm_id
       assert plan!("search(node).sort(by: :name);").output_options.sort == :name
+    end
+
+    test ".sort(:osm_id) is .sort(by: :osm_id); other atoms are errors" do
+      assert plan!("search(node).sort(:osm_id);").output_options.sort == :osm_id
+      assert error!("search(node).sort(:height);").message =~ "is not a sort mode"
+    end
+
+    test ".sort(id()) sorts by the element id" do
+      assert {{:prop_access, :id, _}, :desc} =
+               plan!("search(node).sort(id(), order: :desc);").sort_expr
     end
 
     test "sorting by a string literal is an error, not a no-op" do

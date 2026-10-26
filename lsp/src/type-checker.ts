@@ -1210,7 +1210,8 @@ function checkGeocodeInput(args: Arg[], pos: Pos): TypeCheckError[] {
   const hasQuery = args.some(
     (arg) =>
       (arg.type === "posarg" && arg.value.kind === "string") ||
-      (arg.type === "kwarg" && arg.name === "query"),
+      (arg.type === "kwarg" &&
+        (arg.name === "query" || arg.name === "addresses")),
   )
   const hasComponent = args.some(
     (arg) => arg.type === "kwarg" && STRUCTURED_REQUIRED.includes(arg.name),

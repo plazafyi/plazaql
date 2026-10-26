@@ -363,6 +363,9 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), mode: "fo
 | `waypoints`     | Point[]         | Points to visit in order (optional)                                         |
 | `alternatives`  | number          | Number of alternative routes to return (optional)                           |
 | `steps`         | boolean         | Include turn-by-turn steps (optional)                                       |
+| `overview`      | string/false    | Route geometry detail: `"full"` (default), `"simplified"`, or `false` for none (optional) |
+| `geometries`    | string          | Geometry encoding: `"geojson"` (default), `"polyline"`, `"polyline6"` (optional) |
+| `annotations`   | boolean         | Per-edge duration and distance arrays (optional)                            |
 | `depart_at`     | string          | ISO 8601 departure time or `"now"`, for time-of-day traffic (optional)      |
 | `traffic_model` | string          | `"best_guess"` (default), `"optimistic"`, `"pessimistic"`; needs `depart_at` (optional) |
 | `exclude`       | string[]/string | Road types to avoid: `"toll"`, `"ferry"`, `"unpaved"`, `"motorway"`, `"trunk"`, `"primary"`, `"secondary"`, `"tertiary"`; a list or a comma-separated string (optional) |
@@ -404,6 +407,8 @@ isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
 | `center`  | Point   | Origin point                   |
 | `time`    | integer or integer[] | Travel time in seconds; a list returns one polygon per time |
 | `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)) |
+| `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` is a list (optional) |
+| `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` is a list (optional) |
 
 ### `geocode(address)` / `geocode(address:, locality:, ...)`
 
@@ -437,7 +442,11 @@ geocode(address: "1600 Pennsylvania Ave", locality: "Washington", region: "DC", 
 
 A structured call needs at least one of `address`, `locality`, `region` or `postalcode`.
 
-`layers` takes `"address"` (addresses, streets and postal codes), `"poi"`, `"admin"` (neighbourhood up to country), or single layers: `"street"`, `"postalcode"`, `"neighbourhood"`, `"locality"`, `"county"`, `"region"`, `"country"`. `autocomplete()` takes `layers` and `boundary_gid` too.
+`layers` takes `"address"` (addresses, streets and postal codes), `"poi"`, `"admin"` (neighbourhood up to country), or single layers: `"street"`, `"postalcode"`, `"neighbourhood"`, `"locality"`, `"county"`, `"region"`, `"country"`. `layer:` takes one of them, like the REST `layer` parameter. `autocomplete()` takes `layers`, `layer` and `boundary_gid` too.
+
+`lang: "de"` localizes result names, like REST `?lang=`; without it the request's `Accept-Language` applies. `geocode()`, `autocomplete()` and `reverse_geocode()` all take it.
+
+`geocode(addresses: ["...", "..."])` geocodes up to 1000 addresses at once and returns the `POST /api/v1/geocode/batch` body: `{"results": [FeatureCollection, ...], "count": n}`, in input order.
 
 Every result carries `gid` (`"osm:node:123"`), `layer`, `confidence` (0 to 1), `match_type` (`"exact"`, `"interpolated"`, `"fuzzy"`, `"fallback"`), `accuracy` (`"point"` or `"centroid"`) and categories (`category`, `subcategory`, `categories`). When nothing matches the address, the street, postal code, then the admin areas named in the query are tried in turn, and those results come back with `match_type: "fallback"` and confidence at most 0.5.
 
@@ -468,6 +477,8 @@ reverse_geocode(point(38.8977, -77.0365))
 |-----------|-----------------------|-----------------------------------------------|
 | `point`   | Point                 | Coordinates to reverse geocode                |
 | `include` | string or string list | Extra data to attach: `"census"` (optional)   |
+| `layer`   | string                | Only results of this layer (optional)         |
+| `lang`    | string                | Language for result names (optional)          |
 
 `include: "census"` (or `include: ["census"]`) attaches the US Census geographies that contain the point:
 
@@ -536,6 +547,10 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 | `origins`      | Point[]  | Origin points                  |
 | `destinations` | Point[]  | Destination points             |
 | `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options); optional) |
+| `annotations`  | string or string[] | `"duration"` (always) and `"distance"` (optional) |
+| `fallback_speed` | number | km/h used to estimate pairs with no route, which are otherwise null (optional) |
+
+The two lists can be positional: `matrix([point(40.71, -74.00)], [point(40.75, -73.98)])`.
 
 ### `map_match(points:, mode:)`
 
@@ -551,6 +566,7 @@ A `linestring(...)` works as the trace too: `map_match(linestring(point(40.71, -
 |-----------|---------|--------------------------------------------|
 | `points`  | Point[] | GPS trace, two or more points in order     |
 | `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"` (optional) |
+| `radiuses` | number[] | Search radius in meters per point, default 50 (optional) |
 
 ### `optimize(points..., mode:)`
 

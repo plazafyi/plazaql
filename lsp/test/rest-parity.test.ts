@@ -39,6 +39,27 @@ describe("computation keyword allowlist", () => {
   })
 })
 
+describe("REST options as keywords", () => {
+  it("accepts the REST options each computation takes", () => {
+    for (const source of [
+      `route(${od}, overview: "simplified", geometries: "polyline6", annotations: true);`,
+      "isochrone(center: point(1, 2), time: [60, 90], denoise: 10, generalize: 5);",
+      'matrix(origins: [point(1, 2)], destinations: [point(3, 4)], annotations: "distance", fallback_speed: 30);',
+      "map_match(points: [point(1, 2), point(3, 4)], radiuses: [10, 20]);",
+      'geocode("Berlin", lang: "de", layer: "poi");',
+      'geocode(addresses: ["a", "b"]);',
+      'reverse_geocode(point(1, 2), lang: "de", layer: "address");',
+    ]) {
+      expect(check(source).errors, source).toHaveLength(0)
+    }
+  })
+
+  it("refuses an option on a computation that ignores it", () => {
+    const { errors } = check("isochrone(center: point(1, 2), time: 60, fallback_speed: 3);")
+    expect(errors[0].message).toBe("`isochrone()` does not accept `fallback_speed:`")
+  })
+})
+
 describe("output shape and accessors", () => {
   it("accepts .geometry(false) and .include()", () => {
     expect(

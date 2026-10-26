@@ -1090,24 +1090,27 @@ defmodule PlazaQL.TypeChecker do
   # The keywords each computation accepts: the parameters of the REST endpoint
   # it stands in for. Anything else is a type error naming the computation, so
   # a misspelt or misplaced keyword is never silently dropped.
-  @route_kwargs ~w(origin destination mode steps alternatives waypoints depart_at traffic_model exclude)
-  @geocode_filter_kwargs ~w(focus country_code bbox layers boundary_gid limit)
+  @route_kwargs ~w(origin destination mode steps alternatives waypoints depart_at traffic_model
+                   exclude overview geometries annotations)
+  @geocode_filter_kwargs ~w(focus country_code bbox layers layer boundary_gid limit lang)
+
+  @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country)
 
   @computation_kwargs %{
     route: @route_kwargs,
     ev_route:
       @route_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
-    isochrone: ~w(center time mode),
+    isochrone: ~w(center time mode denoise generalize),
     geocode:
-      ~w(query address neighbourhood locality county region postalcode country) ++
+      ~w(query addresses address neighbourhood locality county region postalcode country) ++
         @geocode_filter_kwargs,
     autocomplete: ["query" | @geocode_filter_kwargs],
     text_search: ~w(query limit bbox focus),
-    reverse_geocode: ~w(point radius limit include),
+    reverse_geocode: ~w(point radius limit include layer lang),
     nearest: ~w(point radius),
-    matrix: ~w(origins destinations mode),
-    map_match: ~w(points mode),
+    matrix: ~w(origins destinations mode annotations fallback_speed),
+    map_match: ~w(points mode radiuses),
     optimize: ~w(waypoints mode roundtrip),
     elevation: ~w(point points),
     elevation_profile: ~w(points),
@@ -1124,14 +1127,117 @@ defmodule PlazaQL.TypeChecker do
   defp check_kwarg_names(comp_type, opts, pos) do
     accepted = Map.get(@computation_kwargs, comp_type, [])
 
-    for {:kwarg, key, _value} <- opts, key not in accepted do
-      %Error{
-        line: pos.line,
-        col: pos.col,
-        message: "`#{comp_type}()` does not accept `#{key}:`",
-        hint: "accepted keywords: #{Enum.map_join(accepted, ", ", &"`#{&1}:`")}"
-      }
+    for {:kwarg, key, value} <- opts,
+        error = kwarg_error(comp_type, key, value, accepted),
+        error != nil do
+      {message, hint} = error
+      %Error{line: pos.line, col: pos.col, message: message, hint: hint}
     end
+  end
+
+  defp kwarg_error(comp_type, key, value, accepted) do
+    if key in accepted do
+      case option_value_error(comp_type, key, value) do
+        nil -> nil
+        hint -> {"invalid `#{key}:` for `#{comp_type}()`", hint}
+      end
+    else
+      {"`#{comp_type}()` does not accept `#{key}:`",
+       "accepted keywords: #{Enum.map_join(accepted, ", ", &"`#{&1}:`")}"}
+    end
+  end
+
+  # Values of the REST options added as keywords. nil when valid, otherwise
+  # the hint describing what is accepted.
+  @route_types [:route, :ev_route]
+  @lang ~r/\A[a-z]{2,3}\z/
+
+  defp option_value_error(_type, key, {:bool, _, _}) when key in ~w(steps roundtrip), do: nil
+  defp option_value_error(_type, key, _value) when key in ~w(steps roundtrip), do: "true or false"
+
+  defp option_value_error(type, "annotations", {:bool, _, _}) when type in @route_types, do: nil
+
+  defp option_value_error(type, "annotations", _value) when type in @route_types,
+    do: "true or false: per-edge duration and distance arrays on the route"
+
+  defp option_value_error(type, "overview", {:string, v, _})
+       when type in @route_types and v in ~w(full simplified false),
+       do: nil
+
+  defp option_value_error(type, "overview", {:bool, false, _}) when type in @route_types, do: nil
+
+  defp option_value_error(type, "overview", _value) when type in @route_types,
+    do: ~s|"full" (default), "simplified" or false|
+
+  defp option_value_error(type, "geometries", {:string, v, _})
+       when type in @route_types and v in ~w(geojson polyline polyline6),
+       do: nil
+
+  defp option_value_error(type, "geometries", _value) when type in @route_types,
+    do: ~s|"geojson" (default), "polyline" or "polyline6"|
+
+  defp option_value_error(:isochrone, "denoise", {:number, n, _}) when n >= 0 and n <= 100,
+    do: nil
+
+  defp option_value_error(:isochrone, "denoise", _value),
+    do: "a contour denoising level from 0 to 100"
+
+  defp option_value_error(:isochrone, "generalize", {:number, n, _}) when n >= 0 and n <= 1000,
+    do: nil
+
+  defp option_value_error(:isochrone, "generalize", _value),
+    do: "a simplification tolerance in meters, 0 to 1000"
+
+  defp option_value_error(:matrix, "annotations", {:string, v, _}),
+    do: matrix_annotations_error(String.split(v, ",", trim: true))
+
+  defp option_value_error(:matrix, "annotations", {:list, items, _}) do
+    if Enum.all?(items, &match?({:string, _, _}, &1)),
+      do: matrix_annotations_error(for({:string, v, _} <- items, do: v)),
+      else: ~s|"duration" and/or "distance"|
+  end
+
+  defp option_value_error(:matrix, "annotations", _value), do: ~s|"duration" and/or "distance"|
+
+  defp option_value_error(:matrix, "fallback_speed", {:number, n, _}) when n > 0, do: nil
+
+  defp option_value_error(:matrix, "fallback_speed", _value),
+    do: "a speed in km/h above 0, used for pairs with no road path"
+
+  defp option_value_error(:map_match, "radiuses", {:list, items, _}) do
+    if Enum.all?(items, &match?({:number, n, _} when n > 0, &1)),
+      do: nil,
+      else: "a list of search radii in meters, one per trace point"
+  end
+
+  defp option_value_error(:map_match, "radiuses", _value),
+    do: "a list of search radii in meters, one per trace point"
+
+  defp option_value_error(_type, "lang", {:string, v, _}) do
+    if Regex.match?(@lang, v), do: nil, else: ~s|a 2 or 3 letter language code, e.g. "de"|
+  end
+
+  defp option_value_error(_type, "lang", _value), do: ~s|a 2 or 3 letter language code, e.g. "de"|
+
+  defp option_value_error(_type, "layer", {:string, v, _}) when v in @geocode_layers, do: nil
+
+  defp option_value_error(_type, "layer", _value),
+    do: "one layer: #{Enum.map_join(@geocode_layers, ", ", &inspect/1)}"
+
+  defp option_value_error(:geocode, "addresses", {:list, [_ | _] = items, _}) do
+    if length(items) <= 1000 and Enum.all?(items, &match?({:string, _, _}, &1)),
+      do: nil,
+      else: "a list of 1 to 1000 address strings"
+  end
+
+  defp option_value_error(:geocode, "addresses", _value), do: "a list of 1 to 1000 address strings"
+
+  defp option_value_error(_type, _key, _value), do: nil
+
+  defp matrix_annotations_error(names) do
+    if Enum.all?(names, &(String.trim(&1) in ["duration", "distance"])),
+      do: nil,
+      else: ~s|"duration" and/or "distance"|
   end
 
   @reverse_geocode_includes ["census"]
@@ -1253,7 +1359,6 @@ defmodule PlazaQL.TypeChecker do
 
   # ── Geocoding ───────────────────────────────────────────────────
 
-  @geocode_layers ~w(address admin place poi street postalcode neighbourhood locality county region country)
   @structured_components ~w(address neighbourhood locality county region postalcode country)
   @structured_required ~w(address locality region postalcode)
   @boundary_gid ~r/^osm:(way|relation):[1-9][0-9]{0,18}$/
@@ -1309,7 +1414,7 @@ defmodule PlazaQL.TypeChecker do
   defp check_computation_args(:geocode, args, opts, pos) do
     has_query =
       Enum.any?(args, &match?({:posarg, {:string, _, _}}, &1)) or
-        Enum.any?(opts, &match?({:kwarg, "query", _}, &1))
+        Enum.any?(opts, &match?({:kwarg, key, _} when key in ["query", "addresses"], &1))
 
     has_component = Enum.any?(opts, &match?({:kwarg, key, _} when key in @structured_required, &1))
 

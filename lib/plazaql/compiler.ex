@@ -66,6 +66,7 @@ defmodule PlazaQL.Compiler do
 
     result =
       ast
+      |> inline_geometry_variables()
       |> hoist_inline_sets()
       |> Enum.reduce(env, &process_top_level/2)
 
@@ -95,6 +96,13 @@ defmodule PlazaQL.Compiler do
       end)
 
     nodes
+  end
+
+  # `#within(boundary(...))`: the directive's geometry is hoisted the same
+  # way, so every search it scopes filters by the boundary's polygon.
+  defp hoist({:directive, name, args, dpos}, acc) when name in @predicate_methods do
+    {{:method, ^name, args, _}, acc} = hoist({:method, name, args, dpos}, acc)
+    {{:directive, name, args, dpos}, acc}
   end
 
   defp hoist({:directive, _, _, _} = node, acc), do: {node, acc}
@@ -130,6 +138,43 @@ defmodule PlazaQL.Compiler do
     step = {:var_assign, var, geom, pos}
     {{:method, name, [{:posarg, {:var_ref, var, pos}}], mpos}, {[step | hoisted], count}}
   end
+
+  # ── Geometry variables ────────────────────────────────────────────
+
+  # `$z = polygon(...)` (or point, linestring, bbox, circle, or a number such
+  # as `$radius = 1000`) holds a literal, not a set to run: each later `$z` is
+  # replaced by the literal, so `.within($z)` compiles exactly like
+  # `.within(polygon(...))`.
+  @geometry_literals [:point, :linestring, :polygon, :bbox, :circle, :number]
+
+  defp inline_geometry_variables(ast) do
+    {nodes, _literals} =
+      Enum.flat_map_reduce(ast, %{}, fn
+        {:var_assign, "$" <> _ = var, geom, _pos}, literals
+        when elem(geom, 0) in @geometry_literals ->
+          {[], Map.put(literals, var, substitute_literals(geom, literals))}
+
+        node, literals ->
+          {[substitute_literals(node, literals)], literals}
+      end)
+
+    nodes
+  end
+
+  defp substitute_literals({:var_ref, var, _pos} = ref, literals),
+    do: Map.get(literals, var, ref)
+
+  defp substitute_literals(tuple, literals) when is_tuple(tuple) do
+    tuple
+    |> Tuple.to_list()
+    |> Enum.map(&substitute_literals(&1, literals))
+    |> List.to_tuple()
+  end
+
+  defp substitute_literals(list, literals) when is_list(list),
+    do: Enum.map(list, &substitute_literals(&1, literals))
+
+  defp substitute_literals(other, _literals), do: other
 
   # ── Top-level node processing ─────────────────────────────────────
 
@@ -253,7 +298,7 @@ defmodule PlazaQL.Compiler do
 
   defp find_within_geometry(directives) do
     Enum.find_value(directives, fn
-      {:within, [{:posarg, geom}]} -> geom
+      {:within, args} -> {:predicate, :within, extract_geometry_arg(args)}
       _ -> nil
     end)
   end
@@ -274,28 +319,17 @@ defmodule PlazaQL.Compiler do
 
   # -- Spatial methods --
 
+  # `.around(distance, geometry)`, positional or as `distance:` / `geometry:`.
   defp apply_method(plan, {:method, :around, args, _pos}, _env) do
     case args do
-      [{:posarg, {:number, distance, _}}, {:posarg, {:point, lat, lng, _}}] ->
-        %{plan | spatial_filter: {:around, lat, lng, distance}}
+      [{:posarg, {:number, distance, _}}, {:posarg, geom}] ->
+        %{plan | spatial_filter: around_filter(distance, geom)}
 
-      [{:posarg, {:number, distance, _}}, {:posarg, {:var_ref, "$" <> name, _}}] ->
-        %{plan | spatial_filter: {:around_set, name, distance}}
+      [{:kwarg, "distance", {:number, distance, _}}, {:kwarg, "geometry", geom}] ->
+        %{plan | spatial_filter: around_filter(distance, geom)}
 
-      [{:posarg, {:number, distance, _}}, {:posarg, {:output_var_ref, name, _}}] ->
-        %{plan | spatial_filter: {:around_set, "$$." <> name, distance}}
-
-      [{:kwarg, "distance", {:number, distance, _}}, {:kwarg, "geometry", {:point, lat, lng, _}}] ->
-        %{plan | spatial_filter: {:around, lat, lng, distance}}
-
-      [
-        {:kwarg, "distance", {:number, distance, _}},
-        {:kwarg, "geometry", {:output_var_ref, name, _}}
-      ] ->
-        %{plan | spatial_filter: {:around_set, "$$." <> name, distance}}
-
-      _ ->
-        plan
+      other ->
+        around_error!(other)
     end
   end
 
@@ -395,6 +429,28 @@ defmodule PlazaQL.Compiler do
          message:
            "`.sort(#{inspect(value)})` sorts by a constant string; " <>
              ~s|use `.sort(t["#{value}"])` for a tag, or `.sort(by: :osm_id)`, `.sort(by: :name)`, `.sort(by: :qt)`|,
+         line: 0,
+         col: 0
+       }}
+    )
+  end
+
+  # `.sort(:osm_id)` is `.sort(by: :osm_id)`; other atoms would sort by a
+  # constant.
+  @sort_atoms [:osm_id, :name, :distance, :qt]
+
+  defp apply_method(plan, {:method, :sort_expr, {:atom, mode, _}, _order, _pos}, _env)
+       when mode in @sort_atoms do
+    opts = ensure_output_options(plan)
+    %{plan | output_options: %{opts | sort: mode}}
+  end
+
+  defp apply_method(_plan, {:method, :sort_expr, {:atom, atom, _}, _order, _pos}, _env) do
+    throw(
+      {:compile_error,
+       %Error{
+         message:
+           "`.sort(:#{atom})` is not a sort mode; use :osm_id, :name, :distance or :qt, or an expression such as `t[\"key\"]`",
          line: 0,
          col: 0
        }}
@@ -746,6 +802,42 @@ defmodule PlazaQL.Compiler do
     end
   end
 
+  defp around_filter(distance, {:point, lat, lng, _}), do: {:around, lat, lng, distance}
+  defp around_filter(distance, {:var_ref, "$" <> name, _}), do: {:around_set, name, distance}
+
+  defp around_filter(distance, {:output_var_ref, name, _}),
+    do: {:around_set, "$$." <> name, distance}
+
+  # Around a literal line or polygon: within `distance` of the shape.
+  defp around_filter(distance, geom) when elem(geom, 0) in [:linestring, :polygon, :bbox],
+    do: {:around_set_resolved, [literal_ewkt(geom)], distance}
+
+  defp around_filter(_distance, geom), do: around_error!(geom)
+
+  @spec around_error!(term()) :: no_return()
+  defp around_error!(got) do
+    throw(
+      {:compile_error,
+       %Error{
+         message:
+           "`.around()` takes a distance and a point, line, polygon or variable, got #{inspect(got)}",
+         line: 0,
+         col: 0
+       }}
+    )
+  end
+
+  defp literal_ewkt(geom) do
+    case extract_geometry_arg([{:posarg, geom}]) do
+      {:linestring, coords} ->
+        "SRID=4326;LINESTRING(" <>
+          Enum.map_join(coords, ",", fn {lng, lat} -> "#{lng} #{lat}" end) <> ")"
+
+      {:polygon, rings} ->
+        GeometryRef.polygon_ewkt(rings, 4326)
+    end
+  end
+
   defp linestring_vertex!({:point, lat, lng, _}) when is_number(lat) and is_number(lng),
     do: {lng, lat}
 
@@ -961,6 +1053,22 @@ defmodule PlazaQL.Compiler do
     end
   end
 
+  # matrix([origins...], [destinations...]): the two point lists.
+  defp compile_computation_params(:matrix, args, opts, _env) do
+    kwargs = compile_kwargs(opts)
+
+    case args do
+      [] ->
+        kwargs
+
+      [{:posarg, {:list, _, _} = origins}, {:posarg, {:list, _, _} = destinations}] ->
+        Map.merge(kwargs, %{origins: origins, destinations: destinations})
+
+      _ ->
+        positional_error!(:matrix, "two point lists, origins then destinations", args)
+    end
+  end
+
   # optimize(p1, p2, p3, ...): positional points are the waypoints.
   defp compile_computation_params(:optimize, args, opts, _env) do
     kwargs = compile_kwargs(opts)
@@ -1000,7 +1108,7 @@ defmodule PlazaQL.Compiler do
   end
 
   # Keywords whose `[...]` value compiles to a plain list of strings.
-  @string_list_kwargs ["include", "exclude", "expansion_properties", "layers", "ids"]
+  @string_list_kwargs ["include", "exclude", "expansion_properties", "layers", "ids", "addresses"]
 
   defp compile_kwargs(opts) do
     Map.new(opts, fn
@@ -1038,7 +1146,8 @@ defmodule PlazaQL.Compiler do
                                 initial_charge_pct layers length locality locations metric
                                 min_charge_pct min_power_kw neighbourhood origins points
                                 postalcode region traffic_model waypoints weight width steps
-                                roundtrip)a,
+                                roundtrip overview geometries annotations denoise generalize
+                                fallback_speed radiuses lang layer addresses)a,
                              &{Atom.to_string(&1), &1}
                            )
 
