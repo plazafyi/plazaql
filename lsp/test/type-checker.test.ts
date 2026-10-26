@@ -109,6 +109,37 @@ describe("PlazaQL Type Checker", () => {
     expect(result.errors).toHaveLength(0);
   });
 
+  // ── .cursor() ─────────────────────────────────────────────────
+
+  it("accepts .cursor() with a token string", () => {
+    const result = check('$$ =search().limit(20).cursor("SFMyNTY.g2gD.x-_y");');
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("rejects .cursor() combined with .offset()", () => {
+    for (const source of [
+      '$$ =search().limit(20).offset(10).cursor("abc");',
+      '$$ =search().limit(20).cursor("abc").offset(10);',
+    ]) {
+      const result = check(source);
+      expect(result.errors.map((e) => e.message)).toContain(
+        "`.cursor()` and `.offset()` cannot be combined"
+      );
+    }
+  });
+
+  it("rejects .cursor() without exactly one string", () => {
+    for (const source of [
+      "$$ =search().limit(20).cursor(5);",
+      "$$ =search().limit(20).cursor();",
+    ]) {
+      const result = check(source);
+      expect(
+        result.errors.some((e) => e.message.includes("`.cursor()` takes one string"))
+      ).toBe(true);
+    }
+  });
+
   // ── Undefined variable ─────────────────────────────────────────
 
   it("reports undefined variable", () => {

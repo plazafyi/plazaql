@@ -167,6 +167,29 @@ defmodule PlazaQL.Compiler do
   defp substitute_literals({:var_ref, var, _pos} = ref, literals),
     do: Map.get(literals, var, ref)
 
+  # distance($p) with `$p = point(...)` measures from that point, like
+  # distance(point(...)); other literals have no distance form.
+  defp substitute_literals({:geom_func, :distance, {:set_ref, name}, pos} = node, literals) do
+    case Map.get(literals, "$" <> name) do
+      nil ->
+        node
+
+      {:point, lat, lng, _} when is_number(lat) and is_number(lng) ->
+        {:geom_func, :distance, {lat, lng}, pos}
+
+      _other ->
+        throw(
+          {:compile_error,
+           %Error{
+             message: "distance($#{name}) needs a point or a variable holding features",
+             hint: "use distance(point(lat, lng)), or assign `$#{name}` a search or computation",
+             line: pos[:line] || 0,
+             col: pos[:col] || 0
+           }}
+        )
+    end
+  end
+
   defp substitute_literals(tuple, literals) when is_tuple(tuple) do
     tuple
     |> Tuple.to_list()
@@ -498,6 +521,13 @@ defmodule PlazaQL.Compiler do
 
   defp apply_method(plan, {:method, :offset, args, _pos}, _env) do
     %{plan | offset: trunc(extract_single_number(args))}
+  end
+
+  defp apply_method(plan, {:method, :cursor, args, _pos}, _env) do
+    case extract_single_value(args) do
+      {:string, token, _} -> %{plan | cursor: token}
+      other -> argument_error!("a cursor string", other)
+    end
   end
 
   # -- Output mode methods --

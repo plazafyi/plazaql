@@ -1,0 +1,26 @@
+// Pagination — .limit() pages, .cursor() continues from the previous page
+
+// ── First page ─────────────────────────────────────────────────
+
+// The response carries `next_cursor` when more cafes follow
+search(node, amenity: "cafe")
+  .within(boundary(name: "Manhattan"))
+  .limit(100);
+
+// ── Next page ──────────────────────────────────────────────────
+
+// The same query plus the `next_cursor` of the previous page
+search(node, amenity: "cafe")
+  .within(boundary(name: "Manhattan"))
+  .limit(100)
+  .cursor("SFMyNTY.g2gDYQFtAAAAEH...");
+
+// ── Sorted pages ───────────────────────────────────────────────
+
+// Pages follow the sort: page 2 starts where page 1's distances stopped
+$home = point(40.7484, -73.9856);
+search(node, amenity: "pharmacy")
+  .around(2000, $home)
+  .sort(distance($home))
+  .limit(20)
+  .cursor("SFMyNTY.g2gDYQFtAAAAEH...");

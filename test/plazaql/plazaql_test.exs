@@ -152,6 +152,35 @@ defmodule PlazaQLTest do
       assert error.hint =~ "limit"
     end
 
+    test ".cursor() and .offset() together are an error with a hint" do
+      for source <- [
+            ~s|$$ = search(node).limit(10).offset(10).cursor("abc");|,
+            ~s|$$ = search(node).limit(10).cursor("abc").offset(10);|
+          ] do
+        [error] = compile_errors(source)
+        assert_error_struct(error)
+        assert error.message == "`.cursor()` and `.offset()` cannot be combined"
+        assert error.hint =~ "cursor"
+      end
+    end
+
+    test ".cursor() takes exactly one string" do
+      for source <- [
+            ~s|$$ = search(node).limit(10).cursor(5);|,
+            ~s|$$ = search(node).limit(10).cursor();|,
+            ~s|$$ = search(node).limit(10).cursor("a", "b");|
+          ] do
+        [error] = compile_errors(source)
+        assert_error_struct(error)
+        assert error.message =~ "`.cursor()` takes one string"
+      end
+    end
+
+    test ".cursor() is an ordering method: it cannot follow an output mode" do
+      errors = compile_errors(~s|$$ = search(node).count().cursor("abc");|)
+      assert Enum.any?(errors, &(&1.message =~ "cannot follow"))
+    end
+
     test "chain ordering violation has hint about reordering" do
       errors = compile_errors(~s|$$ = search(node).limit(10).buffer(50);|)
       error = Enum.find(errors, &(&1.message =~ "cannot follow"))

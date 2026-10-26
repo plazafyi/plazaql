@@ -25,7 +25,7 @@ defmodule PlazaQL.TreeSitter do
 
   # Safe atom allowlists (same as in the NimbleParsec parser)
   @method_atoms Map.new(
-                  ~w(area around avg bbox buffer centroid contains count crosses distance
+                  ~w(area around avg bbox buffer centroid contains count crosses cursor distance
                      elevation expand fields filter filter_expr first geom geometry group_by h3
                      has_member ids include index intersects last length limit max min
                      member_of not_contains not_intersects not_within offset overlap_fraction
@@ -1260,15 +1260,7 @@ defmodule PlazaQL.TreeSitter do
         {:str_func, :size, arg, nil, pos}
 
       "distance" ->
-        point_el = Enum.find(children, fn c -> elem_name(c) == :point_constructor end)
-
-        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-        if point_el do
-          {:point, lat, lng, _} = transform_point(point_el)
-          {:geom_func, :distance, {lat, lng}, pos}
-        else
-          {:geom_func, :distance, nil, pos}
-        end
+        distance_node(children, pos)
 
       "overlap_fraction" ->
         arg = if children != [], do: transform_expression(hd(children)), else: nil
@@ -1347,16 +1339,33 @@ defmodule PlazaQL.TreeSitter do
     end
   end
 
-  defp transform_distance_function(el) do
-    pos = make_pos(el)
-    children = named_children(el)
+  defp transform_distance_function(el),
+    do: distance_node(named_children(el), make_pos(el))
+
+  # distance(point(lat, lng)) measures from a literal point; distance($var) and
+  # distance($$.name) from a variable's geometry, which the executor resolves
+  # like `.around(..., $var)`: {:geom_func, :distance, {:set_ref, name}, pos}.
+  defp distance_node(children, pos) do
     point_el = Enum.find(children, fn c -> elem_name(c) == :point_constructor end)
 
-    if point_el do
-      {:point, lat, lng, _point_pos} = transform_point(point_el)
-      {:geom_func, :distance, {lat, lng}, pos}
-    else
-      {:geom_func, :distance, nil, pos}
+    ref =
+      Enum.find_value(children, fn c ->
+        case PlazaQL.GeometryRef.from_ast(transform_expression(c)) do
+          {:ok, {:set_ref, _} = ref} -> ref
+          _ -> nil
+        end
+      end)
+
+    cond do
+      point_el ->
+        {:point, lat, lng, _point_pos} = transform_point(point_el)
+        {:geom_func, :distance, {lat, lng}, pos}
+
+      ref ->
+        {:geom_func, :distance, ref, pos}
+
+      true ->
+        {:geom_func, :distance, nil, pos}
     end
   end
 
