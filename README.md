@@ -512,7 +512,7 @@ The options need `mode: "transit"` and are only accepted by these two functions;
 | `top_speed`          | integer | Highest speed driven, km/h (10-252). `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `fixed_speed`        | integer | Drive every road at this speed, km/h (1-252), ignoring class, limits, surface, grade and traffic. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `maneuver_penalty`   | number  | Seconds (0-3600) added at each intersection the route arrives at. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
-| `service_penalty`    | number  | Seconds (0-3600) added for each service road used. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
+| `service_penalty`    | number  | Seconds (0-3600) added for each service road entered from another kind of road (once per service road, however many junctions it passes). `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `gate_cost`          | number  | Seconds (0-3600) added for each gate passed (`barrier=gate`, `lift_gate`, `swing_gate`, `sliding_gate`, `hampshire_gate` without `access=yes`, `permissive`, `designated` or `public`). Every mode |
 | `toll_booth_cost`    | number  | Seconds (0-3600) added for each toll booth (`barrier=toll_booth`) passed. A booth already costs 15 s of travel time; this only steers the route. `"auto"`, `"truck"`, `"motorcycle"`, `"motor_scooter"` |
 | `country_crossing_cost` | number | Seconds (0-3600) added for each country border crossed (a `barrier=border_control` node, or roads of two countries meeting). Every mode |
