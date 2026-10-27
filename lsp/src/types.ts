@@ -1058,6 +1058,19 @@ export const TRUCK_COMPUTATIONS = [
 export const VEHICLE_COMPUTATION_NAMES =
   "`route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
 
+/** `traffic_model:` of route(), ev_route(), isochrone() and matrix(). */
+const TRAFFIC_MODEL_PARAM: ParamInfo = {
+  name: "traffic_model",
+  type: '"best_guess" | "optimistic" | "pessimistic"',
+  optional: true,
+  description: "Traffic speed assumption; applies when depart_at is set",
+  enumValues: [
+    { value: '"best_guess"' },
+    { value: '"optimistic"' },
+    { value: '"pessimistic"' },
+  ],
+}
+
 const TRUCK_PARAMS: ParamInfo[] = [
   {
     name: "height",
@@ -1633,17 +1646,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now") for time-of-day traffic; with mode "transit", a time without an offset is local time at the transit feed',
       },
-      {
-        name: "traffic_model",
-        type: '"best_guess" | "optimistic" | "pessimistic"',
-        optional: true,
-        description: "Traffic speed assumption; applies when depart_at is set",
-        enumValues: [
-          { value: '"best_guess"' },
-          { value: '"optimistic"' },
-          { value: '"pessimistic"' },
-        ],
-      },
+      TRAFFIC_MODEL_PARAM,
       {
         name: "exclude",
         type: "string[]",
@@ -1768,15 +1771,17 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       { name: "center", type: "Point", description: "Center point" },
       {
         name: "time",
-        type: "number",
+        type: "number | number[]",
         optional: true,
-        description: "Travel time in seconds",
+        description:
+          "Travel time budget in seconds (at most 7200); a list returns one contour per value. Not with distance.",
       },
       {
         name: "distance",
-        type: "number",
+        type: "number | number[]",
         optional: true,
-        description: "Travel distance in meters",
+        description:
+          "Travel distance budget in meters along the roads (at most 100000); a list returns one contour per value. Not with time. REST: contours_meters.",
       },
       {
         name: "mode",
@@ -1792,8 +1797,9 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         type: "string",
         optional: true,
         description:
-          'Departure time for mode "transit" (ISO 8601 with an offset, local time at the feed without one, or "now"; default now)',
+          'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now"). Motor modes are timed by that hour\'s traffic and the conditional restrictions in force then; with mode "transit" it is when the trip leaves (local time at the feed without an offset; default now)',
       },
+      TRAFFIC_MODEL_PARAM,
       ...TRANSIT_PARAMS,
       ...SPEED_PARAMS,
       {
@@ -1955,7 +1961,15 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
       {
         name: "point",
         type: "Point",
+        optional: true,
         description: "Coordinates to reverse geocode",
+      },
+      {
+        name: "points",
+        type: "Point[]",
+        optional: true,
+        description:
+          "Batch: up to 1000 points, each with its own result list in input order (POST /geocode/reverse/batch). Not with point.",
       },
       {
         name: "include",
@@ -2053,6 +2067,14 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description: "Travel mode",
         enumValues: TRUCK_MODE_VALUES,
       },
+      {
+        name: "depart_at",
+        type: "string",
+        optional: true,
+        description:
+          'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now" at the first origin): motor modes are timed by that hour\'s traffic and the conditional restrictions in force then',
+      },
+      TRAFFIC_MODEL_PARAM,
       ...TRUCK_PARAMS,
       ...ACTIVE_PARAMS,
       ...COSTING_PARAMS,
@@ -2194,17 +2216,7 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Departure time (ISO 8601, e.g. "2026-03-16T08:00:00Z", or "now") for time-of-day traffic',
       },
-      {
-        name: "traffic_model",
-        type: '"best_guess" | "optimistic" | "pessimistic"',
-        optional: true,
-        description: "Traffic speed assumption; applies when depart_at is set",
-        enumValues: [
-          { value: '"best_guess"' },
-          { value: '"optimistic"' },
-          { value: '"pessimistic"' },
-        ],
-      },
+      TRAFFIC_MODEL_PARAM,
       {
         name: "exclude",
         type: "string[]",
@@ -2604,6 +2616,8 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "avoid_datasets",
     "datasets",
     "depart_at",
+    "traffic_model",
+    "distance",
     ...TRUCK_OPTION_KWARGS,
     ...TRANSIT_OPTIONS,
     ...ACTIVE_OPTIONS,
@@ -2625,6 +2639,7 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
   text_search: ["query", "limit", "bbox", "focus"],
   reverse_geocode: [
     "point",
+    "points",
     "radius",
     "limit",
     "include",
@@ -2642,6 +2657,8 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "exclude",
     "avoid_datasets",
     "datasets",
+    "depart_at",
+    "traffic_model",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
     ...COSTING_OPTIONS,

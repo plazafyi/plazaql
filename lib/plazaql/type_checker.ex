@@ -1237,7 +1237,8 @@ defmodule PlazaQL.TypeChecker do
         @motor_scooter_option_kwargs ++
         ~w(battery battery_capacity_wh initial_charge_pct min_charge_pct connector_types min_power_kw),
     isochrone:
-      ~w(center time mode denoise generalize exclude avoid_datasets datasets depart_at) ++
+      ~w(center time distance mode denoise generalize exclude avoid_datasets datasets depart_at
+         traffic_model) ++
         @truck_option_kwargs ++
         @transit_option_kwargs ++
         @active_option_kwargs ++
@@ -1247,10 +1248,11 @@ defmodule PlazaQL.TypeChecker do
         @geocode_filter_kwargs,
     autocomplete: ["query" | @geocode_filter_kwargs],
     text_search: ~w(query limit bbox focus),
-    reverse_geocode: ~w(point radius limit include layer lang datasets),
+    reverse_geocode: ~w(point points radius limit include layer lang datasets),
     nearest: ~w(point radius datasets),
     matrix:
-      ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets datasets) ++
+      ~w(origins destinations mode annotations fallback_speed exclude avoid_datasets datasets
+         depart_at traffic_model) ++
         @truck_option_kwargs ++ @active_option_kwargs ++ @costing_kwargs,
     map_match:
       ~w(points mode radiuses exclude datasets avoid_datasets) ++
@@ -1630,19 +1632,24 @@ defmodule PlazaQL.TypeChecker do
     Enum.flat_map(opts, &check_geocode_option(&1, pos))
   end
 
-  # isochrone(mode: "transit", depart_at: ...): the same depart_at as route().
-  # isochrone()/matrix() exclude: the road types route() takes (POST
-  # /isochrone and /matrix `exclude`).
-  defp check_computation_kwargs(:isochrone, opts, pos) do
+  # isochrone() and matrix() depart_at / traffic_model: the same as route()'s
+  # (POST /isochrone and /matrix time road modes by the hour's traffic; a
+  # transit isochrone leaves at depart_at). Their exclude: the road types
+  # route() takes. An isochrone's budget is `time:` (seconds) or
+  # `distance:` (meters), not both.
+  defp check_computation_kwargs(comp_type, opts, pos) when comp_type in [:isochrone, :matrix] do
     Enum.flat_map(opts, fn
-      {:kwarg, key, _} = opt when key in ["depart_at", "exclude"] -> check_route_option(opt, pos)
-      _ -> []
-    end)
+      {:kwarg, key, _} = opt when key in ["depart_at", "traffic_model", "exclude"] ->
+        check_route_option(opt, pos)
+
+      _ ->
+        []
+    end) ++ check_isochrone_budget(comp_type, opts, pos)
   end
 
-  # matrix(), map_match() and optimize() exclude: the same road types.
+  # map_match() and optimize() exclude: the same road types.
   defp check_computation_kwargs(comp_type, opts, pos)
-       when comp_type in [:matrix, :map_match, :optimize] do
+       when comp_type in [:map_match, :optimize] do
     Enum.flat_map(opts, fn
       {:kwarg, "exclude", _} = opt -> check_route_option(opt, pos)
       _ -> []
@@ -1650,6 +1657,22 @@ defmodule PlazaQL.TypeChecker do
   end
 
   defp check_computation_kwargs(_comp_type, _opts, _pos), do: []
+
+  defp check_isochrone_budget(:isochrone, opts, pos) do
+    keys = for {:kwarg, key, _} <- opts, do: key
+
+    if "time" in keys and "distance" in keys do
+      route_option_error(
+        "`time:` and `distance:` can't be combined",
+        "an isochrone's budget is `time:` in seconds or `distance:` in meters",
+        pos
+      )
+    else
+      []
+    end
+  end
+
+  defp check_isochrone_budget(_comp_type, _opts, _pos), do: []
 
   # Values of the dataset keywords, shared with Plaza's REST `datasets`
   # (geocoding: datasets to search; routing: datasets whose roads to route
