@@ -87,6 +87,48 @@ defmodule PlazaQL.RestParityTest do
                plan!("optimize(point(1, 2), point(3, 4), roundtrip: false);").computation
     end
 
+    test "optimize takes time windows, service times and a capacity" do
+      assert {:optimize, params} =
+               plan!("""
+               optimize(
+                 waypoints: [point(1, 2), point(3, 4), point(5, 6)],
+                 time_windows: ["", [0, 3600], ["2026-11-02T08:00:00Z", "2026-11-02T09:00:00Z"]],
+                 service_s: [0, 300, 120],
+                 demands: [0, 4, -2],
+                 capacity: 10,
+                 depart_at: "2026-11-02T07:30:00Z"
+               );
+               """).computation
+
+      assert %{
+               time_windows: {:list, [{:string, "", _}, {:list, [_, _], _}, {:list, [_, _], _}], _},
+               service_s: {:list, [_, _, _], _},
+               demands: {:list, [_, _, {:number, -2, _}], _},
+               capacity: 10,
+               depart_at: "2026-11-02T07:30:00Z"
+             } = params
+
+      assert {:optimize, %{service_s: 300}} =
+               plan!("optimize(point(1, 2), point(3, 4), service_s: 300);").computation
+    end
+
+    test "optimize refuses misshapen constraint values" do
+      for {source, hint} <- [
+            {"optimize(point(1, 2), point(3, 4), time_windows: [[0, 1, 2], \"\"]);",
+             "[start, end]"},
+            {"optimize(point(1, 2), point(3, 4), time_windows: 600);", "[start, end]"},
+            {"optimize(point(1, 2), point(3, 4), service_s: \"5m\");", "seconds at each stop"},
+            {"optimize(point(1, 2), point(3, 4), demands: 3, capacity: 5);",
+             "one number per waypoint"},
+            {"optimize(point(1, 2), point(3, 4), demands: [0, 3], capacity: 0);", "capacity"},
+            {"optimize(point(1, 2), point(3, 4), depart_at: 8);", "ISO 8601"}
+          ] do
+        error = error!(source)
+        assert error.message =~ "for `optimize()`"
+        assert error.hint =~ hint
+      end
+    end
+
     test "geocoding takes lang and a single layer" do
       assert {:geocode, %{lang: "de", layer: "poi"}} =
                plan!(~s|geocode("Berlin", lang: "de", layer: "poi");|).computation

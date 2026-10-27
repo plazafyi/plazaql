@@ -543,6 +543,17 @@ describe("PlazaQL Type Checker", () => {
       expect(noMode.errors.some((e) => e.message.includes('need `mode: "truck"`'))).toBe(true);
     });
 
+    it("accepts optimize time windows, service times and capacity", () => {
+      const src =
+        '$$ = optimize(waypoints: [point(1, 2), point(3, 4)], time_windows: ["", [0, 600]], service_s: 60, demands: [0, 2], capacity: 4, depart_at: "2026-11-02T08:00:00Z");';
+      expect(check(src).errors).toHaveLength(0);
+      expect(
+        check('$$ = route(origin: point(1, 2), destination: point(3, 4), capacity: 4);').errors.some((e) =>
+          e.message.includes("does not accept `capacity:`"),
+        ),
+      ).toBe(true);
+    });
+
     it("accepts truck options on optimize, centroid, expansion and map_match", () => {
       const a = "point(48.858, 2.294)";
       const b = "point(48.87, 2.35)";

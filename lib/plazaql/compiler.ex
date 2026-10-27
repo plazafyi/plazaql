@@ -1299,7 +1299,8 @@ defmodule PlazaQL.Compiler do
                                 maneuver_penalty service_penalty location_types headings
                                 heading_tolerances preferred_sides approaches recostings style use_trails
                                 use_curves lane_splitting use_primary gate_cost toll_booth_cost
-                                country_crossing_cost distance)a,
+                                country_crossing_cost distance time_windows service_s demands
+                                capacity)a,
                              &{Atom.to_string(&1), &1}
                            )
 

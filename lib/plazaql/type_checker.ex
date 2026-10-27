@@ -1258,7 +1258,8 @@ defmodule PlazaQL.TypeChecker do
       ~w(points mode radiuses exclude datasets avoid_datasets) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     optimize:
-      ~w(waypoints mode roundtrip exclude avoid_datasets datasets) ++
+      ~w(waypoints mode roundtrip exclude avoid_datasets datasets time_windows service_s demands
+         capacity depart_at) ++
         @truck_option_kwargs ++ @active_option_kwargs,
     elevation: ~w(point points),
     elevation_profile: ~w(points),
@@ -1407,6 +1408,21 @@ defmodule PlazaQL.TypeChecker do
 
   # Truck options on a computation without them get check_truck_kwargs/3's
   # own message ("`centroid()` has no truck options"); one error, not two.
+  defp time_window?({:string, "", _}), do: true
+
+  defp time_window?({:list, [from, to], _}),
+    do:
+      Enum.all?(
+        [from, to],
+        &(match?({:number, n, _} when n >= 0, &1) or match?({:string, _, _}, &1))
+      )
+
+  defp time_window?(_item), do: false
+
+  defp time_windows_hint(),
+    do:
+      ~s|one entry per waypoint: [start, end] in seconds after departure or ISO 8601 times, or "" for none, e.g. `time_windows: ["", [0, 3600], [1800, 5400]]`|
+
   defp kwarg_error(comp_type, key, value, accepted) do
     cond do
       key in accepted -> option_error(comp_type, key, value)
@@ -1487,6 +1503,44 @@ defmodule PlazaQL.TypeChecker do
 
   defp option_value_error(:matrix, "fallback_speed", _value),
     do: "a speed in km/h above 0, used for pairs with no road path"
+
+  # optimize() time windows, service times and load: value shapes only.
+  # Plaza checks the per-waypoint counts, ranges and feasibility, as REST.
+  defp option_value_error(:optimize, "time_windows", {:list, items, _}) do
+    if Enum.all?(items, &time_window?/1), do: nil, else: time_windows_hint()
+  end
+
+  defp option_value_error(:optimize, "time_windows", _value), do: time_windows_hint()
+
+  defp option_value_error(:optimize, "service_s", {:number, n, _}) when n >= 0, do: nil
+
+  defp option_value_error(:optimize, "service_s", {:list, items, _}) do
+    if Enum.all?(items, &match?({:number, n, _} when n >= 0, &1)),
+      do: nil,
+      else: "seconds at each stop: one number for every stop, or a list with one per waypoint"
+  end
+
+  defp option_value_error(:optimize, "service_s", _value),
+    do: "seconds at each stop: one number for every stop, or a list with one per waypoint"
+
+  defp option_value_error(:optimize, "demands", {:list, items, _}) do
+    if Enum.all?(items, &match?({:number, _, _}, &1)),
+      do: nil,
+      else: "one number per waypoint: positive to deliver, negative to pick up, 0 at the start"
+  end
+
+  defp option_value_error(:optimize, "demands", _value),
+    do: "one number per waypoint: positive to deliver, negative to pick up, 0 at the start"
+
+  defp option_value_error(:optimize, "capacity", {:number, n, _}) when n > 0, do: nil
+
+  defp option_value_error(:optimize, "capacity", _value),
+    do: "the vehicle's capacity, a number above 0"
+
+  defp option_value_error(:optimize, "depart_at", {:string, _, _}), do: nil
+
+  defp option_value_error(:optimize, "depart_at", _value),
+    do: ~s|an ISO 8601 time, e.g. "2026-11-02T08:00:00Z"|
 
   defp option_value_error(:map_match, "radiuses", {:list, items, _}) do
     if Enum.all?(items, &match?({:number, n, _} when n > 0, &1)),

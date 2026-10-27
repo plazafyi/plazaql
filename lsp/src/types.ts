@@ -2185,9 +2185,45 @@ export const FUNCTION_SIGNATURES: Record<string, FunctionSignature> = {
         description:
           'Also route over the roads of these datasets (up to 20 slugs or ids; not "plaza" or "all"): their line features with `highway` or `road_class`, joined to OSM roads where an end lies within 10 m of an OSM junction.',
       },
+      {
+        name: "time_windows",
+        type: "(number[] | string[] | string)[]",
+        optional: true,
+        description:
+          'One entry per waypoint: [start, end] in seconds after departure, or ISO 8601 times (with depart_at), or "" for none. Service must start inside the window; an early vehicle waits. The first waypoint\'s window is when the vehicle may leave and, on a round trip, return. A problem no order can meet is a 422.',
+      },
+      {
+        name: "service_s",
+        type: "number | number[]",
+        optional: true,
+        description:
+          "Seconds spent at each stop: one number for every stop, or one per waypoint. None at the first waypoint.",
+      },
+      {
+        name: "demands",
+        type: "number[]",
+        optional: true,
+        description:
+          "One number per waypoint, with capacity: positive is delivered there (loaded at the start), negative is picked up there. 0 at the first waypoint.",
+      },
+      {
+        name: "capacity",
+        type: "number",
+        optional: true,
+        description:
+          "The single vehicle's capacity, with demands. Deliveries or pickups that add up to more are refused: there is one vehicle and one trip.",
+      },
+      {
+        name: "depart_at",
+        type: "string",
+        optional: true,
+        description:
+          "ISO 8601 departure time: the clock ISO time windows are read against, and arrival_at in the result. Travel times are free-flow.",
+      },
     ],
     returnType: "Route",
-    description: "Optimize waypoint ordering (TSP).",
+    description:
+      "Optimize waypoint ordering for one vehicle: traveling salesman, or with time windows, service times and capacity.",
   },
   // biome-ignore lint/style/useNamingConvention: PQL name
   ev_route: {
@@ -2685,6 +2721,11 @@ export const COMPUTATION_KWARGS: Record<string, string[]> = {
     "exclude",
     "avoid_datasets",
     "datasets",
+    "time_windows",
+    "service_s",
+    "demands",
+    "capacity",
+    "depart_at",
     ...TRUCK_OPTION_KWARGS,
     ...ACTIVE_OPTIONS,
   ],
