@@ -280,3 +280,13 @@ route(
   destination: point(37.4300, -122.1730),
   datasets: ["campus-roads"]
 );
+
+// Deliveries with time windows: stop 2 before 20 minutes, stop 1 between
+// 30 and 60 minutes, 5 minutes at each, a 10-unit van
+optimize(
+  waypoints: [point(40.7128, -74.0060), point(40.7580, -73.9855), point(40.7484, -73.9857)],
+  time_windows: ["", [1800, 3600], [0, 1200]],
+  service_s: 300,
+  demands: [0, 4, 3],
+  capacity: 10
+);

@@ -783,7 +783,7 @@ A `linestring(...)` works as the trace too: `map_match(linestring(point(40.71, -
 
 ### `optimize(points..., mode:)`
 
-Solve the traveling salesman problem — optimal visit order.
+Order the stops for one vehicle: the traveling salesman problem, or with time windows, service times and a capacity.
 
 ```plazaql
 optimize(point(40.71, -74.00), point(40.73, -73.99), point(40.75, -73.98), mode: "auto")
@@ -799,6 +799,23 @@ The positional points are the waypoints; `waypoints: [...]` is the keyword form.
 | `exclude`   | string[]/string | Road types to leave out, same values as `route()` (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 | `datasets` | string[]/string | Datasets whose roads to travel as well, as in `route()` (optional) |
+| `time_windows` | list | One entry per waypoint: `[start, end]` in seconds after departure or ISO 8601 times, or `""` for none (optional) |
+| `service_s` | number/number[] | Seconds spent at each stop, one for all or one per waypoint (optional) |
+| `demands` | number[] | Load per waypoint with `capacity`: positive delivers, negative picks up, `0` at the start (optional) |
+| `capacity` | number | The vehicle's capacity (optional, with `demands`) |
+| `depart_at` | string | ISO 8601 departure time that ISO windows are read against (optional) |
+
+Service at a stop must start inside its window, and a vehicle that arrives early waits. The first waypoint's window says when the vehicle may leave and, on a round trip, when it must be back. With any of these, each waypoint in the result also carries `arrival_s`, `wait_s`, `service_s`, `departure_s` (seconds after departure), `load`, and `arrival_at` when `depart_at` is set. Plaza answers 422 when no order meets every window and the capacity, and when the deliveries or pickups add up to more than one vehicle carries: there is one vehicle and one trip (REST: the same keys on `POST /optimize`).
+
+```plazaql
+optimize(
+  waypoints: [point(40.7128, -74.006), point(40.758, -73.9855), point(40.7484, -73.9857)],
+  time_windows: ["", [1800, 3600], [0, 1200]],
+  service_s: 300,
+  demands: [0, 4, 3],
+  capacity: 10
+);
+```
 
 ### `ev_route(origin:, destination:, battery:)`
 

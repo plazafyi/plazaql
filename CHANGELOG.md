@@ -21,6 +21,11 @@ First Hex release of the PlazaQL Elixir package.
   queued traffic, as Plaza's REST `motorcycle.lane_splitting`. The type
   checker and the LSP check it is `true` or `false` and needs
   `mode: "motorcycle"`.
+- `optimize()` takes `time_windows:`, `service_s:`, `demands:`, `capacity:`
+  and `depart_at:`, as Plaza's REST `POST /optimize`: one vehicle with time
+  windows (seconds after departure or ISO 8601 times, `""` for none),
+  service times and a capacity. The type checker checks the value shapes;
+  Plaza checks the per-waypoint counts and feasibility.
 - `ev_route()` takes `mode: "motorcycle"` and `"motor_scooter"` with their
   rider keywords (electric motorcycles and scooters); bicycle and walker
   keywords are rejected there.
