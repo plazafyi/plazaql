@@ -1984,6 +1984,7 @@ defmodule PlazaQL.TypeChecker do
 
   @truck_computations [:route, :isochrone, :matrix, :optimize, :centroid, :expansion, :map_match]
   @vehicle_computation_names "`route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
+  @truck_option_computation_names "`route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()`, `map_match()` and `ev_route()`"
   @truck_dimensions ~w(height width length weight axle_load)
   @truck_kwargs @truck_dimensions ++ ~w(axle_count hazmat)
   @truck_hint ~s|e.g. `route(origin: ..., destination: ..., mode: "truck", height: 4.0, weight: 30, hazmat: true)`|
@@ -2001,7 +2002,10 @@ defmodule PlazaQL.TypeChecker do
 
   # A mode that is not a literal (a variable, say) is checked by Plaza when
   # it runs; only a missing mode or a literal other than "truck" is an error.
-  defp check_truck_usage(comp_type, opts, pos) when comp_type in @truck_computations do
+  # ev_route() plans an electric truck with the truck options too (Plaza's
+  # POST /route with `ev` and `mode: "truck"`).
+  defp check_truck_usage(comp_type, opts, pos)
+       when comp_type in [:ev_route | @truck_computations] do
     case Enum.find(opts, &match?({:kwarg, "mode", _}, &1)) do
       {:kwarg, "mode", {:string, "truck", _}} -> []
       {:kwarg, "mode", {literal, _, _}} when literal in [:string, :atom] -> truck_mode_error(pos)
@@ -2012,7 +2016,7 @@ defmodule PlazaQL.TypeChecker do
 
   defp check_truck_usage(comp_type, _opts, pos) do
     route_option_error(
-      "`#{comp_type}()` has no truck options; they apply to #{@vehicle_computation_names} with `mode: \"truck\"`",
+      "`#{comp_type}()` has no truck options; they apply to #{@truck_option_computation_names} with `mode: \"truck\"`",
       @truck_hint,
       pos
     )

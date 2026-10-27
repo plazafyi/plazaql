@@ -1054,6 +1054,11 @@ export const TRUCK_COMPUTATIONS = [
   "expansion",
   "map_match",
 ]
+/** The computations that take the truck options: every vehicle computation and ev_route() (an electric truck). */
+export const TRUCK_OPTION_COMPUTATIONS = [...TRUCK_COMPUTATIONS, "ev_route"]
+/** TRUCK_OPTION_COMPUTATIONS as a message lists them. */
+export const TRUCK_OPTION_COMPUTATION_NAMES =
+  "`route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()`, `map_match()` and `ev_route()`"
 /** The computations that take every vehicle mode, as a message lists them. */
 export const VEHICLE_COMPUTATION_NAMES =
   "`route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"

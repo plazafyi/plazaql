@@ -1091,14 +1091,24 @@ defmodule PlazaQL.TypeCheckerTest do
       check!(~s|$m = "truck"; | <> @route <> ~s|, mode: $m, height: 4.1);|)
     end
 
-    test "other computations have no truck options" do
+    test "ev_route() takes the truck options with mode truck" do
+      check!(
+        ~s|ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 600000, mode: "truck", weight: 40, height: 4.0);|
+      )
+
       [error] =
         check_errors(
           ~s|ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, height: 4.0);|
         )
 
+      assert error.message =~ ~s|need `mode: "truck"`|
+    end
+
+    test "other computations have no truck options" do
+      [error] = check_errors(~s|nearest(point(48.858, 2.294), height: 4.0);|)
+
       assert error.message ==
-               "`ev_route()` has no truck options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()` with `mode: \"truck\"`"
+               "`nearest()` has no truck options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()`, `map_match()` and `ev_route()` with `mode: \"truck\"`"
     end
 
     test "optimize, centroid, expansion and map_match take the truck options" do

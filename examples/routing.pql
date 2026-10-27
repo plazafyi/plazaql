@@ -165,6 +165,15 @@ ev_route(
   style: "touring"
 );
 
+// Electric truck: consumption from its weight, CCS and MCS chargers
+ev_route(
+  origin: point(51.9244, 4.4777),
+  destination: point(50.9375, 6.9603),
+  battery: 540000,
+  mode: "truck",
+  weight: 40
+);
+
 // Commuting motorcycle that filters through rush-hour traffic
 route(
   origin: point(34.0522, -118.2437),
