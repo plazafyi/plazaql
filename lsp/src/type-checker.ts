@@ -258,6 +258,7 @@ function checkExpr(expr: Expr, scope: Scope, outputScope: Scope): ExprResult {
         ...checkTransitKwargs(expr.name, expr.args, expr.pos),
         ...checkActiveKwargs(expr.name, expr.args, expr.pos),
         ...checkDatasetKwargs(expr.args, expr.pos),
+        ...checkIsochroneBudget(expr.name, expr.args, expr.pos),
       ]
       return { type, errors: [...argErrors, ...kwargErrors] }
     }
@@ -1233,6 +1234,26 @@ function checkTransitKwargs(
     ...checkTransitUsage(name, args, pos),
     ...checkArriveBy(name, args, pos),
     ...transitArgs.flatMap((arg) => checkTransitValue(arg, pos)),
+  ]
+}
+
+// An isochrone's budget is `time:` (seconds) or `distance:` (meters), not both.
+function checkIsochroneBudget(
+  name: string,
+  args: Arg[],
+  pos: Pos,
+): TypeCheckError[] {
+  const has = (key: string) =>
+    args.some((arg) => arg.type === "kwarg" && arg.name === key)
+  if (name !== "isochrone" || !(has("time") && has("distance"))) {
+    return []
+  }
+  return [
+    kwargError(
+      pos,
+      "`time:` and `distance:` can't be combined",
+      "an isochrone's budget is `time:` in seconds or `distance:` in meters",
+    ),
   ]
 }
 

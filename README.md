@@ -570,21 +570,25 @@ Chinese (Simplified). Any other language is a type error.
 
 ### `isochrone(center:, time:, mode:)`
 
-Compute a travel-time polygon.
+Compute the area reachable within a travel time or a distance along the roads.
 
 ```plazaql
 isochrone(center: point(40.71, -74.00), time: 900, mode: "foot")
+isochrone(center: point(40.71, -74.00), distance: [1000, 2000], mode: "bicycle")
+isochrone(center: point(40.71, -74.00), time: 900, depart_at: "2026-03-16T08:00:00-04:00")
 ```
 
 | Parameter | Type    | Description                    |
 |-----------|---------|--------------------------------|
 | `center`  | Point   | Origin point                   |
-| `time`    | integer or integer[] | Travel time in seconds; a list returns one polygon per time |
+| `time`    | integer or integer[] | Travel time in seconds, at most 7200; a list returns one polygon per time |
+| `distance` | number or number[] | Distance along the roads in meters, at most 100000, instead of `time`; a list returns one polygon per distance (REST: `contours_meters`). Not with `time` |
 | `mode`    | string  | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"motorcycle"`, `"motor_scooter"`, `"transit"` (with the [transit options](#transit-options)) |
-| `depart_at` | string | Departure time for `mode: "transit"`, as in `route()` (optional) |
+| `depart_at` | string | Departure time, as in `route()`: motor modes are timed by that hour's traffic and the conditional restrictions in force then; with `mode: "transit"` it is when the trip leaves (optional) |
+| `traffic_model` | string | As in `route()`; applies with `depart_at` (optional) |
 | `top_speed`, `fixed_speed` | integer | The [speed overrides](#costing-options), as in `route()` (optional) |
-| `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` is a list (optional) |
-| `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` is a list (optional) |
+| `denoise` | number  | Contour denoising level, 0 to 100; applies when `time` or `distance` is a list (optional) |
+| `generalize` | number | Contour generalization tolerance in meters, 0 to 1000; applies when `time` or `distance` is a list (optional) |
 | `exclude` | string[]/string | Road types to leave out, as in `route()` (optional; not with `mode: "transit"`) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 | `datasets` | string[]/string | Datasets whose roads to travel as well, as in `route()` (optional) |
@@ -658,11 +662,13 @@ Reverse geocode — coordinates to address.
 
 ```plazaql
 reverse_geocode(point(38.8977, -77.0365))
+reverse_geocode(points: [point(38.8977, -77.0365), point(40.7484, -73.9856)])
 ```
 
 | Parameter | Type                  | Description                                   |
 |-----------|-----------------------|-----------------------------------------------|
 | `point`   | Point                 | Coordinates to reverse geocode                |
+| `points`  | Point[]               | Batch: up to 1000 points instead of `point`; returns `{results, count}` with one FeatureCollection per point, in order (REST: `POST /geocode/reverse/batch`) |
 | `include` | string or string list | Extra data to attach: `"census"` (optional)   |
 | `layer`   | string                | Only results of this layer (optional)         |
 | `lang`    | string                | Language for result names (optional)          |
@@ -748,6 +754,7 @@ matrix(origins: [point(40.71, -74.00), point(40.73, -73.99)], destinations: [poi
 | `mode`         | string   | `"auto"`, `"foot"`, `"bicycle"`, `"truck"` (with the [truck options](#truck-options)), `"motorcycle"`, `"motor_scooter"` (optional) |
 | `annotations`  | string or string[] | `"duration"` (always) and `"distance"` (optional) |
 | `fallback_speed` | number | km/h used to estimate pairs with no route, which are otherwise null (optional) |
+| `depart_at`, `traffic_model` | string | As in `route()`: motor modes are timed by that hour's traffic and the conditional restrictions in force then; `"now"` is local time at the first origin (optional) |
 | `exclude`      | string[]/string | Road types to leave out, as in `route()` (optional) |
 | `avoid_datasets` | string[]/string | Datasets whose polygons to stay out of, as in `route()` (optional) |
 | `datasets` | string[]/string | Datasets whose roads to travel as well, as in `route()` (optional) |

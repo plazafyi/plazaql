@@ -1299,6 +1299,46 @@ defmodule PlazaQL.TypeCheckerTest do
     end
   end
 
+  describe "road departure, distance isochrones and batch reverse geocoding" do
+    test "isochrone() and matrix() take depart_at and traffic_model like route()" do
+      check!(
+        ~s|isochrone(center: point(40.71, -74.00), time: 600, depart_at: "2026-03-16T08:00:00-04:00", traffic_model: "pessimistic");|
+      )
+
+      check!(
+        ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], depart_at: "now", traffic_model: "optimistic");|
+      )
+
+      [error] =
+        check_errors(
+          ~s|matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], depart_at: 8);|
+        )
+
+      assert error.message =~ "`depart_at:` must be an ISO 8601 datetime"
+
+      [error] =
+        check_errors(
+          ~s|isochrone(center: point(40.71, -74.00), time: 600, depart_at: "now", traffic_model: "rush");|
+        )
+
+      assert error.message =~ "`traffic_model:` must be one of"
+    end
+
+    test "isochrone() takes a distance budget, not with time" do
+      check!(~s|isochrone(center: point(40.71, -74.00), distance: 2000);|)
+      check!(~s|isochrone(center: point(40.71, -74.00), distance: [1000, 2000], mode: "foot");|)
+
+      [error] =
+        check_errors(~s|isochrone(center: point(40.71, -74.00), time: 600, distance: 2000);|)
+
+      assert error.message == "`time:` and `distance:` can't be combined"
+    end
+
+    test "reverse_geocode() takes a list of points" do
+      check!(~s|reverse_geocode(points: [point(40.71, -74.00), point(40.75, -73.98)]);|)
+    end
+  end
+
   describe "transit options" do
     @route ~s|route(origin: point(40.71, -74.00), destination: point(40.75, -73.98)|
 

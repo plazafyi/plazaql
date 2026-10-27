@@ -337,6 +337,34 @@ describe("PlazaQL Type Checker", () => {
 
   // ── centroid() and expansion() ─────────────────────────────────
 
+  describe("road departure, distance isochrones and batch reverse geocoding", () => {
+    const messages = (src: string) => check(src).errors.map((e) => e.message);
+
+    it("accepts depart_at and traffic_model on isochrone and matrix", () => {
+      expect(
+        messages(
+          '$$ = isochrone(center: point(40.71, -74.00), time: 600, depart_at: "2026-03-16T08:00:00-04:00", traffic_model: "pessimistic");'
+        )
+      ).toEqual([]);
+      expect(
+        messages(
+          '$$ = matrix(origins: [point(40.71, -74.00)], destinations: [point(40.75, -73.98)], depart_at: "now", traffic_model: "optimistic");'
+        )
+      ).toEqual([]);
+    });
+
+    it("takes a distance budget on isochrone, not with time", () => {
+      expect(messages("$$ = isochrone(center: point(40.71, -74.00), distance: [1000, 2000]);")).toEqual([]);
+      expect(messages("$$ = isochrone(center: point(40.71, -74.00), time: 600, distance: 2000);")).toEqual([
+        "`time:` and `distance:` can't be combined",
+      ]);
+    });
+
+    it("accepts points on reverse_geocode", () => {
+      expect(messages("$$ = reverse_geocode(points: [point(40.71, -74.00), point(40.75, -73.98)]);")).toEqual([]);
+    });
+  });
+
   describe("transit options", () => {
     const route = "origin: point(40.71, -74.00), destination: point(40.75, -73.98)";
 
