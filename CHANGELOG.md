@@ -24,6 +24,9 @@ First Hex release of the PlazaQL Elixir package.
 - `ev_route()` takes `mode: "motorcycle"` and `"motor_scooter"` with their
   rider keywords (electric motorcycles and scooters); bicycle and walker
   keywords are rejected there.
+- `ev_route()` takes `mode: "truck"` with the truck keywords (`height:`,
+  `weight:`, `hazmat:`, ...): an electric truck, as Plaza's `POST /route`
+  with `ev` and `mode: "truck"`.
 - `exclude: "cash_only_tolls"` (roads through toll booths that take only
   cash), and `isochrone()` and `matrix()` take `exclude` like `route()`.
 - `datasets:` on `route()`, `ev_route()`, `isochrone()`, `matrix()` and

@@ -401,7 +401,7 @@ route(origin: point(40.71, -74.00), destination: point(40.75, -73.98), datasets:
 
 #### Truck options
 
-With `mode: "truck"`, `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()` take the vehicle as keywords (Plaza's REST `truck` object). The router skips roads whose OSM `maxheight`, `maxwidth`, `maxlength`, `maxweight` or `maxaxleload` is below the vehicle's, keeps to roads trucks may use, follows one-way streets and times the trip at truck speeds. Any option left out takes its default, a standard US semi-trailer. Plaza rejects values out of range.
+With `mode: "truck"`, `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()`, `map_match()` and `ev_route()` (an electric truck) take the vehicle as keywords (Plaza's REST `truck` object). The router skips roads whose OSM `maxheight`, `maxwidth`, `maxlength`, `maxweight` or `maxaxleload` is below the vehicle's, keeps to roads trucks may use, follows one-way streets and times the trip at truck speeds. Any option left out takes its default, a standard US semi-trailer. Plaza rejects values out of range.
 
 | Parameter    | Type    | Description                                                                   |
 |--------------|---------|-------------------------------------------------------------------------------|
@@ -411,7 +411,7 @@ With `mode: "truck"`, `route()`, `isochrone()`, `matrix()`, `optimize()`, `centr
 | `weight`     | number  | Gross weight in tonnes, default 21.77, at most 200                            |
 | `axle_load`  | number  | Heaviest axle in tonnes, at most 50 (optional)                                |
 | `axle_count` | integer | 2 to 20; without `axle_load`, `weight / axle_count` is checked (optional)     |
-| `hazmat`     | boolean | Hazardous load: avoids `hazmat=no` / `hazmat:water=no` roads and ADR tunnel categories B to E (default `false`) |
+| `hazmat`     | boolean | Hazardous load: avoids `hazmat=no` roads, roads closed to any hazmat class (`hazmat:water=no`, `hazmat:explosive=no`, ...; the load's class isn't asked) and ADR tunnel categories B to E (default `false`) |
 
 ```plazaql
 route(origin: point(40.71, -74.00), destination: point(40.76, -73.99), mode: "truck", height: 4.0, weight: 30, hazmat: true)
@@ -802,11 +802,12 @@ The positional points are the waypoints; `waypoints: [...]` is the keyword form.
 
 ### `ev_route(origin:, destination:, battery:)`
 
-EV-aware routing with charge stop planning. An electric car by default; with `mode: "motorcycle"` or `"motor_scooter"` an electric motorcycle (about 80 Wh/km) or scooter (about 40 Wh/km), routed with its own costing and rider options, that charges only at sockets a two-wheeler can use (Type 1, Type 2, CCS, CHAdeMO, household and camping sockets; no Tesla-only sites) unless `connector_types` is given. REST: `ev` on `POST /route` with those modes.
+EV-aware routing with charge stop planning. An electric car by default; with `mode: "motorcycle"` or `"motor_scooter"` an electric motorcycle (about 80 Wh/km) or scooter (about 40 Wh/km), routed with its own costing and rider options, that charges only at sockets a two-wheeler can use (Type 1, Type 2, CCS, CHAdeMO, household and camping sockets; no Tesla-only sites) unless `connector_types` is given. With `mode: "truck"` an electric truck: the [truck options](#truck-options) set its restrictions and its consumption (about 300 Wh/km plus 22.5 Wh/km per tonne of `weight`, so about 1.2 kWh/km at 40 t), and it charges only at CCS and MCS (`socket:mcs`) chargers unless `connector_types` is given. REST: `ev` on `POST /route` with those modes.
 
 ```plazaql
 ev_route(origin: point(40.71, -74.00), destination: point(42.36, -71.06), battery: 60000)
 ev_route(origin: point(48.85, 2.35), destination: point(49.44, 1.10), battery: 15000, mode: "motorcycle", style: "touring")
+ev_route(origin: point(51.92, 4.48), destination: point(50.94, 6.96), battery: 540000, mode: "truck", weight: 40)
 ```
 
 | Parameter            | Type    | Description                              |
@@ -819,8 +820,8 @@ ev_route(origin: point(48.85, 2.35), destination: point(49.44, 1.10), battery: 1
 | `min_charge_pct`     | number  | Reserve to keep as a fraction, default 0.1 (optional) |
 | `connector_types`    | string[] | Connectors the car accepts, matched against OSM `socket:<type>` keys, e.g. `["type2_combo", "chademo"]` (optional) |
 | `min_power_kw`       | number  | Minimum charger output in kW; chargers without a readable `socket:*:output` are skipped when set (optional) |
-| `mode`               | string  | `"auto"` (default), `"motorcycle"` or `"motor_scooter"` (optional) |
-| the [motorcycle and motor scooter options](#motorcycle-and-motor-scooter-options) | | With their mode (optional) |
+| `mode`               | string  | `"auto"` (default), `"motorcycle"`, `"motor_scooter"` or `"truck"` (optional) |
+| the [motorcycle and motor scooter options](#motorcycle-and-motor-scooter-options), the [truck options](#truck-options) | | With their mode (optional) |
 | `depart_at`, `traffic_model`, `exclude`, `avoid_datasets`, `datasets`, `steps`, `lang`, `units`, `verbal`, `voice_instructions`, `banner_instructions`, `roundabout_exits`, `voice_units`, `waypoint_names`, the [costing options](#costing-options) | | Same as `route()` (optional) |
 
 ### `centroid(locations:, mode:?, metric:?, exclude:?, avoid_datasets:?)`

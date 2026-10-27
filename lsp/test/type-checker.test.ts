@@ -526,14 +526,21 @@ describe("PlazaQL Type Checker", () => {
     });
 
     it("rejects truck options on other computations", () => {
-      const result = check(`$$ = ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, height: 4.0);`);
+      const result = check(`$$ = nearest(point(48.858, 2.294), height: 4.0);`);
       expect(
         result.errors.some((e) =>
           e.message.includes(
-            "`ev_route()` has no truck options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()` and `map_match()`"
+            "`nearest()` has no truck options; they apply to `route()`, `isochrone()`, `matrix()`, `optimize()`, `centroid()`, `expansion()`, `map_match()` and `ev_route()`"
           )
         )
       ).toBe(true);
+    });
+
+    it("accepts truck options on ev_route with mode truck", () => {
+      const result = check(`$$ = ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 600000, mode: "truck", weight: 40, height: 4.0);`);
+      expect(result.errors).toHaveLength(0);
+      const noMode = check(`$$ = ev_route(origin: point(48.858, 2.294), destination: point(48.87, 2.35), battery: 60000, height: 4.0);`);
+      expect(noMode.errors.some((e) => e.message.includes('need `mode: "truck"`'))).toBe(true);
     });
 
     it("accepts truck options on optimize, centroid, expansion and map_match", () => {

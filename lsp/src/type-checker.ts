@@ -48,8 +48,9 @@ import {
   TRANSIT_COMPUTATIONS,
   TRANSIT_OPTIONS,
   TRANSIT_PREFERENCES,
-  TRUCK_COMPUTATIONS,
   TRUCK_DIMENSIONS,
+  TRUCK_OPTION_COMPUTATION_NAMES,
+  TRUCK_OPTION_COMPUTATIONS,
   TRUCK_OPTIONS,
   unionType,
   VEHICLE_COMPUTATION_NAMES,
@@ -1143,11 +1144,11 @@ function checkTruckUsage(
   args: Arg[],
   pos: Pos,
 ): TypeCheckError[] {
-  if (!TRUCK_COMPUTATIONS.includes(name)) {
+  if (!TRUCK_OPTION_COMPUTATIONS.includes(name)) {
     return [
       kwargError(
         pos,
-        `\`${name}()\` has no truck options; they apply to ${VEHICLE_COMPUTATION_NAMES} with \`mode: "truck"\``,
+        `\`${name}()\` has no truck options; they apply to ${TRUCK_OPTION_COMPUTATION_NAMES} with \`mode: "truck"\``,
         TRUCK_HINT,
       ),
     ]
